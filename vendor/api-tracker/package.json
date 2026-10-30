@@ -1,0 +1,33 @@
+{
+  "name": "api-tracker",
+  "version": "0.2.0",
+  "type": "module",
+  "bin": {
+    "api-tracker": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": "./dist/core/index.js",
+    "./application": "./dist/application/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "dev": "tsc --watch",
+    "start": "node ./dist/cli/index.js",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "deep-diff": "^1.0.2",
+    "ws": "^8.21.0",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/deep-diff": "^1.0.5",
+    "@types/node": "^22.14.1",
+    "@types/ws": "^8.18.1",
+    "nock": "^14.0.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

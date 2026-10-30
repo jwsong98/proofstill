@@ -1,0 +1,17 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.proofstill/work/
+.api-tracker/runtime/
+.api-tracker/flow-record.json
+.api-tracker/flow.lock
+.api-tracker/flow-record.json.*.tmp
+
+.venv/
+*.sqlite
+*.sqlite3
+.proofstill/test-results/

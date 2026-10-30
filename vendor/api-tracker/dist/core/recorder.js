@@ -1,0 +1,64 @@
+import { readJson, writeJson } from "../storage/file-store.js";
+import { extractBindings } from "./binding-engine.js";
+import { redactSecrets } from "./redaction.js";
+export async function recordEdge(options) {
+    const { session } = options;
+    const prefix = `sessions/${session}`;
+    // 1. Read current meta
+    const meta = await readJson(`${prefix}/meta.json`);
+    if (!meta)
+        throw new Error(`Session "${session}" not found`);
+    // 2. Compute IDs
+    const edgeId = meta.edgeCount + 1;
+    const fromNode = meta.lastNodeId;
+    const toNode = meta.lastNodeId + 1;
+    // 3. Build Edge object
+    const edge = {
+        edgeId,
+        fromNode,
+        toNode,
+        timestamp: new Date().toISOString(),
+        request: {
+            method: options.method,
+            path: options.path,
+            headers: {},
+            body: redactSecrets(options.body),
+            template: {
+                path: options.templatePath,
+                body: redactSecrets(options.templateBody),
+            },
+        },
+        response: {
+            status: options.response.status,
+            headers: redactSecrets(options.response.headers),
+            body: redactSecrets(options.response.body),
+        },
+        refs: options.refs,
+        warnings: options.warnings,
+        authProfile: options.authProfile ?? "",
+        ...(options.actor ?? options.response.actor ? { actor: options.actor ?? options.response.actor } : options.authProfile ? {
+            actor: { id: options.authProfile, label: options.authProfile, tokenSource: "cache_hit" },
+        } : { actor: { id: "none", label: "Anonymous", tokenSource: "none" } }),
+        ...(options.ws ? { ws: options.ws } : {}),
+    };
+    // 4. Save edge file (3-digit zero-padded)
+    const edgeFile = String(edgeId).padStart(3, "0");
+    await writeJson(`${prefix}/edges/${edgeFile}.json`, edge);
+    // 5. Update graph.json
+    const graph = await readJson(`${prefix}/graph.json`) ?? { nodes: [], edges: [] };
+    const nodeLabel = `${options.method} ${options.path} → ${options.response.status}`;
+    graph.nodes.push({ id: toNode, label: nodeLabel });
+    graph.edges.push({ id: edgeId, from: fromNode, to: toNode, file: `${edgeFile}.json` });
+    await writeJson(`${prefix}/graph.json`, graph);
+    // 6. Extract and merge bindings
+    const newBindings = extractBindings(edgeId, toNode, edge.response.body);
+    const bindings = await readJson(`${prefix}/bindings.json`) ?? {};
+    Object.assign(bindings, newBindings);
+    await writeJson(`${prefix}/bindings.json`, bindings);
+    // 7. Update meta
+    meta.lastNodeId = toNode;
+    meta.edgeCount = edgeId;
+    await writeJson(`${prefix}/meta.json`, meta);
+    return { edgeId, fromNode, toNode, newBindings };
+}
+//# sourceMappingURL=recorder.js.map

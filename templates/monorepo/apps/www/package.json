@@ -1,0 +1,13 @@
+{
+  "name": "@proofstill/www",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@proofstill/ui": "WORKSPACE",
+    "@proofstill/jwdesign": "WORKSPACE",
+    "@proofstill/api": "WORKSPACE",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
+}

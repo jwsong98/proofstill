@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "defaultApp": "backend",
+  "apps": {
+    "backend": {
+      "root": "apps/backend",
+      "adapterDir": "scripts",
+      "specs": {
+        "contract": "packages/api/openapi.contract.json",
+        "generated": "packages/api/openapi.generated.json"
+      },
+      "flow": ".api-tracker/flow.yaml",
+      "server": {
+        "baseUrl": "http://127.0.0.1:8000"
+      },
+      "lifecycle": {
+        "timeoutMs": 15000
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"unreachable.js","sourceRoot":"","sources":["../../src/detection/unreachable.ts"],"names":[],"mappings":"AAEA,MAAM,UAAU,iBAAiB,CAAC,IAAW;IAC3C,OAAO,IAAI;SACR,MAAM,CAAC,CAAC,GAAG,EAAE,EAAE,CAAC,GAAG,CAAC,MAAM,KAAK,SAAS,CAAC;SACzC,GAAG,CAAC,CAAC,GAAG,EAAE,EAAE,CAAC,yBAAyB,GAAG,CAAC,KAAK,6CAA6C,CAAC,CAAC;AACnG,CAAC"}
