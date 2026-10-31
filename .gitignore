@@ -1,8 +1,11 @@
 node_modules/
 .venv/
 __pycache__/
-*.pyc
-.proofstill/work/
-.proofstill/evidence/
+*.py[cod]
+.pytest_cache/
+.proofstill/
+dist/
+reports/
 .env
+.env.*
 .DS_Store

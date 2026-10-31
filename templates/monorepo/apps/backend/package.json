@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node ../../scripts/backend.mjs dev",
-    "export:openapi": "python3 export_openapi.py",
+    "export:openapi": "node ../../scripts/backend.mjs openapi:export",
     "backend:setup": "node ../../scripts/backend.mjs backend:setup",
     "db:revision": "node ../../scripts/backend.mjs db:revision",
     "db:migrate": "node ../../scripts/backend.mjs db:migrate",
@@ -16,6 +16,7 @@
     "db:check": "node ../../scripts/backend.mjs db:check",
     "test:unit": "node ../../scripts/backend.mjs test:unit",
     "test:integration": "node ../../scripts/backend.mjs test:integration",
+    "test:flow": "node ../../scripts/backend.mjs test:flow",
     "test:fast": "node ../../scripts/backend.mjs test:fast",
     "test:e2e": "node ../../scripts/backend.mjs test:e2e"
   }

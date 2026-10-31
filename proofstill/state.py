@@ -3,10 +3,11 @@ from .trace import TraceError, same, snapshot
 
 def state_snapshot(value):
     value = snapshot(value)
-    if (not isinstance(value, dict) or set(value) != {'feature', 'screen', 'data'}
+    if (not isinstance(value, dict) or not {'feature', 'screen', 'data'} <= value.keys() <= {'feature', 'screen', 'data', 'state_id'}
             or any(not isinstance(value[k], str) or not value[k].strip() for k in ['feature', 'screen'])
-            or not isinstance(value['data'], dict)):
-        raise TraceError('상태는 feature·screen 문자열과 data 객체만 가져야 합니다')
+            or not isinstance(value['data'], dict)
+            or ('state_id' in value and (not isinstance(value['state_id'], str) or not value['state_id'].strip()))):
+        raise TraceError('상태는 feature·screen 문자열과 data 객체, 선택 state_id 문자열을 가져야 합니다')
     return value
 
 
@@ -19,6 +20,8 @@ def state_delta(before, after):
 
 
 def verify_states(steps, contract):
+    if isinstance(contract, dict) and 'states' in contract:
+        return verify_machine(steps, contract)
     def require(ok, message):
         if not ok:
             raise TraceError(message)
@@ -66,3 +69,65 @@ def verify_states(steps, contract):
             require(state['feature'] == rule['feature'], '화면의 기능 소유권 불일치')
             require(set(rule['required']) <= keys <= set(rule['required'] + rule.get('optional', [])),
                     f"{step['index'] + 1}단계 {when} {state['screen']}: 허용 상태 필드 불일치")
+
+
+def verify_machine(steps, contract):
+    def require(ok, message):
+        if not ok:
+            raise TraceError(message)
+
+    def name(value):
+        return isinstance(value, str) and bool(value.strip())
+
+    def names(value):
+        return isinstance(value, list) and all(name(k) for k in value) and len(set(value)) == len(value)
+
+    require({'initial', 'states', 'transitions'} <= contract.keys() <=
+            {'initial', 'states', 'transitions', 'required_transitions'}, '상태머신 계약 형식 오류')
+    states, transitions = contract['states'], contract['transitions']
+    require(isinstance(states, dict) and states and isinstance(transitions, dict) and transitions,
+            '상태머신 states·transitions는 비어 있지 않은 객체여야 합니다')
+    require(name(contract['initial']) and contract['initial'] in states, '상태머신 초기 상태 오류')
+    for identifier, rule in states.items():
+        require(name(identifier) and isinstance(rule, dict) and
+                {'feature', 'screen', 'required'} <= rule.keys() <= {'feature', 'screen', 'required', 'optional'},
+                '상태머신 상태 규칙 형식 오류')
+        require(name(rule['feature']) and name(rule['screen']) and names(rule['required']) and names(rule.get('optional', [])),
+                '상태머신 상태 필드 형식 오류')
+        require(not set(rule['required']) & set(rule.get('optional', [])), '필수/선택 필드가 중복됐습니다')
+    for identifier, rule in transitions.items():
+        require(name(identifier) and isinstance(rule, dict) and
+                {'from', 'to', 'operation'} <= rule.keys() <= {'from', 'to', 'operation', 'preserve', 'drop'},
+                '상태머신 전이 규칙 형식 오류')
+        require(name(rule['from']) and rule['from'] in states and name(rule['to']) and rule['to'] in states
+                and name(rule['operation']) and names(rule.get('preserve', [])) and names(rule.get('drop', [])),
+                '상태머신 전이 경로/동작/필드 오류')
+        require(not set(rule.get('preserve', [])) & set(rule.get('drop', [])), '전이 유지/제거 필드가 중복됐습니다')
+    required = contract.get('required_transitions', [])
+    require(names(required) and all(k in transitions for k in required), '상태머신 필수 전이 오류')
+    observed = [s for s in steps if s.get('state') is not None]
+    require(bool(observed), '상태머신의 실제 상태 관측이 없습니다')
+    require(observed[0]['state']['before'].get('state_id') == contract['initial'], '상태머신 초기 상태 불일치')
+    visited = set()
+    for step in observed:
+        identifier = step.get('transition_id')
+        require(name(identifier) and identifier in transitions, f"{step['index'] + 1}단계의 상태머신 전이 ID 누락/미등록")
+        rule, actual = transitions[identifier], step['state']
+        require(step['operation'] == rule['operation'], f'상태머신 전이 동작 불일치: {identifier}')
+        before, after = actual['before'], actual['after']
+        require(before.get('state_id') == rule['from'] and after.get('state_id') == rule['to'],
+                f'허용되지 않은 상태머신 전이: {identifier}')
+        for state in [before, after]:
+            shape = states[state['state_id']]
+            require(state['feature'] == shape['feature'] and state['screen'] == shape['screen'],
+                    f"UX 상태의 기능/화면 불일치: {state['state_id']}")
+            require(set(shape['required']) <= state['data'].keys() <= set(shape['required'] + shape.get('optional', [])),
+                    f"UX 상태의 허용 필드 불일치: {state['state_id']}")
+        for key in rule.get('preserve', []):
+            require(key in before['data'] and key in after['data'] and same(before['data'][key], after['data'][key]),
+                    f'상태머신 유지 실패: {identifier}.{key}')
+        for key in rule.get('drop', []):
+            require(key in before['data'] and key not in after['data'], f'상태머신 제거 실패: {identifier}.{key}')
+        visited.add(identifier)
+    require(set(required) <= visited, '상태머신 필수 전이 실행 누락: ' + ', '.join(sorted(set(required) - visited)))
+    return {'visited_transitions': sorted(visited), 'unvisited_transitions': sorted(transitions.keys() - visited)}

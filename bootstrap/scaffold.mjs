@@ -75,7 +75,7 @@ export async function scaffold(destination, { apps = allApps.join(','), packageM
       'ui:add': 'proofstill ui',
     };
     if (selected.includes('backend')) {
-      for (const command of ['backend:setup', 'db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check', 'test:unit', 'test:integration', 'test:fast', 'test:e2e']) scripts[command] = `node scripts/backend.mjs ${command}`;
+      for (const command of ['backend:setup', 'db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check', 'test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e']) scripts[command] = `node scripts/backend.mjs ${command}`;
       scripts.test = 'node scripts/backend.mjs test:fast';
     }
     for (const name of selected) scripts[`dev:${name}`] = name === 'backend' ? 'node scripts/backend.mjs dev' : name === 'cli' ? 'node apps/cli/src/index.mjs' : `vite apps/${name}${name === 'www' ? ' --port 5174' : ''}`;
@@ -93,7 +93,7 @@ export async function scaffold(destination, { apps = allApps.join(','), packageM
     await fs.writeFile(path.join(stage, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n  - 'packages/*'\n");
     await fs.writeFile(path.join(stage, '.npmrc'), 'install-links=true\naudit=false\nfund=false\n');
     await json(path.join(stage, 'proofstill.config.json'), { openapi: {
-      ...(selected.includes('backend') ? { command: ['python3', 'apps/backend/export_openapi.py'] } : { file: 'packages/api/openapi.contract.json' }),
+      ...(selected.includes('backend') ? { command: ['node', 'scripts/backend.mjs', 'openapi:export'] } : { file: 'packages/api/openapi.contract.json' }),
       output: 'packages/api/openapi.generated.json',
     } });
     await fs.copyFile(path.join(stage, 'packages/api/openapi.contract.json'), path.join(stage, 'packages/api/openapi.generated.json'));

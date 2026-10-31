@@ -45,8 +45,11 @@ def verify_trace(path, expected=None):
                         'description': event['description'], 'context': event['context'], 'context_version': version,
                         'ui': event.get('ui', {}), 'code': event.get('code'), 'callable': event.get('callable'),
                         'started_at': event['at'], 'status': 'incomplete', 'inputs': None, 'bindings': [], 'output': None, 'error': None,
-                        'stateful': event.get('stateful', False), 'state': None}
+                        'stateful': event.get('stateful', False), 'state': None,
+                        'transition_id': event.get('transition_id')}
                 require(type(step['stateful']) is bool, '상태 관측 표식 형식 오류')
+                require(step['transition_id'] is None or (step['stateful'] and isinstance(step['transition_id'], str)
+                        and step['transition_id'].strip()), '전이 ID/실제 상태 관측 표식 오류')
                 by_id[identifier] = step
                 result['steps'].append(step)
                 active = identifier
@@ -112,7 +115,9 @@ def verify_trace(path, expected=None):
         if 'operations' in expected:
             require([s['operation'] for s in result['steps']] == expected['operations'], '기대 단계 순서/반복 횟수와 다릅니다')
         if 'state' in expected:
-            verify_states(result['steps'], expected['state'])
+            coverage = verify_states(result['steps'], expected['state'])
+            if coverage is not None:
+                result['state_machine'] = coverage
         for assertion in expected.get('assertions', []):
             step = result['steps'][assertion['step']]
             require(same(pointer(step[assertion['field']], assertion.get('path', '')), assertion['equals']), '기대 단계 데이터와 다릅니다')

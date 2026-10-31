@@ -152,12 +152,12 @@ class Flow:
             return [self._resolve(v, bindings, target + '/' + str(i)) for i, v in enumerate(value)]
         return snapshot(value)
 
-    def transition(self, operation, description, function, *, state, inputs=None, ui=None):
+    def transition(self, operation, description, function, *, state, inputs=None, ui=None, transition_id=None):
         if not callable(state):
             raise TraceError('실제 앱 상태를 읽는 함수가 필요합니다')
-        return self.step(operation, description, function, inputs=inputs, ui=ui, state=state)
+        return self.step(operation, description, function, inputs=inputs, ui=ui, state=state, transition_id=transition_id)
 
-    def step(self, operation, description, function, inputs=None, ui=None, *, state=None):
+    def step(self, operation, description, function, inputs=None, ui=None, *, state=None, transition_id=None):
         if self._closed or self._active:
             raise TraceError('종료되었거나 다른 단계 실행 중인 흐름입니다')
         if not isinstance(operation, str) or not operation.strip() or not isinstance(description, str) or not description.strip():
@@ -166,6 +166,8 @@ class Flow:
             raise TraceError('입력은 이름 있는 JSON 인자 객체여야 합니다')
         if ui is not None and (not isinstance(ui, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in ui.items())):
             raise TraceError('UI 매핑은 문자열 객체여야 합니다')
+        if transition_id is not None and (not isinstance(transition_id, str) or not transition_id.strip() or not callable(state)):
+            raise TraceError('전이 ID에는 실제 상태 관측 함수와 비어 있지 않은 문자열이 필요합니다')
         identifier = uuid.uuid4().hex
         target = getattr(function, '__func__', function)
         code = getattr(target, '__code__', None)
@@ -173,7 +175,7 @@ class Flow:
         self._emit('step.started', step_id=identifier, index=self._step_index, operation=operation,
                    description=description, context=self._context, context_version=self.version,
                    ui={} if ui is None else ui, callable=getattr(target, '__qualname__', type(target).__name__), code=location,
-                   stateful=state is not None)
+                   stateful=state is not None, transition_id=transition_id)
         self._step_index += 1
         started = time.monotonic()
         self._active = True

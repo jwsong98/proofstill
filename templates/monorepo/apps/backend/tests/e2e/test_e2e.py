@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from tests import proofstill_cli
 
 import docker
 from sqlalchemy import inspect, text
@@ -45,7 +46,7 @@ class PostgreSQLE2E(unittest.TestCase):
                         definition['baseUrl'] = base
                         definition['spec'] = str(PROJECT / 'packages/api/openapi.contract.json')
                         (work / '.api-tracker/flow.yaml').write_text(json.dumps(definition))
-                        result = subprocess.run(['node', str(PROJECT / '.proofstill-runtime/bin/proofstill.mjs'),
+                        result = subprocess.run(['node', str(proofstill_cli(PROJECT)),
                                                  'tracker', 'flow', 'run'], cwd=work,
                                                 capture_output=True, text=True, timeout=30)
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

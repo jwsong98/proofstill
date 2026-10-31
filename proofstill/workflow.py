@@ -1,7 +1,8 @@
 import json
 import os
 import re
-import shutil
+import fcntl
+from functools import wraps
 import signal
 import subprocess
 import tempfile
@@ -18,6 +19,21 @@ def save_json(path, value):
         json.dump(value, stream, ensure_ascii=False, indent=2)
         temporary = Path(stream.name)
     temporary.replace(path)
+
+
+def exclusive(method):
+    @wraps(method)
+    def run(self, feature, *args, **kwargs):
+        folder = self.folder(feature)
+        require(folder.is_dir(), '먼저 작업을 init하세요')
+        # The persistent inode avoids a race between closing and unlinking a lock.
+        with (folder / '.lock').open('a') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise HarnessError(f'작업 실행 중: {feature}. 같은 작업의 명령은 순서대로 실행하세요')
+            return method(self, feature, *args, **kwargs)
+    return run
 
 
 class Harness:
@@ -67,19 +83,6 @@ class Harness:
     def source_digest(self, plan):
         return digest(inventory(self.root, plan['sources']))
 
-    def snapshot(self, plan, folder):
-        files = inventory(self.root, plan['sources'] + [p for c in plan['checks'] for p in c['files']] + plan['context_files'])
-        for name, value in files.items():
-            path = self.root / name
-            if value == 'directory':
-                (folder / 'files' / name).mkdir(parents=True, exist_ok=True)
-            if value not in ['missing', 'directory'] and path.is_file():
-                target = folder / 'files' / name
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, target)
-        save_json(folder / 'manifest.json', files)
-        return str(folder / 'manifest.json')
-
     def init(self, path):
         origin = Path(path).resolve()
         plan = validate_plan(self.root, read_json(origin))
@@ -89,26 +92,18 @@ class Harness:
         save_json(folder / 'plan.json', plan)
         self.work(plan['id']).mkdir(parents=True, exist_ok=False)
         state = {'plan_digest': digest(plan), 'criteria_digest': digest(self.basis(plan)),
-                 'baseline_source': self.source_digest(plan), 'origin': str(origin),
+                 'origin': str(origin),
                  'developer_session': self.developer_session, 'runs': [], 'reviews': {},
-                 'review_sessions': [], 'next': '기준 독립 검토 대기', 'closed': False}
-        self.snapshot(plan, folder / 'baseline')
+                 'review_sessions': [], 'next': '구현 및 필요한 검사 실행', 'closed': False}
         self.save(plan, state)
         return plan['id']
-
-    def approved(self, plan, state):
-        current = self.criteria_digest(plan, state)
-        require(current == state['criteria_digest'], '테스트/업무 맥락이 변경되었습니다. 새 작업 ID로 기준을 재검토하세요')
-        record = state['reviews'].get('criteria', {})
-        require(record.get('passed') and record.get('criteria_digest') == current, '기준 독립 검토가 필요합니다')
-        return current
 
     @staticmethod
     def latest(state, phase, check):
         return next((r for r in reversed(state['runs']) if r['phase'] == phase and r['check'] == check), None)
 
     def green_ready(self, plan, state):
-        criteria = self.approved(plan, state)
+        criteria = self.criteria_digest(plan, state)
         source = self.source_digest(plan)
         for check in plan['checks']:
             run = self.latest(state, 'green', check['id'])
@@ -140,23 +135,16 @@ class Harness:
                 process.communicate()
             raise
 
-    def run(self, feature, phase, kind=None, module=None):
+    @exclusive
+    def run(self, feature, phase='green', kind=None, module=None):
         require(phase in ['red', 'green'], 'phase는 red/green이어야 합니다')
         plan, state = self.load(feature)
-        criteria = self.approved(plan, state)
+        criteria = self.criteria_digest(plan, state)
         selected = [c for c in plan['checks'] if (kind is None or c['kind'] == kind) and (module is None or c['module'] == module)]
         require(selected, '실행할 검사가 없습니다')
         if phase == 'red':
-            current_source = self.source_digest(plan)
-            known_green = any(r['phase'] == 'green' and r['accepted'] and r['source_digest'] == current_source
-                              and r['criteria_digest'] == criteria for r in state['runs'])
-            require(current_source == state['baseline_source'] or known_green,
-                    '검증되지 않은 구현 변경이 있습니다. Red는 초기 상태 또는 앞 모듈의 Green 상태에서 시작하세요')
             require(not any(c['regression'] for c in selected), '기존 회귀 검사는 Green만 실행하세요')
-        else:
-            for check in selected:
-                red = self.latest(state, 'red', check['id'])
-                require(check['regression'] or (red and red['accepted'] and red['criteria_digest'] == criteria), f"Red 확인이 필요합니다: {check['id']}")
+            require(all(c.get('red_pattern') for c in selected), 'Red 실행에는 의도한 실패 패턴이 필요합니다')
         results = [self._run_check(plan, state, check, phase, criteria) for check in selected]
         state['next'] = f"{phase}: " + ('통과' if all(r['accepted'] for r in results) else '실패/미검증 — 근거 확인 후 수정')
         self.save(plan, state)
@@ -201,6 +189,8 @@ class Harness:
                 verified = verify_trace(path, expectation)
                 item = {'path': str(path), 'sha256': file_hash(path), 'html': None,
                         'valid': verified['valid'], 'issues': verified['issues'], 'steps': len(verified['steps']), 'name': verified['name']}
+                if 'state_machine' in verified:
+                    item['state_machine'] = verified['state_machine']
                 record['traces'].append(item)
                 item['html'] = str(write_trace_view(path, path.with_suffix('.html'), expectation))
             traces = record['traces']
@@ -216,24 +206,22 @@ class Harness:
             save_json(folder / 'result.json', record)
             self.save(plan, state)
 
-    def review(self, feature, stage):
+    @exclusive
+    def review(self, feature, stage='implementation'):
         require(stage in ['criteria', 'implementation'], '알 수 없는 검토 단계')
         plan, state = self.load(feature)
         if stage == 'criteria':
             criteria = self.criteria_digest(plan, state)
-            require(criteria == state['criteria_digest'], '기준이 초기화 이후 변경되었습니다')
-            require(self.source_digest(plan) == state['baseline_source'], '기준 검토는 구현 전에 수행하세요')
             source = self.source_digest(plan)
         else:
             criteria, source = self.green_ready(plan, state)
         folder = self.folder(feature) / 'reviews' / (stage + '-' + uuid.uuid4().hex[:12])
         folder.mkdir(parents=True)
-        manifest = self.snapshot(plan, folder / 'snapshot')
-        workspace = folder / 'snapshot/files'
-        workspace.mkdir(parents=True, exist_ok=True)
-        packet = {'stage': stage, 'project_root': str(workspace), 'plan': plan,
+        manifest = folder / 'manifest.json'
+        save_json(manifest, inventory(self.root, plan['sources'] + [p for c in plan['checks'] for p in c['files']] + plan['context_files']))
+        packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
-                  'snapshot': manifest}
+                  'manifest': str(manifest)}
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
                   'folder': str(folder), 'launcher': self.codex, 'model': self.model,
                   'ignore_user_config': self.ignore_user_config}
@@ -245,11 +233,9 @@ class Harness:
             require(session != state['developer_session'] and session not in state['review_sessions'], '개발/이전 검토 세션을 재사용할 수 없습니다')
             state['review_sessions'].append(session)
             reviewer.validate_verdict(plan, answer)
-            copied = inventory(workspace, plan['sources'] + [p for c in plan['checks'] for p in c['files']] + plan['context_files'])
-            require(copied == read_json(manifest), '리뷰가 검토용 소스/테스트/맥락 복사본을 변경했습니다')
             require(self.criteria_digest(plan, state) == criteria and self.source_digest(plan) == source, '리뷰 도중 기준/코드가 변경되었습니다')
             record['passed'] = True
-            state['next'] = '모든 신규 검사의 Red 확인' if stage == 'criteria' else '보고 생성 및 사용자 전달'
+            state['next'] = '구현 및 필요한 검사 실행' if stage == 'criteria' else '보고 생성 및 사용자 전달'
         except HarnessError as error:
             record['error'] = str(error)
             state['next'] = f'{stage} 검토 실패/미검증: {error}'
@@ -273,7 +259,11 @@ class Harness:
                 reasons.append(f"아티팩트 파일 없음: {artifact['path']}")
         return {'complete': not reasons, 'reasons': reasons}
 
+    @exclusive
     def report(self, feature):
+        return self._report(feature)
+
+    def _report(self, feature):
         from .report import render
         plan, state = self.load(feature)
         status = self.status(feature)
@@ -285,12 +275,13 @@ class Harness:
         self.save(plan, state)
         return report
 
+    @exclusive
     def cleanup(self, feature):
         plan, state = self.load(feature)
         require(self.status(feature)['complete'], '미완료 작업의 임시 상태는 보존합니다')
         report = Path(state.get('report', '/nonexistent-proofstill-report'))
         require(report.is_file(), '보고를 생성하고 사용자에게 전달한 뒤 정리하세요')
-        self.report(feature)
+        self._report(feature)
         work = self.work(feature)
         require(not work.is_symlink() and work.resolve().is_relative_to(self.root / '.proofstill/work'), '잘못된 작업 폴더')
         # Only remove the owned brief; never recursively remove arbitrary user artifacts.

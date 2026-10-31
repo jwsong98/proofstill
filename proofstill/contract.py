@@ -88,7 +88,7 @@ def validate_plan(root, plan):
         check.setdefault('regression', False)
         require(type(check['regression']) is bool, 'regression은 boolean이어야 합니다')
         require(type(check['timeout']) in [int, float] and 0 < check['timeout'] <= 3600, '잘못된 timeout')
-        for key in ['green_pattern'] + ([] if check['regression'] else ['red_pattern']):
+        for key in ['green_pattern'] + (['red_pattern'] if 'red_pattern' in check else []):
             require(isinstance(check.get(key), str) and check[key].strip(), f'{key}가 필요합니다')
             try:
                 re.compile(check[key])

@@ -46,7 +46,7 @@ Existing init/test/review/status/report/cleanup/trace commands also work directl
         if (backendReady && run(pm, ['run', 'openapi:export'], { cwd: target }) === 0) run(pm, ['run', 'api:generate'], { cwd: target });
       }
     } else {
-      console.log(`Next: cd ${JSON.stringify(target)}; ${values['package-manager']} install; ${values['package-manager']} run openapi:export; ${values['package-manager']} run api:generate`);
+      console.log(`Next: cd ${JSON.stringify(target)}; ${values['package-manager']} install;${values.apps.split(',').includes('backend') ? ` ${values['package-manager']} run backend:setup;` : ''} ${values['package-manager']} run openapi:export; ${values['package-manager']} run api:generate`);
     }
   } else if (command === 'openapi') {
     if (args.shift() !== 'export') throw new Error('Expected: openapi export');

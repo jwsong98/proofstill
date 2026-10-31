@@ -31,11 +31,12 @@ try {
     }
     if (!fs.existsSync(python)) throw new Error('Run npm run backend:setup first (or set PROOFSTILL_BACKEND_PYTHON)');
     if (command === 'dev') run(python, ['infra/server.py', ...args]);
+    else if (command === 'openapi:export') run(python, ['export_openapi.py', ...args]);
     else if (['db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check'].includes(command)) {
       run(python, ['-m', 'infra.manage', command.slice(3), ...args]);
-    } else if (['test:unit', 'test:integration', 'test:fast', 'test:e2e'].includes(command)) {
+    } else if (['test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e'].includes(command)) {
       if (args.length) throw new Error(`${command} does not take arguments`);
-      const kinds = command === 'test:e2e' ? ['unit', 'integration', 'e2e'] : command === 'test:fast' ? ['unit', 'integration'] : [command.slice(5)];
+      const kinds = command === 'test:e2e' ? ['unit', 'integration', 'flow', 'e2e'] : command === 'test:fast' ? ['unit', 'integration', 'flow'] : [command.slice(5)];
       for (const kind of kinds) {
         const environment = kind === 'e2e' ? env : { ...env, DATABASE_URL: 'sqlite+pysqlite:///:memory:' };
         run(python, ['-m', 'unittest', 'discover', '-s', `tests/${kind}`, '-v'], environment);

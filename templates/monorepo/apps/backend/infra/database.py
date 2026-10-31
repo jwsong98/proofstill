@@ -5,18 +5,14 @@ from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import (Boolean, CheckConstraint, Column, MetaData, String, Table,
-                        create_engine, event, insert, select)
+from sqlalchemy import create_engine, event, insert, select
 from sqlalchemy.pool import StaticPool
+from infra.models import Base, Task
 
 BACKEND = Path(__file__).resolve().parents[1]
 MEMORY_URL = 'sqlite+pysqlite:///:memory:'
-metadata = MetaData()
-tasks = Table('tasks', metadata,
-              Column('id', String(64), primary_key=True),
-              Column('title', String(), nullable=False),
-              Column('completed', Boolean(create_constraint=True, name='task_completed_bool'), nullable=False),
-              CheckConstraint('length(trim(title)) > 0', name='task_title_not_blank'))
+metadata = Base.metadata
+tasks = Task.__table__
 
 
 def create_database(url=MEMORY_URL):

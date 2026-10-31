@@ -1,6 +1,6 @@
 ---
 name: proofstill-develop
-description: 기능을 구현할 때 사용자 의도를 실행 가능한 기준으로 고정하고 독립 기준 검토 뒤 모듈별 Red→Green을 수행하며 근거 링크가 있는 Markdown 완료 보고를 생성한다.
+description: 사용자 의도를 실행 가능한 검사로 연결하고 구현 중 빠른 테스트와 구현 후 한 번의 독립 리뷰로 검증한다.
 ---
 
 # 개발
@@ -9,17 +9,19 @@ description: 기능을 구현할 때 사용자 의도를 실행 가능한 기준
 - 브리핑 전에 [기획자 인터뷰](../proofstill-interview/SKILL.md)로 요청의 모호함을 확인한다. 이미 명확한 부분은 그대로 사용하고 범위·행동·수용 조건을 바꿀 미정 결정만 사용자에게 묻는다. 원래 요청과 사용자가 확정한 요구를 구분해 전달받고, 미정 결정에 의존하는 구현·기준 고정은 보류한다.
 - 짧은 브리핑 후 화면이 있는 기능은 [UX 디자이너](../proofstill-ux/SKILL.md)가 정제된 의도를 화면·상태 흐름도로 표현한다. 사용자에게 보이는 정보·행동·처리 중·실패·복구 경로를 확인하고 상태 ID와 전이를 기능 정의·테스트·Trace에 연결한다. 다이어그램을 보였다는 사실을 사용자 수용으로 간주하지 않는다.
 - 요청과 관련 자료를 읽어 예제 `../../../examples/orders/feature.json`처럼 기능 정의를 만든다. `intent`에는 사용자 원문과 요구의 의미를 보존한다. 코드를 보고 사용자 의도를 추측하지 않는다.
-- 요구사항별 ID와 check ID를 연결한다. 각 check에 정확한 argv, unit/integration 구분, module, 테스트/fixture 파일, 의도한 Red 실패 패턴, 실제 실행을 확인할 Green 패턴을 지정한다. 의미 있는 부정 사례도 테스트한다. 외부 도구·공유 자원은 unit에서 격리하고 integration은 연결 경계에 둔다.
+- 요구사항별 ID와 check ID를 연결한다. 각 check에 정확한 argv, unit/integration 구분, module, 테스트/fixture 파일, 실제 실행을 확인할 Green 패턴을 지정한다. Red를 실행할 때만 의도한 실패 패턴을 지정한다. 의미 있는 부정 사례도 테스트한다. 외부 도구·공유 자원은 unit에서 격리하고 integration은 연결 경계에 둔다.
 - 여러 단계 기능은 `Flow.step`으로 실제 함수를 계측하고 이전 출력은 `step.ref`, 컨텍스트는 `flow.context_ref`로 전달한다. 단계마다 작업 설명을 남긴다. 기대 순서·반복·데이터 값·출처 연결을 JSON으로 먼저 정하고 check의 `trace_expectation`으로 지정한다. 같은 값의 literal 복사는 출처 검증을 대체하지 않는다.
 - 화면이 있는 기능은 사용자 작업별 IA와 상태 소유·수명을 함께 정한다. 언제 무엇을 조회하고, 무엇을 유지·갱신·제거할지, 초안 이탈·실패·재진입 정책을 임시 브리핑에서 먼저 확정한다. 파생값·다시 조회할 데이터의 중복 저장을 줄인다. 영구 설계 문서를 추가하지 않는다.
 - IA·상태는 작은 화면·상태 흐름도 하나와 `유지 / 임시 / 정리` 몇 줄로 표현한다. 상태 이름 옆에 소유 범위와 종료 조건만 붙인다. 결정이 더 필요할 때만 확장한다. 테스트·실행 기준에 있는 내용을 표·장문·별도 문서로 중복하지 않고 파일 위치로 연결한다. JSON 기준은 항목별 한 줄 등 간결한 형식을 사용한다. 구현·검증 중에는 관련 부분만 읽고 대화에는 요약·변경분·근거 링크만 전달한다.
-- 실제 앱 상태를 읽는 함수(`feature/screen/data`)를 `Flow.transition(..., state=앱.snapshot)`에 연결한다. 기대 JSON의 `state.screens`는 기능 소유·허용 필드를, `state.transitions`는 단계별 화면 이동·preserve/drop을 검사한다. 예시는 `../../../examples/order_workspace/expected.json`과 같은 폴더의 `workspace.py`, `demo.py`다. 상태는 앱이 소유한다. 조회 인자·저장 후 재조회, 초안 혼입·기능 종료 잔존·실패 시 손실·늦은 응답을 모듈별 Red→Green으로 검증한다. 관측 함수가 노출한 데이터만 기록·검증하므로 필요한 최소 JSON만 반환한다.
+- UX에서 확정한 흐름은 상태머신 계약과 실제 Trace를 연결한다. 앱이 소유한 상태를 읽는 snapshot(`state_id/feature/screen/data`)과 `Flow.transition(..., transition_id=UX전이ID, state=앱.snapshot)`을 사용한다. 기대 JSON의 `state.initial`, `state.states`, ID별 `state.transitions`로 초기 상태·허용 전이·동작·기능/화면·필드와 `preserve/drop`을 검사한다. 중요한 전이는 check별 `required_transitions`에 넣어 실행 누락을 거부하고, `unvisited_transitions`를 통과 증거로 쓰지 않는다. 실행 예시는 `../../../examples/ux_save/expected.json`과 같은 폴더의 `demo.py`다. 기존 `state.screens`와 단계 번호 기반 전이 계약도 지원하지만 UX 상태머신 연동을 대체하지 않는다.
+- 상태는 앱이 소유한다. snapshot에서 기대 ID를 임의로 붙이거나 Trace가 상태를 대신 변경하지 않는다. 조회 인자·저장 후 재조회, 초안 혼입·기능 종료 잔존·실패 시 손실·늦은 응답은 관련 모듈의 검사로 검증한다. 기존 수명 예시는 `../../../examples/order_workspace/expected.json`과 같은 폴더의 `workspace.py`, `demo.py`다. 관측 함수가 노출한 데이터만 기록·검증하므로 필요한 최소 JSON만 반환한다.
 - CLI는 실행별 `PROOFSTILL_TRACE_DIR`에 생성된 JSONL을 수집·검증하고 HTML 조회기와 보고에 연결한다. 필요한 JSON 데이터만 명시적으로 기록한다. UI의 screen/action/element 매핑은 선언이며 실제 제품 UI 클릭 검증과 구분한다. 흐름 뷰어 생성은 `trace view <JSONL> --expect <기준 JSON> --output <HTML>`이다.
 - `sources`에는 해당 기능에 영향을 줄 수 있는 구현·설정 경로를 모두 넣는다. 디렉터리와 아직 없는 파일도 지정할 수 있다. `context_files`에는 필요한 원래 요구·업무 맥락만 넣는다. 전체 개발 대화·성공 주장·비밀은 리뷰 입력에 넣지 않는다. 제출 필수물과 기타 결과는 `artifacts`로 연결한다.
-- 구현 전에 `init <기능 정의 JSON>` → `review <ID> criteria`를 실행한다. 기준 리뷰가 실패/미검증이면 기준을 수정하고 새 작업 ID로 다시 준비한다. 리뷰어는 구현 세션과 별개의 새 Codex 세션이다.
-- `test <ID> red --kind unit --module <모듈>`로 의도한 실패를 확인하고 구현한 뒤 같은 check로 `test <ID> green --kind unit --module <모듈>`을 실행한다. 다음 모듈은 앞 모듈의 Green 상태에서 Red를 시작한다. integration도 같은 과정을 따른다. 기존 회귀 검사는 `regression: true`로 명시하며 Red를 요구하지 않는다.
-- 개발 중에는 관련 모듈만 실행한다. 종료 전에는 모든 필수 check를 현재 코드에서 Green으로 확인한다. 기준을 통과하려고 테스트를 약화하거나 소스 경로를 제외하지 않는다. 기준 변경은 사용자 의도와 독립 검토로 돌아간다.
-- `review <ID> implementation`을 실행한다. 실패는 구현을 수정한 뒤 Green과 새 독립 리뷰로 재검증한다. 리뷰의 지적과 코드가 충돌하면 증거로 확인하고, 사용자 소유 결정을 대신 바꾸지 않는다.
+- `init <기능 정의 JSON>` 뒤 구현과 필요한 검사를 진행한다. `test <ID>`는 Green 검사를 실행하며 `--kind`와 `--module`로 범위를 좁힌다. 사전 기준 리뷰와 Red는 기본 필수 단계가 아니다. 의도한 실패를 먼저 확인할 가치가 있을 때만 `test <ID> red`를 사용한다.
+- 구현 중에는 `npm run test:integration`과 `npm run test:flow`로 실제 HTTP와 CLI 사용자 흐름을 메모리 DB+seed에서 빠르게 검사한다. `test:fast`는 unit/integration/flow를 실행한다. 각 실행은 임의 포트·전용 메모리 DB·임시 기록을 사용하며 개발 DB와 공유 flow 기록을 사용하지 않는다.
+- 종료 전 모든 필수 check를 현재 소스·테스트에서 Green으로 확인하고 `review <ID>`로 기준 적절성과 구현을 새 Codex 세션에서 한 번에 검토한다. 별도 요청이나 중요한 미정 기준이 있을 때만 선택적으로 `review <ID> criteria`를 쓴다. 테스트 파일을 고치면 기존 검사·리뷰는 무효이며 같은 작업에서 다시 검사할 수 있다. 요구사항이나 명령을 바꾸면 새 작업 ID로 정의한다.
+- 리뷰는 원본 작업 폴더에서 실행하며 파일을 복사하지 않는다. 검토 대상 소스·기준·테스트는 편집하지 않고 임시 쓰기는 실행별 TMPDIR에 둔다. 리뷰 중 해당 작업의 대상이 바뀌면 다시 검사·리뷰한다. 독립성은 별도 세션과 직접 검사에서 확보하며 공유 파일의 보안 격리를 의미하지 않는다.
+- 병렬 작업은 앱·기능별 파일 소유자를 나누고 각 작업 ID의 `sources`에 담당 구현과 실제 공유 의존성을 포함한다. 무관한 앱 전체를 넣지 않는다. 계약·공유 UI·migration·lockfile·생성 코드와 진입점 연결은 한 담당자가 순서대로 반영한다. 같은 작업 ID 명령은 직렬 실행한다. 폴더 분리와 실행별 자원으로 해결되지 않을 때만 Git worktree를 마지막 수단으로 고려하며 자동 생성하지 않는다.
 - `report <ID>`가 기능별 Markdown 보고를 만든다. 코드·테스트·실행 명령·Red/Green 로그·독립 판정·한계를 한곳에서 찾아갈 수 있다. 보고를 사용자에게 전달한 뒤 `cleanup <ID>`로 임시 상태만 제거한다. 보고·증거·회귀 테스트는 남는다. 사용자 수용은 별개다.
 - 인터뷰에서 확정한 요구와 실제 답변 근거를 기능 정의에 보존하고 검토 입력에 포함한다. 개발 완료·결과 전달 후 연결된 `.proofstill/work/intake-<ID>/brief.md`도 인터뷰 소유 파일임을 확인해 제거한다. 다른 파일이 있으면 보존하며 폴더 전체를 재귀 삭제하지 않는다.
 - 현재 임시 상태는 `.proofstill/work/<ID>/brief.md`에서 재개하고 실제 코드와 대조한다. 하네스는 재개·추가 검사·보고 재생성을 지원한다. 한 작업 ID의 명령은 직렬 실행한다.
