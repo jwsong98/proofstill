@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 CLI = ROOT / 'bin/proofstill.mjs'
-NAMES = ['proofstill-develop', 'proofstill-interview', 'proofstill-ux', 'proofstill-verify',
+NAMES = ['proofstill-develop', 'proofstill-interview', 'proofstill-engineer', 'proofstill-ux', 'proofstill-verify',
          'jwdesign', 'design-taste-frontend', 'proofstill-api', 'proofstill-db']
 
 class SetupTests(unittest.TestCase):
@@ -137,7 +137,7 @@ class SetupTests(unittest.TestCase):
         self.assertTrue(any(p.read_text() == original for p in backups))
         override_backups=list((self.codex/'proofstill-backups').rglob('AGENTS.override.md'))
         self.assertTrue(any(p.read_text()==override for p in override_backups))
-        self.assertEqual(len(list(self.skills.iterdir())),8)
+        self.assertEqual(len(list(self.skills.iterdir())), len(NAMES))
 
     def test_dependency_failure_preserves_prior_install_and_guidance(self):
         self.ok(self.run_cli('setup'))

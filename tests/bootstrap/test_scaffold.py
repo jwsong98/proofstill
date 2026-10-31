@@ -29,7 +29,7 @@ class ScaffoldTests(unittest.TestCase):
                          'packages/jwdesign/src/index.tsx', 'packages/ui/src/button.tsx',
                          'packages/api/openapi.contract.json', 'orval.config.mjs']:
                 self.assertTrue((target / path).is_file(), path)
-            for skill in ['proofstill-develop', 'proofstill-verify', 'proofstill-interview', 'proofstill-ux', 'jwdesign',
+            for skill in ['proofstill-develop', 'proofstill-verify', 'proofstill-interview', 'proofstill-engineer', 'proofstill-ux', 'jwdesign',
                           'design-taste-frontend', 'proofstill-api']:
                 self.assertTrue((target / f'.agents/skills/{skill}/SKILL.md').is_file(), skill)
             for path in target.rglob('*'):

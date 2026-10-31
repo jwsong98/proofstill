@@ -11,6 +11,7 @@ const end = '<!-- proofstill:end -->';
 const skills = {
   'proofstill-develop': '.agents/skills/proofstill-develop',
   'proofstill-interview': '.agents/skills/proofstill-interview',
+  'proofstill-engineer': '.agents/skills/proofstill-engineer',
   'proofstill-ux': '.agents/skills/proofstill-ux',
   'proofstill-verify': '.agents/skills/proofstill-verify',
   jwdesign: 'vendor/skills/jwdesign',
@@ -31,9 +32,9 @@ function guidance(install) {
 ## Proofstill
 
 - 개발·검증은 ${link('proofstill-develop')}과 ${link('proofstill-verify')}를 따른다. 기존 프로젝트의 지침도 함께 적용한다.
-- 요청의 범위가 불명확하면 ${link('proofstill-interview')}, 화면 흐름을 정할 때는 ${link('proofstill-ux')}를 사용한다.
+- 요청의 범위가 불명확하면 ${link('proofstill-interview')}, 화면 흐름을 정할 때는 ${link('proofstill-ux')}를 사용한다. 새 프로젝트나 중요한 기술 변경은 ${link('proofstill-engineer')}로 구현 가능성·아키텍처를 사용자와 논의하고 필요한 결정을 받은 뒤 스택·폴더 구조를 확정한다.
 - UI 작업은 ${link('jwdesign')}와 ${link('design-taste-frontend')}, API와 DB 작업은 ${link('proofstill-api')}와 ${link('proofstill-db')}를 참고한다. API/DB npm 명령은 해당 스캐폴드가 있는 프로젝트에서 실행한다.
-- 사용자가 “Proofstill로 프로젝트 만들어줘”라고 하면 새 디렉터리에 \`${command} scaffold <새-디렉터리> --install\`을 실행한다. pnpm 프로젝트는 \`--package-manager pnpm\`을 추가한다. 기존 저장소에 임의로 새 프로젝트를 만들지 않는다.
+- 사용자가 “Proofstill로 프로젝트 만들어줘”라고 하면 먼저 시니어 개발자 인터뷰로 기술 결정을 확정한다. 합의한 스택·구조가 제공 템플릿과 맞을 때 새 디렉터리에 \`${command} scaffold <새-디렉터리> --install\`을 실행한다. pnpm 프로젝트는 \`--package-manager pnpm\`을 추가한다. 기존 저장소에 임의로 새 프로젝트를 만들지 않는다.
 - 하네스 명령은 \`${command} harness --root <프로젝트> --help\`로 확인한다. 사람은 의도와 수용을, 에이전트는 위임된 조사·구현·검증을 담당한다. 설치는 배포·외부 전송·권한 변경의 승인이 아니다.
 ${end}`;
 }

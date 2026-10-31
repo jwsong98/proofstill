@@ -12,6 +12,7 @@
   },
   "files": [
     ".agents/skills/proofstill-develop/SKILL.md",
+    ".agents/skills/proofstill-engineer/SKILL.md",
     ".agents/skills/proofstill-interview/SKILL.md",
     ".agents/skills/proofstill-ux/SKILL.md",
     ".agents/skills/proofstill-verify/SKILL.md",

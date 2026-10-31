@@ -36,6 +36,8 @@ npm run dev:backend
 # 다른 터미널: npm run dev:app
 ```
 
+에이전트에게 프로젝트 생성을 요청하면 기획·UX 확인 후 시니어 개발자 인터뷰로 구현 가능성과 아키텍처를 논의합니다. 필요한 사용자 결정을 받은 뒤 개발 스택과 폴더 구조를 확정하며, 제공 템플릿과 맞을 때 위 명령을 실행합니다. CLI 직접 실행은 인터뷰를 자동 수행하거나 차단하지 않습니다.
+
 pnpm이 설치된 환경에서는 `--package-manager pnpm --install`을 사용합니다. 전역 설치 대신 `npm exec --yes --package=https://github.com/jwsong98/proofstill/releases/download/v0.5.0/digitalpresso-proofstill-0.5.0.tgz -- proofstill scaffold my-project --install`도 사용할 수 있습니다. GitHub 공개 Release에서 로그인 없이 내려받습니다. npm registry에는 아직 게시하지 않았습니다. 다운로드한 tgz는 `npm install -g ./digitalpresso-proofstill-0.5.0.tgz`로도 설치할 수 있습니다.
 
 `--apps backend,cli,app,www`로 생성할 앱을 선택합니다. 기존 디렉터리(빈 디렉터리 포함)를 덮어쓰지 않습니다. 기본 백엔드는 FastAPI + Uvicorn + SQLAlchemy 2 ORM/Alembic, 웹 앱은 React/Vite입니다.
@@ -44,7 +46,7 @@ pnpm이 설치된 환경에서는 `--package-manager pnpm --install`을 사용�
 - `packages/jwdesign`: 실제 컴포넌트·타입·폰트·토큰. 번들러용 React/portal import를 적용합니다.
 - `packages/ui`: Radix Slot/CVA 기반 공유 버튼, jwdesign 토큰을 사용하는 shadcn 설정. `npm run ui:add -- card`로 확장합니다.
 - `packages/api`: 수용한 계약, 서버 생성 명세, Orval TypeScript 클라이언트.
-- `.agents/skills`: jwdesign, design-taste-frontend, proofstill-develop, proofstill-verify, proofstill-interview, proofstill-ux, proofstill-api, proofstill-db.
+- `.agents/skills`: jwdesign, design-taste-frontend, proofstill-develop, proofstill-verify, proofstill-interview, proofstill-engineer, proofstill-ux, proofstill-api, proofstill-db.
 
 생성 프로젝트는 하네스 배포본을 `.proofstill-runtime`에 포함해 공개 registry나 개인 경로 없이 다시 설치할 수 있습니다. npm/pnpm lockfile은 첫 설치에서 생성되므로 저장소에 함께 커밋하세요.
 

@@ -2,6 +2,7 @@
 
 - 업무 로직은 apps/backend/domain, HTTP·파일·프로세스 연결은 infra가 소유한다. domain은 infra를 import하지 않는다.
 - .agents/skills/proofstill-develop과 proofstill-verify로 개발·독립 검증을 수행한다. 실행은 npm run proofstill -- <명령>이다.
+- 새 프로젝트나 중요한 기술 변경은 .agents/skills/proofstill-engineer로 구현 가능성·아키텍처를 사용자와 논의한다. 필요한 사용자 결정을 받은 뒤 스택·폴더 구조를 확정하고 생성·구현한다. 기존 합의는 재사용한다.
 - UI는 jwdesign 토큰과 컴포넌트를 우선한다. design-taste-frontend는 화면 구성에 적용하고 충돌 시 jwdesign 규칙을 따른다. packages/ui는 공유 컴포넌트, packages/api는 계약과 생성 클라이언트를 소유한다.
 - OpenAPI/Orval/API Tracker 작업은 .agents/skills/proofstill-api를 따른다. 계약과 서버 생성 명세를 분리하고 생성 코드를 직접 고치지 않는다.
 - 현재 목표·제약·미정 결정·다음 행동은 .proofstill/work/<ID>/brief.md에 짧게 유지한다. 사용자 수용과 에이전트 검증을 구분한다.

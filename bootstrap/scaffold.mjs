@@ -36,7 +36,7 @@ export async function scaffold(destination, { apps = allApps.join(','), packageM
       await fs.mkdir(path.dirname(output), { recursive: true });
       await fs.copyFile(path.join(source, relative), output);
     }
-    for (const name of ['proofstill-develop', 'proofstill-verify', 'proofstill-interview', 'proofstill-ux']) {
+    for (const name of ['proofstill-develop', 'proofstill-verify', 'proofstill-interview', 'proofstill-engineer', 'proofstill-ux']) {
       const output = path.join(stage, '.agents/skills', name);
       await fs.cp(path.join(source, '.agents/skills', name), output, { recursive: true });
       if (name === 'proofstill-develop') {
