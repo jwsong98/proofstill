@@ -15,8 +15,8 @@ function run(command, args, options = {}) {
 const [command, ...args] = process.argv.slice(2);
 if (['harness', 'tracker', 'ui'].includes(command) && args[0] === '--') args.shift();
 try {
-  if (!command || ['--help', '-h'].includes(command)) {
-    console.log(`proofstill scaffold <new-directory> [--apps backend,cli,app,www] [--package-manager npm|pnpm] [--install]
+  if (['--help', '-h'].includes(command) || command === 'setup' && args.includes('--help')) {
+    console.log(`proofstill [setup] [--codex-home <directory>] [--skills-dir <directory>]\n  No arguments: install the harness and skills into Codex user settings.\nproofstill scaffold <new-directory> [--apps backend,cli,app,www] [--package-manager npm|pnpm] [--install]
 proofstill openapi export [--file <spec> | --url <url>] [--output <json>] [--config <json>]
 proofstill tracker flow {run|step <id>|show|validate|reset|retry}
 proofstill tracker <env|spec|app> <arguments>
@@ -24,6 +24,12 @@ proofstill ui <shadcn add arguments>
 proofstill doctor
 proofstill harness <existing Python harness arguments>
 Existing init/test/review/status/report/cleanup/trace commands also work directly.`);
+  } else if (!command || ['setup', '--codex-home', '--skills-dir'].includes(command)) {
+    const { values } = parseArgs({ args: command === 'setup' ? args : process.argv.slice(2), options: {
+      'codex-home': { type: 'string' }, 'skills-dir': { type: 'string' },
+    } });
+    const { setup } = await import('../bootstrap/setup.mjs');
+    await setup({ codexHome: values['codex-home'], skillsDir: values['skills-dir'] });
   } else if (command === 'scaffold') {
     const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
       apps: { type: 'string', default: 'backend,cli,app,www' },

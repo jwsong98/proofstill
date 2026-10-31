@@ -1,13 +1,27 @@
 # Proofstill
 
-[공개 릴리스 v0.3.0](https://github.com/jwsong98/proofstill/releases/tag/v0.3.0) · [패키지 다운로드](https://github.com/jwsong98/proofstill/releases/download/v0.3.0/digitalpresso-proofstill-0.3.0.tgz)
-
 Node 22.18+와 Python 3.10+가 필요합니다. 독립 리뷰에는 로그인한 Codex CLI가 필요합니다.
+
+Git이 설치된 낯선 환경에서는 한 줄만 실행합니다.
+
+```sh
+npx github:jwsong98/proofstill
+```
+
+전역 하네스·8개 스킬·지침이 **즉시 등록**됩니다. **새 Codex 세션**에서 “Proofstill로 프로젝트 만들어줘”라고 요청하면 됩니다. 스킬 변경은 자동 감지되지만 이미 열린 세션의 전역 AGENTS 지침을 강제로 갱신하지는 않습니다.
+
+설치본은 npm 임시 캐시와 독립적으로 `~/.codex/proofstill`에 남습니다. `CODEX_HOME`을 지정했다면 해당 디렉터리에 설치합니다. 전역 스킬은 `~/.agents/skills`, 지침은 Codex home의 `AGENTS.md`에 등록합니다. 비어 있지 않은 `AGENTS.override.md`가 있으면 함께 반영합니다. 기존 설정·인증·개인 스킬은 보존하고 변경하는 지침은 백업합니다. 같은 명령을 다시 실행하면 중복 없이 갱신합니다.
+
+명시적으로 실행하려면 `npx github:jwsong98/proofstill setup`을 사용합니다. `--codex-home`, `--skills-dir`로 설치 위치를 지정할 수 있습니다. `--help`는 설정을 변경하지 않습니다. Node/Python 자체 설치와 Codex 로그인은 자동 수행하지 않습니다. npm registry 계정이나 개인 API 키는 설치에 필요하지 않습니다.
+
+[공개 릴리스 0.4.0](https://github.com/jwsong98/proofstill/releases/tag/v0.4.0) · [설정 근거](https://learn.chatgpt.com/docs/agent-configuration/agents-md) · [전역 스킬 근거](https://learn.chatgpt.com/docs/build-skills)
+
+직접 CLI로 작업하려면 다음과 같이 설치할 수도 있습니다.
 
 npm으로 설치하는 개발·검증 하네스와 모노레포 스캐폴드입니다. 개인 API 키나 기존 사용자 스킬 폴더 없이 실행합니다. `doctor`는 실행 파일과 버전을 점검하며 Codex 로그인 상태를 보장하지는 않습니다.
 
 ```sh
-npm install -g https://github.com/jwsong98/proofstill/releases/download/v0.3.0/digitalpresso-proofstill-0.3.0.tgz
+npm install -g https://github.com/jwsong98/proofstill/releases/download/v0.4.0/digitalpresso-proofstill-0.4.0.tgz
 proofstill doctor
 proofstill scaffold my-project --package-manager npm --install
 cd my-project
@@ -17,7 +31,7 @@ npm run dev:backend
 # 다른 터미널: npm run dev:app
 ```
 
-pnpm이 설치된 환경에서는 `--package-manager pnpm --install`을 사용합니다. 전역 설치 대신 `npm exec --yes --package=https://github.com/jwsong98/proofstill/releases/download/v0.3.0/digitalpresso-proofstill-0.3.0.tgz -- proofstill scaffold my-project --install`도 사용할 수 있습니다. GitHub 공개 Release에서 로그인 없이 내려받습니다. npm registry에는 아직 게시하지 않았습니다. 다운로드한 tgz는 `npm install -g ./digitalpresso-proofstill-0.3.0.tgz`로도 설치할 수 있습니다.
+pnpm이 설치된 환경에서는 `--package-manager pnpm --install`을 사용합니다. 전역 설치 대신 `npm exec --yes --package ./dist/digitalpresso-proofstill-0.4.0.tgz -- proofstill scaffold my-project`도 사용할 수 있습니다. GitHub 공개 배포본이며 npm registry에는 게시하지 않았습니다.
 
 `--apps backend,cli,app,www`로 생성할 앱을 선택합니다. 기존 디렉터리(빈 디렉터리 포함)를 덮어쓰지 않습니다. 기본 백엔드는 Python + SQLAlchemy/Alembic, 웹 앱은 React/Vite입니다.
 

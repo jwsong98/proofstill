@@ -1,6 +1,6 @@
 {
   "name": "@digitalpresso/proofstill",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Portable Codex harness, monorepo scaffolding, OpenAPI and API flow tools",
   "type": "module",
   "license": "UNLICENSED",
@@ -21,6 +21,7 @@
     "bootstrap/flow.mjs",
     "bootstrap/openapi.mjs",
     "bootstrap/scaffold.mjs",
+    "bootstrap/setup.mjs",
     "examples/order_flow.expect.json",
     "examples/order_flow.py",
     "examples/order_workspace/demo.py",
@@ -446,5 +447,9 @@
     "test": "python3 -m unittest discover -s tests -v",
     "test:bootstrap": "python3 -m unittest discover -s tests/bootstrap -v",
     "test:database": "python3 tests/bootstrap/run_database_checks.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jwsong98/proofstill.git"
   }
 }
