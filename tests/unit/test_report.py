@@ -247,3 +247,11 @@ class ReportTests(unittest.TestCase):
         self.h.review('empty-directory', 'criteria')
         capture = json.loads((self.root / 'review_packet.json').read_text())
         self.assertTrue((Path(capture['packet']['project_root']) / 'src/empty').is_dir())
+
+    def test_modified_optional_criteria_review_cannot_show_pass(self):
+        self.h.review('counter', 'criteria')
+        _, state = self.h.load('counter')
+        (Path(state['reviews']['criteria']['folder']) / 'answer.json').write_text('{"tampered":true}')
+        content = self.h.report('counter').read_text()
+        self.assertIn('- 사전 기준 검토 · 선택: 현재 버전에서 무효', content)
+        self.assertNotIn('- 사전 기준 검토 · 선택: 통과', content)

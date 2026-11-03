@@ -253,13 +253,17 @@ class Harness:
             self.save(plan, state)
         return record
 
+    @staticmethod
+    def review_evidence_current(record, developer_session):
+        folder = Path(record.get('folder', '/nonexistent-proofstill-review'))
+        return bool(record.get('session') and record['session'] != developer_session
+                    and all((folder / name).is_file() and record.get('evidence_hashes', {}).get(name) == file_hash(folder / name)
+                            for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']))
+
     def review_current(self, plan, state, criteria, source):
         record = state.get('reviews', {}).get('implementation', {})
-        folder = Path(record.get('folder', '/nonexistent-proofstill-review'))
         return bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
-                    and record.get('session') and record['session'] != state['developer_session']
-                    and all((folder / name).is_file() and record.get('evidence_hashes', {}).get(name) == file_hash(folder / name)
-                            for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json'])
+                    and self.review_evidence_current(record, state['developer_session'])
                     and all(self.evidence_current(self.latest(state, 'green', c['id']))
                             and self.latest(state, 'green', c['id'])['accepted'] for c in plan['checks']))
 

@@ -76,7 +76,7 @@ def render(h, plan, state, status):
             lines.append(f'- {title}: 미실행')
             continue
         folder = Path(record['folder'])
-        valid = criteria_valid and record['criteria_digest'] == current_criteria and (stage == 'criteria' or record['source_digest'] == current_source)
+        valid = h.review_evidence_current(record, state['developer_session']) and criteria_valid and record['criteria_digest'] == current_criteria and (stage == 'criteria' or record['source_digest'] == current_source)
         if stage == 'implementation':
             valid = valid and h.review_current(plan, state, current_criteria, current_source) and all(current_run(h.latest(state, 'green', c['id']))
                                   and h.latest(state, 'green', c['id'])['accepted'] for c in plan['checks'])
