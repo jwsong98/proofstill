@@ -1,0 +1,42 @@
+{
+  "operations": [
+    "actual-project",
+    "normal-display",
+    "negative-states",
+    "changed-evidence",
+    "query-failure"
+  ],
+  "status": "completed",
+  "assertions": [
+    {
+      "step": 0,
+      "field": "output",
+      "path": "/passed",
+      "equals": true
+    },
+    {
+      "step": 1,
+      "field": "output",
+      "path": "/passed",
+      "equals": true
+    },
+    {
+      "step": 2,
+      "field": "output",
+      "path": "/passed",
+      "equals": true
+    },
+    {
+      "step": 3,
+      "field": "output",
+      "path": "/passed",
+      "equals": true
+    },
+    {
+      "step": 4,
+      "field": "output",
+      "path": "/passed",
+      "equals": true
+    }
+  ]
+}

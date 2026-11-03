@@ -58,7 +58,7 @@ export class HandoffService {
       if (curated) {
         const current = currentTasks.find(task => task.taskId === row.taskId);
         row.historical = !current;
-        if (current) { row.description = row.title; row.title = current.titles[row.requirementId] || row.title; row.group = current.title || row.group; }
+        if (current) { row.description = row.description || row.title; row.title = current.titles[row.requirementId] || row.title; row.group = current.title || row.group; }
       }
       const link = links.find(l => l.taskId === row.taskId && l.requirementId === row.requirementId);
       if (link) {

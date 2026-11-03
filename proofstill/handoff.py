@@ -51,7 +51,7 @@ def snapshot(h, feature):
             else:
                 log = '[실행 출력 근거를 찾을 수 없습니다. 원본 로그를 복구하거나 다시 검사하세요.]'
         checks[check['id']] = {'id': check['id'], 'label': check.get('label', check['id']), 'kind': check['kind'],
-                                'purpose': check.get('purpose', ''), 'rationale': check.get('rationale', ''), 'expected': check.get('expected', ''),
+                                'surface': check.get('surface', 'code'), 'purpose': check.get('purpose', ''), 'rationale': check.get('rationale', ''), 'expected': check.get('expected', ''),
                                 'command': shlex.join(check['argv']), 'status': label, 'output': log, 'outputTruncated': output_truncated,
                                 'logPath': run.get('log') if run else None, 'receiptPath': run.get('receipt') if run else None,
                                 'exitCode': run.get('exit_code') if run else None, 'recordedAt': run.get('recorded_at') if run else None,

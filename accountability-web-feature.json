@@ -1,0 +1,448 @@
+{
+  "id": "accountability-web-v1",
+  "title": "웹에서 Q1~Q5와 검증 기준을 판단하기",
+  "intent": "사용자 NO 원문: CLI와 보고서뿐 아니라 웹에서도 요구별 구현·검증 상태와 근거, 사람이 확인할 행동을 바로 볼 수 있게 반영하고 실제 흐름으로 검증해줘. 검증 기준에 대한 검증도 근거를 가지고 해서 검증 기준을 인간이 확신을 가질 수 있도록 되어야 해. 사람은 수많은 문서와 데이터 파일(csv, json 등)을 읽어서 제대로 판단할 시간이 없어. 친절하게 왜 이 검증 기준이 필요한지 설명이 되어야 하고, 사람은 그 보고를 듣고 확신을 가지고 결정을 할 수 있어야 함.",
+  "context": "U22 Q1~Q5를 U23 실제 NO로 웹까지 확장한다. 원문과 조건은 requirements.md U23. 기존 React/Python/SQLite와 다크 현황·상세·접기·인계 HTML을 유지하고 새 내비게이션/스택/재설계를 추가하지 않는다. 기존 다른 작업의 console 미커밋과 어댑터의 요구별/작업전체 판정 분리를 보존한다. 변경 흐름: 목록에서 요구 선택→위험·필요성·현재 판단→대표 상황/기대/실행 관찰과 기준 검토→세부 근거 펼침→사람 확인 행동→재조회 또는 근거 변경에 따라 재검증 필요. 조회 실패는 이전 자료로 안내한다. 유지: 서버 원본·판정. 임시: 요구 선택/펼침·저장 초안(실패 보존). 정리: 프로젝트 전환 시 선택/초안 종료. 새 실제 작업의 6개 요구만 자료를 대조해 설명·행동을 연결한다. 다른 과거 요구를 성공·적절함으로 자동 채우지 않는다. 실제 기준/구현 리뷰는 새 codex exec에서 원문·기준·필요 코드만 전달한다. 합성 화면 상태의 fake 리뷰는 UI plumbing용이며 실제 적절성 근거가 아니다. 최종 사용자 YES/NO는 부모 채팅에서 받는다.",
+  "sources": [
+    "proofstill",
+    "console/server",
+    "console/shared",
+    "console/web",
+    "console/package.json",
+    "console/tsconfig.json",
+    "console/vite.config.ts",
+    "package.json"
+  ],
+  "context_files": [
+    "requirements.md"
+  ],
+  "required_reviews": [
+    "criteria"
+  ],
+  "requirements": [
+    {
+      "id": "Q1-W",
+      "title": "구현 기록과 현재 검증을 구분해요",
+      "text": "웹 목록·상세·HTML에서 구현 선언/현재성·자동 검사·독립 구현 리뷰·기준 리뷰를 분리하고 누락·실패·변경·미실행을 승인으로 표시하지 않는다.",
+      "risk": "구현했다는 기록만 보고 검증도 끝났다고 믿으면, 바뀐 코드나 미실행 동작을 완료로 넘길 수 있어요.",
+      "rationale": "구현 기록·실제 검사·두 독립 리뷰는 확인하는 대상이 달라요. 각각 현재 근거가 있는지 따로 봐야 해요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    },
+    {
+      "id": "Q2-W",
+      "title": "대표 상황과 실제 관찰로 판단해요",
+      "text": "기본 상세에 위험·기준 필요성·대표 상황/기대 결과·현재 실행 관찰·한계를 평이하게 보여주고 세부 원문/명령/로그를 펼친다.",
+      "risk": "성공 문구나 검사 개수만 보여주면 실제 값이나 출처가 틀렸는지 알기 어려워요.",
+      "rationale": "실제로 어떤 상황을 만들었고 기대와 관찰이 어떻게 다른지 보여야, 문서·CSV·JSON을 모두 읽지 않고 판단할 수 있어요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    },
+    {
+      "id": "Q3-W",
+      "title": "사람이 확인하고 결정할 행동을 보여줘요",
+      "text": "사람/AI 위임 범위·미정 결정·요구별 사람 행동/기대 결과를 현재 사용자 프로젝트의 실제 작업에 연결하고 근거 없는 과거 자료를 자동 채우지 않는다.",
+      "risk": "AI의 구현 완료를 사람의 정책 결정이나 최종 수용으로 바꾸면, 원치 않는 결과가 승인될 수 있어요.",
+      "rationale": "목적·범위·수용은 사람이 정해요. AI가 맡은 구현/검증과 지금 사람이 확인할 행동을 분리해야 해요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    },
+    {
+      "id": "Q4-W",
+      "title": "새로고침에서 바뀐 근거를 다시 확인해요",
+      "text": "재조회 때 현재 원본을 읽고 코드·기준·실행 근거 변경을 무효화하며 조회 실패/선택 전환에서 다른 요구의 관측을 섞지 않는다.",
+      "risk": "과거 통과를 그대로 보여주면 기준이나 파일이 바뀐 뒤에도 검증된 결과처럼 보일 수 있어요.",
+      "rationale": "현재 파일·기준과 실행 기록을 다시 대조하고, 조회 실패나 오래된 근거는 현재 판정과 구분해야 해요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    },
+    {
+      "id": "Q5-C",
+      "title": "잘못된 결과를 거부하는 기준인지 확인해요",
+      "text": "원문 매핑과 기대값·상수 성공·잘못된 출처·오래된/미실행 판정을 실제 부정 검사로 확인하고 새 criteria 독립 리뷰의 지적·재검토·무효화를 별도 표시한다.",
+      "risk": "기준 자체가 잘못되면 잘못된 구현도 모든 검사를 통과할 수 있어요.",
+      "rationale": "정상 대조군뿐 아니라 일부러 틀린 자료를 넣어 거부되는지 실행하고, 별도 세션이 원문과 기준의 누락을 검토해야 해요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    },
+    {
+      "id": "Q5-U",
+      "title": "실제 화면 조작으로 연결을 확인해요",
+      "text": "실제 서버/브라우저에서 요구 선택→설명·상태 구분→근거 펼침→사람 행동→근거 변경/재조회 흐름을 실행하고 DOM/캡처/한계를 남긴다.",
+      "risk": "API가 맞아도 화면에 연결이 빠지거나 오래된 설명이 남을 수 있어요.",
+      "rationale": "서버 결과만 보지 않고 실제 화면을 선택·펼침·새로고침해서 같은 근거가 보이는지 확인해야 해요.",
+      "checks": [
+        "python",
+        "adversarial",
+        "web-boundary",
+        "console",
+        "types",
+        "build",
+        "browser",
+        "package"
+      ],
+      "criteria_checks": [
+        "adversarial",
+        "web-boundary",
+        "browser"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "python",
+      "kind": "integration",
+      "module": "harness",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-q"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "label": "상태·근거·기준 리뷰 보존",
+      "purpose": "하네스의 상태 분리·근거 현재성·기준 리뷰·재개 기록을 검사해요.",
+      "rationale": "미실행·변경된 근거를 완료로 잘못 넘기는 회귀를 찾아야 해요.",
+      "expected": "unittest가 실제 실행되고 모두 OK여야 해요.",
+      "timeout": 180,
+      "scope": "하네스의 상태 분리·근거 현재성·기준 리뷰·재개 기록을 검사해요."
+    },
+    {
+      "id": "adversarial",
+      "kind": "integration",
+      "module": "criteria",
+      "argv": [
+        "python3",
+        "tests/criteria/check_accountability.py"
+      ],
+      "files": [
+        "tests/criteria/check_accountability.py",
+        "tests/criteria/accountability.expected.json",
+        "tests/support.py"
+      ],
+      "green_pattern": "CRITERIA_COUNTEREXAMPLES_OK",
+      "label": "잘못된 결과를 거부하는지 확인",
+      "purpose": "여섯 부정 사례와 정상 대조군을 실제 실행해요.",
+      "rationale": "잘못된 기준도 성공 문구만 보고 통과시키는 문제를 막아야 해요.",
+      "expected": "여섯 잘못된 경우를 모두 거부하고 정상 대조군은 통과해야 해요.",
+      "timeout": 180,
+      "scope": "여섯 부정 사례와 정상 대조군을 실제 실행해요.",
+      "trace_expectation": "tests/criteria/accountability.expected.json",
+      "cases": [
+        {
+          "operation": "mapping-gap",
+          "situation": "요구의 검사 연결을 일부러 빼요.",
+          "expected": "검사에 연결되지 않은 요구의 등록을 거부해야 해요."
+        },
+        {
+          "operation": "wrong-expected",
+          "situation": "정상 출력은 유지하고 기대값만 다르게 바꿔요.",
+          "expected": "정상 기준은 통과하고 틀린 기대값은 거부해야 해요."
+        },
+        {
+          "operation": "constant-success",
+          "situation": "실제 저장·조회 없이 성공 문구만 출력해요.",
+          "expected": "종료 코드가 0이어도 필수 실행 근거가 없으면 거부해야 해요."
+        },
+        {
+          "operation": "wrong-source",
+          "situation": "값은 같게 두고 조회 출처를 다른 단계로 바꿔요.",
+          "expected": "같은 값이라도 출처 연결이 틀리면 거부해야 해요."
+        },
+        {
+          "operation": "stale-evidence",
+          "situation": "통과한 뒤 검사 코드를 바꿔요.",
+          "expected": "이전 통과가 재검증 필요로 바뀌어야 해요."
+        },
+        {
+          "operation": "never-run",
+          "situation": "요구와 검사를 등록만 하고 실행하지 않아요.",
+          "expected": "자동 검사와 기준 검토는 미실행으로 남고 완료되면 안 돼요."
+        }
+      ]
+    },
+    {
+      "id": "web-boundary",
+      "kind": "integration",
+      "module": "criteria",
+      "argv": [
+        "node",
+        "tests/criteria/check_web_assurance.mjs"
+      ],
+      "files": [
+        "tests/criteria/check_web_assurance.mjs"
+      ],
+      "green_pattern": "WEB_ASSURANCE_BOUNDARY_OK",
+      "label": "부분·알 수 없는 상태를 승인하지 않기",
+      "purpose": "웹 판단 함수에 부분·누락·알 수 없는 값·미해결 지적·작업 전체 미통과를 넣어요.",
+      "rationale": "타입 선언이나 검사 개수만 믿으면 미확인을 통과로 표시할 수 있어요.",
+      "expected": "해당 상태들이 모두 승인 안내에서 제외돼야 해요.",
+      "timeout": 180,
+      "scope": "웹 판단 함수에 부분·누락·알 수 없는 값·미해결 지적·작업 전체 미통과를 넣어요."
+    },
+    {
+      "id": "console",
+      "kind": "integration",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "test"
+      ],
+      "files": [
+        "console/tests"
+      ],
+      "green_pattern": "ℹ fail 0",
+      "label": "서버·기존 콘솔 연결 유지",
+      "purpose": "실제 API·저장소·인계 투영과 기존 콘솔 회귀를 검사해요.",
+      "rationale": "새 설명이 원래 상태와 요구별/작업전체 판정 경계를 깨뜨리면 안 돼요.",
+      "expected": "모든 등록 서버 검사가 실패 0으로 끝나야 해요.",
+      "timeout": 180,
+      "scope": "실제 API·저장소·인계 투영과 기존 콘솔 회귀를 검사해요."
+    },
+    {
+      "id": "types",
+      "kind": "integration",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "run",
+        "typecheck"
+      ],
+      "files": [
+        "console/tsconfig.json"
+      ],
+      "green_pattern": "tsc --noEmit",
+      "label": "웹과 서버 데이터 형식 연결",
+      "purpose": "추가한 설명·사례·기준 리뷰 필드의 타입 연결을 검사해요.",
+      "rationale": "서버 원본과 화면이 서로 다른 구조를 가정하면 빠진 정보나 오류가 생겨요.",
+      "expected": "타입 검사가 종료 코드 0이어야 해요.",
+      "timeout": 180,
+      "scope": "추가한 설명·사례·기준 리뷰 필드의 타입 연결을 검사해요."
+    },
+    {
+      "id": "build",
+      "kind": "integration",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "run",
+        "build"
+      ],
+      "files": [
+        "console/package.json",
+        "console/vite.config.ts"
+      ],
+      "green_pattern": "built in",
+      "label": "현재 화면 실행 파일 생성",
+      "purpose": "현재 웹 화면을 Vite로 빌드해요.",
+      "rationale": "개발 코드만 있고 실제 제공할 화면 파일을 만들지 못하면 사용할 수 없어요.",
+      "expected": "빌드가 성공해야 해요. 기존 경고는 성공과 별도로 보고해요.",
+      "timeout": 180,
+      "scope": "현재 웹 화면을 Vite로 빌드해요."
+    },
+    {
+      "id": "browser",
+      "kind": "integration",
+      "module": "browser",
+      "argv": [
+        "python3",
+        "tests/browser/check_accountability.py"
+      ],
+      "files": [
+        "tests/browser",
+        "tests/criteria/browser.expected.json"
+      ],
+      "green_pattern": "ACCOUNTABILITY_BROWSER_OK",
+      "label": "실제 화면·근거·재조회 확인",
+      "purpose": "실제 서버와 브라우저에서 현재 요구와 격리된 부정 상태를 조작해요.",
+      "rationale": "API만 통과하고 화면 설명·사람 행동·변경 표시 연결이 빠지는 문제를 찾아야 해요.",
+      "expected": "실제 저장소 요구 선택과 정상/누락/실패/근거변경/조회실패를 DOM·화면에서 확인해야 해요.",
+      "timeout": 180,
+      "scope": "실제 서버와 브라우저에서 현재 요구와 격리된 부정 상태를 조작해요.",
+      "surface": "browser",
+      "trace_expectation": "tests/criteria/browser.expected.json",
+      "cases": [
+        {
+          "operation": "actual-project",
+          "situation": "현재 저장소의 실제 요구를 선택하고 근거를 펼쳐요.",
+          "expected": "API 원본과 화면의 설명·실행 관찰·사람 행동이 연결돼야 해요."
+        },
+        {
+          "operation": "normal-display",
+          "situation": "정상 상태를 읽고 인계 HTML을 열어요.",
+          "expected": "같은 원본의 상태·설명·관찰·확인 행동이 포함돼야 해요."
+        },
+        {
+          "operation": "negative-states",
+          "situation": "실패·미실행·기준 지적·기준 미검토를 바꿔 선택해요.",
+          "expected": "서로 다른 상태를 구분하고 승인 안내를 보류해야 해요."
+        },
+        {
+          "operation": "changed-evidence",
+          "situation": "실제 로그를 바꾼 뒤 새로고침해요.",
+          "expected": "재검증 필요로 바뀌고 이전 관찰을 현재 결과에서 제외해야 해요."
+        },
+        {
+          "operation": "query-failure",
+          "situation": "브라우저에 조회 실패 응답을 주입해요.",
+          "expected": "이전 조회 자료임을 알리고 현재 판단을 보류해야 해요."
+        }
+      ]
+    },
+    {
+      "id": "package",
+      "kind": "integration",
+      "module": "distribution",
+      "argv": [
+        "python3",
+        "tests/setup/check_handoff_package.py"
+      ],
+      "files": [
+        "tests/setup/check_handoff_package.py"
+      ],
+      "green_pattern": "HANDOFF_PACKAGE_OK",
+      "label": "설치 패키지의 하네스 모듈 확인",
+      "purpose": "배포 목록에 필요한 Python 모듈이 있고 격리 import가 가능한지 확인해요.",
+      "rationale": "로컬에서는 되지만 패키지에서 필수 모듈이 빠지는 문제를 막아야 해요.",
+      "expected": "필수 파일을 포함하고 격리 import가 성공해야 해요.",
+      "timeout": 180,
+      "scope": "배포 목록에 필요한 Python 모듈이 있고 격리 import가 가능한지 확인해요."
+    }
+  ],
+  "collaboration": {
+    "human": "사용자가 목표·범위 변경과 최종 수용 YES/NO를 결정해요. 이 작업의 수용 질문은 부모 채팅이 담당해요.",
+    "ai": "위임된 Python/기존 웹 현황·상세·인계 연결과 실제 검사·독립 리뷰를 맡아요. 기존 다른 작업 데이터·코드를 보존하고 새 스택·내비게이션·재설계·push·배포·외부 전송은 제외해요.",
+    "human_checks": [
+      {
+        "requirement": "Q1-W",
+        "action": "이 요구를 선택해 구현·검사·기준·독립 리뷰가 따로 표시되는지 보고, 근거 변경 대표 사례를 펼쳐 보세요.",
+        "expected": "변경된 근거는 재검증 필요로 표시하고 미실행을 통과로 표시하지 않아야 해요."
+      },
+      {
+        "requirement": "Q2-W",
+        "action": "대표 상황·기대 결과·실제 관찰을 읽고 설명이 충분한지 판단해 주세요. 필요할 때만 실행 근거를 펼쳐 보세요.",
+        "expected": "설명에서 원래 위험과 실제 관찰을 따라갈 수 있어야 해요. 납득되지 않는 지점은 NO로 알려 주세요."
+      },
+      {
+        "requirement": "Q3-W",
+        "action": "사람이 지금 확인할 행동과 기대 결과를 읽고, 실제 원하는 결과와 맞는지 판단해 주세요.",
+        "expected": "통과 표시가 사용자 YES를 대신하지 않으며, 미정 정책이 있으면 대기해야 해요."
+      },
+      {
+        "requirement": "Q4-W",
+        "action": "새로고침을 누른 뒤 변경된 근거 대표 사례와 현재 상태가 구분되는지 확인해 주세요.",
+        "expected": "변경/누락이면 재검증 필요, 조회 실패면 이전 조회 자료라는 안내가 보여야 해요."
+      },
+      {
+        "requirement": "Q5-C",
+        "action": "기준을 시험한 부정 사례의 관찰과 독립 기준 검토의 현재 지적·한계를 읽어 주세요.",
+        "expected": "실행된 부정 검사와 현재 독립 기준 검토가 모두 있어야 적절성 통과가 가능해요. 없거나 오래되면 미확인이어야 해요."
+      },
+      {
+        "requirement": "Q5-U",
+        "action": "웹에서 이 여섯 요구를 바꿔 선택하고 사람 확인 행동·기대 결과가 각 요구에 맞게 바뀌는지 확인해 주세요.",
+        "expected": "실제 DOM과 화면에서 확인해야 해요. 합성 상태 테스트와 실제 사용자 만족은 구분해야 해요."
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "label": "실제 사용자 프로젝트 화면",
+      "path": "output/playwright/accountability-web/actual-project.png"
+    },
+    {
+      "label": "DOM·서버·화면 흐름별 결과와 한계",
+      "path": "output/playwright/accountability-web/verification.json"
+    },
+    {
+      "label": "근거 포함 인계 HTML의 브라우저 확인",
+      "path": "output/playwright/accountability-web/portable.html"
+    }
+  ],
+  "limitations": [
+    "사용자의 실제 이해·만족과 YES/NO 수용은 별도이며 부모 채팅에서 판단한다.",
+    "정상/실패/미실행/기준 지적의 화면 부정 흐름은 격리 fixture다. fake 리뷰는 실제 기준 적절성 근거가 아니다. 실제 저장소 작업은 별도로 현재 원본과 화면을 대조한다.",
+    "과거 전체 요구의 설명·기준 적절성을 소급 검토하지 않았다. 연결되지 않은 범위는 미확인으로 남긴다.",
+    "조회 실패는 브라우저 실패 응답 주입이며 실제 서버 장애를 발생시킨 것이 아니다.",
+    "거짓 출처·등록 밖 변경·공유 파일 조작·하네스 우회를 차단하는 보안 경계나 무결함 보증이 아니다."
+  ]
+}

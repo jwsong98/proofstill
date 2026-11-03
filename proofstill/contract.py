@@ -84,6 +84,8 @@ def validate_plan(root, plan):
                 check['files'].append(expected)
         for name in check['files']:
             require(project_path(root, name).exists(), f'검토할 테스트 파일 없음: {name}')
+        if 'surface' in check:
+            require(check['surface'] in ['code', 'browser'], 'surface는 code/browser여야 합니다')
         for field in ['label', 'purpose', 'rationale', 'expected', 'scope']:
             if field in check:
                 require(isinstance(check[field], str) and check[field].strip(), f'{field}는 비어 있지 않은 설명이어야 합니다')

@@ -1,3 +1,4 @@
+import type { EvidenceCase, ReviewEvidence } from '../shared/assurance.ts';
 export type NodeKind = 'feature' | 'requirement' | 'issue' | 'decision' | 'task' | 'evidence' | 'result';
 export type NodeStatus = 'pending' | 'active' | 'completed' | 'failed' | 'unverified';
 export type RelationKind = 'related' | 'precedes';
@@ -67,11 +68,14 @@ export type FeatureAcceptance = { checks: FeatureCheck[]; total: number; passed:
 export type ImplementationStatus = 'unknown' | 'not_started' | 'in_progress' | 'partial' | 'implemented';
 export type ImplementationProgress = { status: ImplementationStatus; paths: string[]; remaining: string; note: string; updatedAt?: number };
 export type VerificationStatus = 'not_run' | 'partial' | 'passed' | 'failed' | 'stale' | 'unverified' | 'interrupted';
-export type HandoffCheck = { id: string; label: string; kind: string; command: string; status: VerificationStatus; output: string; outputTruncated?: boolean; exitCode: number | null; recordedAt?: string | number | null; files: string[]; scope: string; purpose?: string; rationale?: string; expected?: string; nodeId?: string };
+export type HandoffCheck = { surface?: 'code' | 'browser'; cases?: EvidenceCase[]; id: string; label: string; kind: string; command: string; status: VerificationStatus; output: string; outputTruncated?: boolean; exitCode: number | null; recordedAt?: string | number | null; files: string[]; scope: string; purpose?: string; rationale?: string; expected?: string; nodeId?: string };
 export type HandoffRow = {
   id: string; historical?: boolean; source: 'harness' | 'console'; taskId: string; requirementId: string; title: string; description?: string; mergedRecords?: GraphNode['mergedRecords']; group: string; origin: string;
+  risk?: string; rationale?: string; implementationCurrent?: boolean | null; issues?: string[];
+  humanChecks?: { requirement: string; action: string; expected: string }[];
+  responsibility?: { human: string; ai: string }; next?: string; pendingDecisions?: { id: string; question: string }[];
   implementation: ImplementationProgress;
-  verification: { status: VerificationStatus; checks: HandoffCheck[]; review: { status: VerificationStatus; evidence: string } };
+  verification: { status: VerificationStatus; checks: HandoffCheck[]; criteriaReview?: ReviewEvidence; criteriaChecks?: HandoffCheck[]; criteriaRequired?: boolean; review: ReviewEvidence };
   limitations: string[]; nodeId?: string; relatedNodeIds?: string[];
 };
 export type HandoffSnapshot = { rows: HandoffRow[]; errors: { taskId: string; message: string }[]; generatedAt: string };
