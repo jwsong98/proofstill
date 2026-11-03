@@ -1,0 +1,49 @@
+{
+  "operations": [
+    "mapping-gap",
+    "wrong-expected",
+    "constant-success",
+    "wrong-source",
+    "stale-evidence",
+    "never-run"
+  ],
+  "status": "completed",
+  "assertions": [
+    {
+      "step": 0,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    },
+    {
+      "step": 1,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    },
+    {
+      "step": 2,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    },
+    {
+      "step": 3,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    },
+    {
+      "step": 4,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    },
+    {
+      "step": 5,
+      "field": "output",
+      "path": "/rejected",
+      "equals": true
+    }
+  ]
+}
