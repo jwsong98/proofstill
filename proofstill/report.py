@@ -71,12 +71,14 @@ def render(h, plan, state, status):
                         lines.append(f"- {link('테스트 ' + test.name, test)}")
     lines += ['', '## 독립 리뷰', '']
     for stage, title in [('criteria', '사전 기준 검토 · 선택'), ('implementation', '기준·구현 최종 검토')]:
+        if stage == 'criteria' and stage in plan.get('required_reviews', []):
+            title = '기준 적절성 독립 검토 · 필수'
         record = state['reviews'].get(stage)
         if not record:
             lines.append(f'- {title}: 미실행')
             continue
         folder = Path(record['folder'])
-        valid = h.review_evidence_current(record, state['developer_session']) and criteria_valid and record['criteria_digest'] == current_criteria and (stage == 'criteria' or record['source_digest'] == current_source)
+        valid = h.review_evidence_current(record, state['developer_session']) and criteria_valid and record['criteria_digest'] == current_criteria and ((stage == 'criteria' and stage not in plan.get('required_reviews', [])) or record['source_digest'] == current_source)
         if stage == 'implementation':
             valid = valid and h.review_current(plan, state, current_criteria, current_source) and all(current_run(h.latest(state, 'green', c['id']))
                                   and h.latest(state, 'green', c['id'])['accepted'] for c in plan['checks'])

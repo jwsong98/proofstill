@@ -6,7 +6,7 @@ import type { HandoffSnapshot, HandoffCheck } from './types.ts';
 
 const escape = (text: unknown) => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 function checkExplanation(check:HandoffCheck) {
-  return `<h4>${escape(checkTitle(check))} · ${verificationLabels[check.status]}</h4><p>${escape(statusReason(check.status))}</p><dl><dt>확인할 내용</dt><dd>${escape(check.purpose || '검사 내용 설명 미등록')}</dd><dt>필요한 이유</dt><dd>${escape(check.rationale || '필요한 이유 미등록')}</dd><dt>통과 조건</dt><dd>${escape(check.expected || '통과 조건 설명 미등록')}</dd></dl>${caseHtml(check, escape)}`;
+  return `<div class="verification-check" data-check-id="${escape(check.id)}"><h4>${escape(checkTitle(check))} · ${verificationLabels[check.status]}</h4><p>${escape(statusReason(check.status))}</p><dl><dt>확인할 내용</dt><dd>${escape(check.purpose || '검사 내용 설명 미등록')}</dd><dt>필요한 이유</dt><dd>${escape(check.rationale || '필요한 이유 미등록')}</dd><dt>통과 조건</dt><dd>${escape(check.expected || '통과 조건 설명 미등록')}</dd></dl><p>확인 범위: ${escape(check.scope)}</p>${caseHtml(check, escape)}</div>`;
 }
 export function exportHandoff(projectName: string, snapshot: HandoffSnapshot, code: Record<string, string>) {
   const rows = snapshot.rows.filter(row => !row.historical);

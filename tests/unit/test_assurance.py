@@ -111,3 +111,11 @@ class AssuranceTests(unittest.TestCase):
         status=self.h.status('counter')
         self.assertFalse(status['complete'])
         self.assertTrue(any('기준을 시험한 검사 연결' in reason for reason in status['reasons']))
+
+    def test_required_criteria_report_invalidates_after_source_change(self):
+        self.init(required_reviews=['criteria'])
+        self.h.review('counter','criteria')
+        (self.root/'src/counter.py').write_text('VALUE = 1\n')
+        content=self.h.report('counter').read_text()
+        self.assertIn('기준 적절성 독립 검토 · 필수: 현재 버전에서 무효',content)
+        self.assertNotIn('기준 적절성 독립 검토 · 필수: 통과',content)
