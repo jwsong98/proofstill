@@ -287,6 +287,8 @@ class Harness:
             try:
                 criteria_review = review_summary(self, plan, state, 'criteria', self.criteria_digest(plan, state), self.source_digest(plan))
                 require(criteria_review['status'] == 'passed', '현재 버전의 독립 기준 리뷰가 필요합니다')
+                for requirement in plan['requirements']:
+                    require(bool(requirement.get('criteria_checks')), f"기준을 시험한 검사 연결이 필요합니다: {requirement['id']}")
             except HarnessError as error:
                 reasons.append(str(error))
         for artifact in plan['artifacts']:

@@ -74,7 +74,18 @@ def main():
                     await detail.getByText('실행 근거 보기',{{exact:true}}).first().click();
                     if(!await detail.locator('pre').filter({{hasText:'CRITERIA_COUNTEREXAMPLES_OK'}}).first().isVisible())throw Error('실제 로그가 화면에 없음');
                     await page.screenshot({{path:{json.dumps(str(output/'actual-project.png'))},fullPage:true}});
-                    return {{passed:true,summary:'실제 저장소 Q1-W를 선택해 위험·필요성·실행된 부정 관찰·원본 로그·사람 확인 행동을 화면과 API 원본에서 함께 확인했어요.',dom:await detail.innerText()}};''')
+                    const firstDom=await detail.innerText();
+                    const actualRows=snapshot.rows.filter(r=>r.taskId==='accountability-web-v1');
+                    if(actualRows.length!==6)throw Error('현재 여섯 요구 누락');
+                    for(const target of actualRows){{
+                      await page.getByRole('textbox',{{name:'요구 검색',exact:true}}).fill(target.title);
+                      await page.getByRole('button',{{name:target.title,exact:true}}).click();
+                      const selected=page.getByRole('complementary',{{name:'요구별 구현·검증 상세',exact:true}});
+                      const content=await selected.innerText();
+                      if(!content.includes(target.humanChecks[0].action)||!content.includes(target.risk))throw Error('다른 요구 설명 혼입: '+target.requirementId);
+                      if(target.requirementId!=='Q1-W'&&await selected.getByText('실행 근거 보기',{{exact:true}}).first().evaluate(el=>el.parentElement.open))throw Error('이전 요구의 근거 펼침이 남음');
+                    }}
+                    return {{passed:true,summary:'실제 저장소 여섯 요구의 위험·필요성·실행 관찰·사람 행동을 API와 화면에서 대조했어요. 선택을 바꿔도 다른 요구의 설명과 근거 펼침이 섞이지 않았어요.',dom:firstDom}};''')
                     (output/'actual-project.dom.txt').write_text(result.pop('dom'));results.append(result);return result
                 if not args.fixture_only:
                     flow.step('actual-project','현재 저장소 실제 요구의 설명과 실행 근거 연결',current_project)
@@ -118,15 +129,33 @@ def main():
                         if(!text.includes('현재 버전에서 확인한 실행 관찰이 없어요.'))throw Error('근거 변경 안내 없음');
                         await page.screenshot({{path:{json.dumps(str(output/'changed-evidence.png'))},fullPage:true}});
                         return {{passed:true,summary:'실행 로그를 실제로 변경한 뒤 새로고침하자 재검증 필요로 바뀌고 이전 관찰을 현재 결과에서 제외했어요.',dom:text}};''')
-                        (output/'changed-evidence.dom.txt').write_text(result.pop('dom'));results.append(result);return result
+                        (output/'changed-evidence.dom.txt').write_text(result.pop('dom'))
                     finally:log.write_bytes(original)
+                    expected=root/'expect.json';original_expected=expected.read_bytes()
+                    changed=json.loads(original_expected);changed['assertions'][0]['equals']=2;expected.write_text(json.dumps(changed))
+                    try:
+                        criterion=run(f'''await page.getByRole('button',{{name:'새로고침',exact:true}}).click();
+                        const detail=page.getByRole('complementary',{{name:'요구별 구현·검증 상세',exact:true}});
+                        await detail.getByRole('heading',{{name:'검증 기준의 적절성 · 재검증 필요',exact:true}}).waitFor();
+                        await detail.getByRole('heading',{{name:'독립 기준 검토 · 재검증 필요',exact:true}}).waitFor();
+                        await page.screenshot({{path:{json.dumps(str(output/'changed-criteria.png'))},fullPage:true}});
+                        return {{dom:await detail.innerText()}};''')
+                        (output/'changed-criteria.dom.txt').write_text(criterion['dom'])
+                    finally:expected.write_bytes(original_expected)
+                    result['summary']+=' 기준의 기대값을 1에서 2로 바꾼 뒤에는 기준 적절성과 독립 기준 검토도 재검증 필요로 바뀌었어요.'
+                    results.append(result);return result
                 flow.step('changed-evidence','근거 변경 후 재조회에서 과거 관찰 무효화',changed_evidence)
                 def query_failure():
-                    result=run(f'''await page.route('**/handoff',route=>route.fulfill({{status:503,contentType:'application/json',body:'{{"error":"격리 조회 실패"}}'}}));
+                    result=run(f'''await page.getByRole('button',{{name:'새로고침',exact:true}}).click();
+                    const decision=page.locator('section[aria-label="지금 판단할 내용"]');
+                    await decision.getByText('등록한 범위의 기술 근거가 있어요.',{{exact:false}}).waitFor();
+                    await page.route('**/handoff',route=>route.fulfill({{status:503,contentType:'application/json',body:'{{"error":"격리 조회 실패"}}'}}));
                     await page.getByRole('button',{{name:'새로고침',exact:true}}).click();
                     await page.getByText('최신 상태를 읽지 못했어요.',{{exact:false}}).waitFor();
                     await page.screenshot({{path:{json.dumps(str(output/'query-failure.png'))},fullPage:true}});
-                    const body=await page.locator('body').innerText();await page.unroute('**/handoff');
+                    const body=await page.locator('body').innerText();
+                    if((await decision.innerText()).includes('등록한 범위의 기술 근거가 있어요.'))throw Error('조회 실패에도 현재 승인 안내 유지');
+                    await page.unroute('**/handoff');
                     return {{passed:true,summary:'브라우저에서 조회 실패 응답을 주입하자 이전 자료임을 표시하고 현재 승인 안내를 보류했어요. 실제 서버 장애를 재현한 검사는 아니에요.',dom:body}};''')
                     (output/'query-failure.dom.txt').write_text(result.pop('dom'));results.append(result);return result
                 flow.step('query-failure','조회 실패와 이전 자료 구분',query_failure)

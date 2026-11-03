@@ -19,6 +19,8 @@ class AssuranceTests(unittest.TestCase):
     def init(self, **changes):
         plan = json.loads(self.path.read_text())
         plan.update(changes)
+        if 'criteria' in changes.get('required_reviews', []):
+            plan['requirements'][0]['criteria_checks'] = ['counter-unit']
         self.path.write_text(json.dumps(plan))
         self.h.init(self.path)
 
@@ -100,3 +102,12 @@ class AssuranceTests(unittest.TestCase):
         plan['requirements'][0]['risk'] = 42
         with self.assertRaises(HarnessError):
             validate_plan(self.root, plan)
+
+    def test_required_review_without_counterexample_mapping_cannot_complete(self):
+        plan=json.loads(self.path.read_text());plan['required_reviews']=['criteria']
+        self.path.write_text(json.dumps(plan));self.h.init(self.path)
+        (self.root/'src/counter.py').write_text('VALUE = 1\n')
+        self.h.run('counter');self.h.review('counter','criteria');self.h.review('counter')
+        status=self.h.status('counter')
+        self.assertFalse(status['complete'])
+        self.assertTrue(any('기준을 시험한 검사 연결' in reason for reason in status['reasons']))
