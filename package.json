@@ -49,6 +49,7 @@
     "proofstill/assets/OFL-Pretendard.txt",
     "proofstill/assets/PretendardVariable.woff2",
     "proofstill/assets/tokens.css",
+    "proofstill/assurance.py",
     "proofstill/collaboration.py",
     "proofstill/contract.py",
     "proofstill/handoff.py",

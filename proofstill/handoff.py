@@ -25,6 +25,7 @@ def verification_status(checks):
 
 
 def snapshot(h, feature):
+    from .assurance import observations, requirement_review, review_summary
     plan, state = h.load(feature)
     try:
         criteria = h.criteria_digest(plan, state)
@@ -54,10 +55,13 @@ def snapshot(h, feature):
                                 'command': shlex.join(check['argv']), 'status': label, 'output': log, 'outputTruncated': output_truncated,
                                 'logPath': run.get('log') if run else None, 'receiptPath': run.get('receipt') if run else None,
                                 'exitCode': run.get('exit_code') if run else None, 'recordedAt': run.get('recorded_at') if run else None,
+                                'cases': observations(h, feature, check, run, current),
                                 'files': check['files'], 'scope': check.get('scope', '등록된 검사 범위. 제품 화면 확인 여부는 검사 내용을 확인하세요.')}
     record = state.get('reviews', {}).get('implementation')
     review_current = h.review_current(plan, state, criteria, source)
     review_checks = {c['id']: c for c in (record or {}).get('answer', {}).get('checks', [])}
+    criteria_review = review_summary(h, plan, state, 'criteria', criteria, source)
+    implementation_review = review_summary(h, plan, state, 'implementation', criteria, source)
     rows = []
     for req in plan['requirements']:
         recorded = state.get('implementations', {}).get(req['id'], {})
@@ -76,8 +80,15 @@ def snapshot(h, feature):
         rows.append({'id': f'harness:{feature}:{req["id"]}', 'source': 'harness', 'taskId': feature, 'requirementId': req['id'],
                      'title': req.get('title', req['text']), 'description': req['text'], 'group': req.get('group', plan['title']), 'origin': plan['intent'] + '\n\n' + plan['context'], 'implementation': implementation,
                      'implementationCurrent': implementation_current, 'issues': issues,
+                     'humanChecks': [c for c in plan.get('collaboration', {}).get('human_checks', []) if c['requirement'] == req['id']],
+                     'responsibility': {'human': plan.get('collaboration', {}).get('human', ''), 'ai': plan.get('collaboration', {}).get('ai', '')},
+                     'next': state.get('checkpoint', {}).get('next', ''),
+                     'pendingDecisions': [{'id': key, **value} for key, value in state.get('decisions', {}).items() if not value.get('answer')],
                      'verification': {'status': verification_status(linked), 'checks': linked,
-                                      'review': {'status': review_status, 'evidence': (review or {}).get('evidence', (record or {}).get('error', ''))}},
+                                      'criteriaReview': requirement_review(criteria_review, req['id']),
+                                      'criteriaChecks': [checks[c] for c in req.get('criteria_checks', [])],
+                                      'criteriaRequired': 'criteria' in plan.get('required_reviews', []),
+                                      'review': {**requirement_review(implementation_review, req['id']), 'status': review_status, 'evidence': (review or {}).get('evidence', (record or {}).get('error', ''))}},
                      'limitations': plan['limitations'] + (record or {}).get('answer', {}).get('limitations', []) + [str(f) for f in (record or {}).get('answer', {}).get('findings', [])]})
     return rows
 

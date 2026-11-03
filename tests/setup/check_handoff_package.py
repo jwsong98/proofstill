@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory(prefix='proofstill-package-') as directory:
                             capture_output=True, text=True, check=True,
                             env=dict(os.environ, npm_config_cache=str(Path(directory) / 'cache')))
     names = {f['path'] for f in json.loads(result.stdout)[0]['files']}
-    for name in ['proofstill/collaboration.py', 'proofstill/handoff.py']:
+    for name in ['proofstill/assurance.py', 'proofstill/collaboration.py', 'proofstill/handoff.py']:
         assert name in names, f'필수 배포 모듈 누락: {name}'
     for name in names:
         if name.startswith('proofstill/') and name.endswith('.py'):

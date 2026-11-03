@@ -116,4 +116,6 @@ def validate_plan(root, plan):
             require(isinstance(artifact['url'], str) and artifact['url'].startswith(('https://', 'http://')), 'http(s) 아티팩트 URL만 지원합니다')
     from .collaboration import validate_collaboration
     validate_collaboration(plan)
+    from .assurance import validate_assurance
+    validate_assurance(root, plan)
     return plan

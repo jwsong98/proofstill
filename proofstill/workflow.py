@@ -232,7 +232,13 @@ class Harness:
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
                   'folder': str(folder), 'launcher': self.codex, 'model': self.model,
                   'ignore_user_config': self.ignore_user_config}
+        previous = state['reviews'].get(stage)
+        history = state.setdefault('review_history', [])
+        if previous and not any(item.get('folder') == previous.get('folder') for item in history):
+            history.append(dict(previous, stage=stage))
         state['reviews'][stage] = record
+        record['stage'] = stage
+        history.append(record)
         self.save(plan, state)
         try:
             session, answer = reviewer.launch(self, packet, folder)
@@ -276,6 +282,13 @@ class Harness:
             require(review.get('passed') and self.review_current(plan, state, criteria, source), '현재 버전의 독립 구현 리뷰가 필요합니다')
         except HarnessError as error:
             reasons.append(str(error))
+        if 'criteria' in plan.get('required_reviews', []):
+            from .assurance import review_summary
+            try:
+                criteria_review = review_summary(self, plan, state, 'criteria', self.criteria_digest(plan, state), self.source_digest(plan))
+                require(criteria_review['status'] == 'passed', '현재 버전의 독립 기준 리뷰가 필요합니다')
+            except HarnessError as error:
+                reasons.append(str(error))
         for artifact in plan['artifacts']:
             if artifact.get('path') and not (self.root / artifact['path']).is_file():
                 reasons.append(f"아티팩트 파일 없음: {artifact['path']}")
