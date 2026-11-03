@@ -1,0 +1,17 @@
+{
+  "name": "@proofstill/jwdesign",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./assets/components/jwdesign.d.ts",
+      "default": "./src/index.tsx"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

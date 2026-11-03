@@ -1,0 +1,126 @@
+{
+  "id": "scaffold-jwt-v1",
+  "title": "JWT 발급·검증과 재사용 가능한 환경 설정",
+  "intent": "로그인 기능을 구현하기 좋게 미리 jwt 같은거 만들어두고, 인증 같은 거 토큰 안에 무엇이 들어갈지는 정하지 못하더라도 바로 토큰화하고 바로 검증할 수 있게 되어야 하고, 시크릿 키도 그냥 기본으로 만들 수 있어야 하고 .env.example에서 쓸 수 있는 구조가 되어야 함.",
+  "context": "2026-11-03 사용자 요청. 기존 FastAPI 스캐폴드의 인증 기반 추가를 위임했다. 로그인 업무, 사용자 데이터 구조, refresh/revoke 정책은 확정하지 않았다. 사용자 정보는 자유 JSON data 객체로 보존하고 공통 iat/exp를 관리한다. HS256/PyJWT 라이브러리와 동일 백엔드의 infra 모듈 사용은 위임된 구현 선택이다. 공개 토큰 발급 API나 계정 기능은 만들지 않고 로그인 처리에서 자격 확인 후 호출할 함수를 제공한다. auth:setup은 .env에 키를 한 번 생성하며 기존 키와 다른 설정은 보존한다. 기본 예제 API는 그대로 공개, 필요한 라우트에 Depends(require_token)를 붙여 보호한다. .env는 npm/pnpm 백엔드 명령과 TokenService.from_env에서 읽는다. 검사 Python은 이 작업에서 requirements.txt를 설치한 격리 venv이다. UI 컴포넌트 검사는 별도로 실제 브라우저에서 수행하며 이 인증 검토의 요구가 아니다.",
+  "sources": [
+    "bootstrap/scaffold.mjs",
+    "templates/monorepo/scripts/backend.mjs",
+    "templates/monorepo/apps/backend",
+    "templates/monorepo/.env.example",
+    "templates/monorepo/gitignore",
+    "templates/monorepo/README.md",
+    "README.md",
+    "package.json",
+    "tests/bootstrap/distribution.json"
+  ],
+  "context_files": [],
+  "requirements": [
+    {
+      "id": "JWT-1",
+      "text": "임의 JSON 객체를 발급·검증하고 데이터 구조를 고정하지 않으며 만료/발급 시각을 관리한다. 변조·다른 키·다른 알고리즘·누락·만료 토큰을 거부한다.",
+      "checks": [
+        "jwt-unit"
+      ]
+    },
+    {
+      "id": "JWT-2",
+      "text": "FastAPI Bearer 의존성은 유효한 토큰의 사용자 데이터를 반환하며 누락·잘못된 인증은 401, 설정 누락은 503이다.",
+      "checks": [
+        "jwt-integration"
+      ]
+    },
+    {
+      "id": "JWT-3",
+      "text": "생성 스캐폴드에 .env.example과 auth:setup을 제공하고 고유 키 생성·재실행 보존·환경 로딩을 실제 명령으로 확인한다.",
+      "checks": [
+        "jwt-unit",
+        "jwt-scaffold"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "jwt-unit",
+      "kind": "unit",
+      "module": "auth",
+      "argv": [
+        "env",
+        "PYTHONPATH=templates/monorepo/apps/backend",
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "templates/monorepo/apps/backend/tests/unit",
+        "-p",
+        "test_auth.py",
+        "-v"
+      ],
+      "files": [
+        "templates/monorepo/apps/backend/tests/unit/test_auth.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 60
+    },
+    {
+      "id": "jwt-integration",
+      "kind": "integration",
+      "module": "auth",
+      "argv": [
+        "env",
+        "PYTHONPATH=templates/monorepo/apps/backend",
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "templates/monorepo/apps/backend/tests/integration",
+        "-p",
+        "test_auth.py",
+        "-v"
+      ],
+      "files": [
+        "templates/monorepo/apps/backend/tests/integration/test_auth.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 60
+    },
+    {
+      "id": "jwt-scaffold",
+      "kind": "integration",
+      "module": "scaffold",
+      "argv": [
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-p",
+        "test_auth.py",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/test_auth.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 120
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "인증 구현",
+      "path": "templates/monorepo/apps/backend/infra/auth.py"
+    },
+    {
+      "label": "환경 예제",
+      "path": "templates/monorepo/.env.example"
+    }
+  ],
+  "limitations": [
+    "계정 저장·자격 확인·refresh/revoke·클라이언트 토큰 저장 정책은 사용자 요구가 미확정이라 포함하지 않는다."
+  ]
+}

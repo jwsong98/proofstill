@@ -1,0 +1,20 @@
+import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createApi } from './api.ts';
+import { CodexClient } from './codex.ts';
+import { Store } from './store.ts';
+
+const dataDir = resolve(process.env.PROOFSTILL_CONSOLE_DATA_DIR || resolve(homedir(), '.local/share/proofstill/console'));
+mkdirSync(dataDir, { recursive: true });
+const store = new Store(resolve(dataDir, 'console.sqlite'));
+const app = createApi({ store, codex: new CodexClient(), distDir: fileURLToPath(new URL('../dist', import.meta.url)) });
+if (process.env.PROOFSTILL_CONSOLE_PROJECT_ROOT) await app.service.createProject({ rootPath: process.env.PROOFSTILL_CONSOLE_PROJECT_ROOT });
+const port = Number(process.env.PROOFSTILL_CONSOLE_PORT ?? 7777);
+if (!Number.isSafeInteger(port) || port < 0 || port > 65535) throw new Error('PROOFSTILL_CONSOLE_PORT must be 0–65535');
+app.server.listen(port, '127.0.0.1', () => { const address = app.server.address(); console.log(`Proofstill console: http://127.0.0.1:${typeof address === 'object' && address ? address.port : port}`); });
+let closing = false;
+const close = async () => { if (closing) return; closing = true; await app.close(); store.close(); };
+process.once('SIGINT', () => { void close().then(() => process.exit(0)); });
+process.once('SIGTERM', () => { void close().then(() => process.exit(0)); });

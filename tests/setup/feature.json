@@ -1,0 +1,132 @@
+{
+  "id": "global-setup-v1",
+  "title": "짧은 공개 명령과 Codex 전역 설치",
+  "intent": "낯선환경에서도 쉽게 쓸 수 있어야 함. 쓰면 바로 codex 글로벌 설정에 반영되어야 함. 저거 명령어 외우기 어려움. 기존 요구: npm 같은 공개 패키지 또는 GitHub에서 받아서 사용 가능해야 한다.",
+  "context": "구현 선택: npx github:jwsong98/proofstill 기본 실행을 setup으로 연결. CODEX_HOME(기본 ~/.codex)에 독립 runtime/skills를 설치하고 ~/.agents/skills에는 8개 전역 스킬을 등록하며 전역 AGENTS.md에 관리 블록을 넣는다. 비어 있지 않은 AGENTS.override.md에도 같은 블록을 넣어 활성 전역 경로에 반영한다. 기존 config.toml/auth/동명 사용자 스킬은 보존한다. 기존 스킬 충돌은 bundled 경로로 지침에 연결하며 덮어쓰지 않는다. 모델/권한/로그인은 변경하지 않는다. 설치 파일은 즉시 등록하지만 AGENTS 지침은 새 Codex 세션부터 읽는다는 공식 문서 한계를 명시한다. Node/Python 자체 설치는 기존 배포의 전제다. 관리 파일 staging 실패·재실행과 충돌을 검사하며 강제종료/정전/공유 파일 악의적 조작 격리는 범위 밖이다. 공개 GitHub 배포 후 실제 짧은 명령 비인증 다운로드 설치는 배포 작업에서 별도 증거로 남긴다. 기존 기능 코드는 유지하고 README/버전/배포목록 및 통합검사의 버전 참조를 0.4.0에 맞춘다. CLI 기능이며 제품 화면은 없다.",
+  "context_files": [],
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "bin",
+    "bootstrap",
+    "templates",
+    "vendor",
+    "proofstill",
+    ".agents/skills",
+    "examples",
+    "README.md",
+    "dist/digitalpresso-proofstill-0.4.0.tgz"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "추가 명령 없는 실행으로 Codex 전역 runtime, 8개 스킬, 전역 지침을 등록하고 낯선 환경에서 사용할 짧은 npx GitHub 명령과 자연어 사용 예를 안내한다. --help는 설치하지 않는다.",
+      "checks": [
+        "setup",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "기존 config/auth, 사용자 AGENTS 본문과 override, 동명 사용자 스킬을 보존하고 관리 블록은 재실행해도 중복하지 않는다. 변경 전 지침 백업이 남는다. CODEX_HOME 및 명시 대상 옵션을 지원한다.",
+      "checks": [
+        "setup"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "npm 캐시/다운로드 원본을 제거해도 설치 runtime에서 harness/scaffold/flow 명령과 스킬 상대 자산이 사용 가능하다. 의존성 설치 실패는 실패 종료하고 이전 설치를 보존한다. 관리 경로 충돌·잘못된 마커·지침 symlink를 덮어쓰지 않는다.",
+      "checks": [
+        "setup"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "0.4.0 패키지에 전역 설치 코드를 포함하고 기존 npm/pnpm 스캐폴드/OpenAPI/Orval/DB fast/flow와 Python 하네스 회귀를 유지한다. 설치 즉시 등록과 새 세션 적용의 차이를 안내한다.",
+      "checks": [
+        "setup",
+        "bootstrap",
+        "regression"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "setup",
+      "kind": "integration",
+      "module": "setup",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/setup",
+        "-v"
+      ],
+      "files": [
+        "tests/setup"
+      ],
+      "red_pattern": "AssertionError: False is not true : GLOBAL_SETUP_MISSING",
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 600
+    },
+    {
+      "id": "bootstrap",
+      "kind": "integration",
+      "module": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 1200,
+      "regression": true
+    },
+    {
+      "id": "regression",
+      "kind": "unit",
+      "module": "regression",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py",
+        "tests/__init__.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 300,
+      "regression": true
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "전역 설치 사용법",
+      "path": "README.md"
+    },
+    {
+      "label": "공개 npm 패키지",
+      "path": "dist/digitalpresso-proofstill-0.4.0.tgz"
+    }
+  ],
+  "limitations": [
+    "macOS/POSIX 검증. Windows 및 이미 열린 Codex 세션의 전역 지침 강제 갱신은 미지원.",
+    "공개 npm registry 게시 대신 GitHub 배포. Docker E2E 변경 없으며 이번 회귀는 빠른 DB검사까지."
+  ]
+}

@@ -1,0 +1,3 @@
+ALTER TABLE feature_checks ADD COLUMN purpose TEXT NOT NULL DEFAULT '';
+ALTER TABLE feature_checks ADD COLUMN rationale TEXT NOT NULL DEFAULT '';
+ALTER TABLE feature_checks ADD COLUMN expected TEXT NOT NULL DEFAULT '';

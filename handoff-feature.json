@@ -1,0 +1,169 @@
+{
+  "id": "handoff-clarity-v1",
+  "title": "앱과 하네스의 요구별 구현·검증 현황 및 인계",
+  "intent": "구현속도가 느리고 제대로 검증됐는지 확인하기 어렵다. 처음 보는 사람에게 구현/미구현/검증/미검증과 남은 일을 명확히 전달해야 한다. 앱과 연계된 현황·근거 포함 인계를 구현한다.",
+  "context": "사용자는 구현과 검증 분리, 앱 현황표/상세, 하네스 원본 연결, 같은 데이터에서 로컬 인계 HTML 생성, 중복 기록 감소 브리핑 후 진행을 승인했다(2026-11-03). 기존 React/SQLite/Python 스택과 다크 UI, Git/앱 해시 관리 제외를 유지한다. 앱 native 현재성은 요구·구현 기록/등록 코드·검사 파일의 수정 시각, 하네스는 기존 digest로 판단한다. 시각 보존 외부 변경은 앱 검사 한계다. 구현 선언·자동 검사·독립 리뷰·사용자 수용을 구분한다. 기존 미기록을 완료/미구현으로 추정하지 않는다. 흐름: 현황→요구 선택→원문/코드/실행 근거→구현 수정→저장 후 재조회, 실패 시 입력 보존, 프로젝트 변경 시 초안/선택 종료. 인계 파일은 같은 서버 snapshot에서 생성하고 큰 코드/로그의 생략과 조회 실패를 표시한다. 업무 정책/새 스택 논의/새 프로젝트 생성/배포/전역 설치 갱신은 범위 밖이다. 실제 모델 turn과 실사용 속도 개선 측정은 미실행이다. 구현의 UI 증거는 참고 자료이며 독립 리뷰가 재실행한 브라우저 검사로 간주하지 않는다.",
+  "sources": [
+    "proofstill",
+    "console/server",
+    "console/shared",
+    "console/web",
+    "console/tests",
+    "console/package.json",
+    "console/tsconfig.json",
+    "console/vite.config.ts",
+    ".agents/skills/proofstill-develop/SKILL.md",
+    "README.md"
+  ],
+  "context_files": [
+    "requirements.md"
+  ],
+  "requirements": [
+    {
+      "id": "H1",
+      "text": "요구별 구현 상태·근거·남은 범위를 자동 검사·독립 리뷰와 분리하고 미기록을 추정하지 않는다. 완료 선언은 검증 통과가 아니다.",
+      "checks": [
+        "harness",
+        "console"
+      ]
+    },
+    {
+      "id": "H2",
+      "text": "CLI/앱/보고가 하네스 현재 원본을 공유한다. 부분/실패/미실행/중단/오래된 결과를 구분하고, 앱 native 요구/지정 코드·검사 변경과 프로젝트 경계를 확인한다.",
+      "checks": [
+        "harness",
+        "console"
+      ]
+    },
+    {
+      "id": "H3",
+      "text": "기존 앱에 현황표·필터·선택 상세·구현 편집·원문/코드/실행 탐색·그래프 연계를 연결한다. 저장 실패 입력과 프로젝트/재진입 상태를 확인한다.",
+      "checks": [
+        "console",
+        "types",
+        "build"
+      ]
+    },
+    {
+      "id": "H4",
+      "text": "앱과 동일 snapshot에서 상태·남은 일·원문·코드·명령·출력을 포함하는 휴대 가능한 로컬 HTML을 생성한다. 누락과 생략을 드러내고 스크립트 삽입/경로 이탈을 거부한다.",
+      "checks": [
+        "console"
+      ]
+    },
+    {
+      "id": "H5",
+      "text": "구현 기록 CLI/앱 연결과 검사·리뷰 역할을 지침에 반영하고 같은 현황에서 보고한다. 실제 속도/사용자 수용과 미실행 검증을 꾸며 쓰지 않는다.",
+      "checks": [
+        "harness",
+        "console",
+        "types",
+        "build"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "harness",
+      "kind": "unit",
+      "module": "harness",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-q"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 120
+    },
+    {
+      "id": "console",
+      "kind": "integration",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "test"
+      ],
+      "files": [
+        "console/tests",
+        "console/server/migrations"
+      ],
+      "green_pattern": "ℹ fail 0",
+      "timeout": 120
+    },
+    {
+      "id": "types",
+      "kind": "unit",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "run",
+        "typecheck"
+      ],
+      "files": [
+        "console/tsconfig.json"
+      ],
+      "green_pattern": "tsc --noEmit",
+      "timeout": 60
+    },
+    {
+      "id": "build",
+      "kind": "integration",
+      "module": "console",
+      "argv": [
+        "npm",
+        "--prefix",
+        "console",
+        "run",
+        "build"
+      ],
+      "files": [
+        "console/vite.config.ts",
+        "console/package.json"
+      ],
+      "green_pattern": "built in",
+      "timeout": 60
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "구현·검증 현황 UI",
+      "path": "console/web/HandoffView.tsx"
+    },
+    {
+      "label": "브라우저 확인 범위와 한계",
+      "path": "output/playwright/handoff-clarity/verification.json"
+    },
+    {
+      "label": "앱 화면",
+      "path": "output/playwright/handoff-clarity/overview.png"
+    },
+    {
+      "label": "하네스 그래프 연계 화면",
+      "path": "output/playwright/handoff-clarity/harness-linked.png"
+    },
+    {
+      "label": "독립 서버에서 확인한 인계 HTML 예제",
+      "path": "output/playwright/handoff-clarity/handoff.html"
+    }
+  ],
+  "limitations": [
+    "실제 Codex 모델 turn, 실사용 개발 속도/인계 소요 시간, 사용자 수용은 미확인이다.",
+    "브라우저 확인은 합성 fixture의 UI·연결 검사이며 실제 업무 알고리즘의 정확성 검사가 아니다.",
+    "앱 native 현재성은 수정 시각에 의존한다. 시각 보존 외부 변경과 미등록 구현/검사 경로는 감지하지 못한다.",
+    "인계 HTML은 시점 snapshot이다. 코드 파일/폴더는 최대 128 KiB, 하네스 검사 출력은 최대 100000자를 포함하고 생략을 표시한다.",
+    "현재 개발 체크아웃에 반영하며 전역 설치본과 공개 배포본은 갱신하지 않는다."
+  ]
+}

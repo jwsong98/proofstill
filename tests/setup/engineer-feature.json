@@ -1,0 +1,99 @@
+{
+  "id": "engineer-interview-v1",
+  "title": "시니어 개발자 인터뷰와 프로젝트 생성 전 사용자 기술 결정",
+  "intent": "시니어 개발자 인터뷰 스킬도 추가해서 기술구현 가능성과 코드 아키텍처 설계를 나와 논의하여 명확하게 결정한 후에 개발 스택을 선정 및 폴더 구조를 만들도록 해보자. 나와 인터뷰를 해서 나의 의사결정이 필요한 부분에 대해서 의사결정을 받아내는 것이 중요해",
+  "context": "현재 요청은 Proofstill의 개발 절차와 스킬 추가이며 별도 제품의 기술 선택 요청이 아니다. 사용자의 실제 선택·명시적 위임을 제안·무응답과 구분하고, 기존 합의 안의 작은 수정은 재인터뷰하지 않는다. 저장소 스킬·설치 안내·생성 프로젝트에 연결한다. 인터뷰는 에이전트 절차이며 직접 호출한 CLI의 새 차단기는 요청하지 않았다. 스킬의 의미는 문서와 연결을 직접 대조해야 하며 배포 검사의 성공만으로 인터뷰 행동을 검증했다고 볼 수 없다. 실제 대화 평가 시 새 프로젝트 요청만 있는 경우, 비용 제약만 답한 경우, 기존 스택 안의 작은 수정, 합의와 템플릿이 다른 경우를 대조한다.",
+  "context_files": [],
+  "sources": [
+    ".agents/skills/proofstill-engineer",
+    ".agents/skills/proofstill-interview",
+    ".agents/skills/proofstill-develop",
+    ".agents/skills/proofstill-ux",
+    ".agents/skills/proofstill-verify",
+    "bootstrap/setup.mjs",
+    "bootstrap/scaffold.mjs",
+    "package.json",
+    "AGENTS.md",
+    "templates/monorepo/AGENTS.md",
+    "README.md"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "시니어 개발자 인터뷰가 구현 가능성·아키텍처의 중요한 선택을 사용자와 논의하고 실제 답변·명시적 위임으로 결정하도록 한다. 추천·무응답을 사용자 선택으로 대체하지 않는다.",
+      "checks": [
+        "scaffold",
+        "setup"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "결정 이후 스택·폴더 구조를 확정하고 생성한다. 미정 결정에 의존하는 설치·생성·구현을 보류하며 기존 합의와 사용자의 직접 CLI 선택을 존중한다. 템플릿 불일치를 조용히 덮지 않는다.",
+      "checks": [
+        "scaffold",
+        "setup"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "기획·UX·개발·독립 검증과 새 스킬을 연결하고 패키지 배포 목록·전역 설치·스캐폴드에 포함한다. 기존 파일 보존·선택 앱·설치 이식성 검사를 유지한다.",
+      "checks": [
+        "scaffold",
+        "setup"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "scaffold",
+      "kind": "integration",
+      "module": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-p",
+        "test_scaffold.py",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/test_scaffold.py",
+        "tests/bootstrap/assets.json"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 60
+    },
+    {
+      "id": "setup",
+      "kind": "integration",
+      "module": "setup",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/setup",
+        "-v"
+      ],
+      "files": [
+        "tests/setup/test_setup.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 180
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "시니어 개발자 인터뷰 스킬",
+      "path": ".agents/skills/proofstill-engineer/SKILL.md"
+    }
+  ],
+  "limitations": [
+    "실제 사용자와 여러 차례 인터뷰하는 행동은 자동 테스트가 아닌 스킬 지침과 독립 리뷰로 검토한다.",
+    "전역 개인 설치본 갱신·배포는 이 작업에 포함하지 않는다."
+  ]
+}

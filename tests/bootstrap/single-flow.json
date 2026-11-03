@@ -1,0 +1,141 @@
+{
+  "id": "single-flow-v6",
+  "title": "설명 있는 단일 API 사용자 흐름",
+  "intent": "근데 flow/session 구분할 필요가 없어서 여기 설치할 버전은 좀 간략하게 flow하나만 구현하고 멀티 스탭별 유저의 사용흐름이 제대로 드러나도록 설명과 함께 해야함.",
+  "context": "이전 설치 패키지의 API Tracker 표면을 단일 순차 flow로 교체한다. flow run/step/show/validate/reset/retry만 제공하고 session 선택을 제거한다. 예제는 사용자 목표가 드러나는 할 일 등록→완료→결과 확인이다. 각 단계에 행동/목적/기대결과를 설명하며 실제 OpenAPI 기반 HTTP, 응답 ID 출처 연결, 실패 기록을 유지한다. 재시도는 쓰기 중복 위험 때문에 명시적으로만, 완료 단계는 자동 재호출하지 않는다. env/spec 도구는 원본을 재사용한다. 전체 UI 구현이나 브라우저 클릭은 이 변경 범위가 아니다. 수정되는 테스트는 제거된 session/action UI를 새 단일 flow 동작으로 대체하며 기존 배포/빌드 검사는 유지한다. 공용 스킬에 새로 추가된 UX 스킬 참조도 배포 의존성으로 포함한다. 공개 업로드는 아직 미정이다. 기준 v4의 API 안내 스킬 내용은 새 내용으로 고정했으나 assets.json에 예전 스킬 hash가 남아 서로 모순됐다. API 안내 fixture의 정확한 hash로 정정했으며 어떤 동작 assertion도 완화하지 않는다. 재검토는 v4의 구현 전 baseline과 수정한 테스트를 사용한다.",
+  "context_files": [
+    "tests/bootstrap/api-skill.md"
+  ],
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "bin",
+    "bootstrap",
+    "templates",
+    "vendor",
+    "proofstill",
+    ".agents/skills",
+    "examples",
+    "README.md",
+    "dist/digitalpresso-proofstill-0.2.0.tgz"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "설치 CLI는 session 선택 없이 단일 flow run/step/show/validate/reset/retry를 제공하고 session 관련 명령/옵션을 거부한다. 현재 기록은 flow-record.json 하나다.",
+      "checks": [
+        "flow",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "할 일 등록→완료→결과 확인을 실제 서버에서 수행한다. 사용자 행동·목적·기대 결과가 정의/조회/실행 기록에 표시되고 요청·응답 결과도 함께 읽을 수 있다.",
+      "checks": [
+        "flow",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "이전 성공 응답 ID를 후속 요청에 자동 연결하고 출처를 기록한다. 순서 오류·잘못된 정의/참조·누락 출력은 해당 HTTP 호출 전에 차단한다. 실패 시 중단/기록, 명시 재시도 이력, 완료 재실행 방지, 정의변경 거부, 동시 실행 잠금·중단 running 재실행 방지를 검사한다.",
+      "checks": [
+        "flow"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "변경 CLI/템플릿/안내/스킬 의존성이 npm 패키지에 포함되고 별도 설치 후 npm/pnpm 빌드와 실제 flow가 동작한다. 기존 OpenAPI export 및 Python 하네스 회귀를 검사한다.",
+      "checks": [
+        "bootstrap",
+        "regression"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "flow",
+      "kind": "integration",
+      "module": "flow",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-p",
+        "test_flow.py",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/test_flow.py"
+      ],
+      "red_pattern": "AssertionError: False is not true : SINGLE_FLOW_MISSING",
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 180
+    },
+    {
+      "id": "bootstrap",
+      "kind": "integration",
+      "module": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 900,
+      "regression": true
+    },
+    {
+      "id": "regression",
+      "kind": "unit",
+      "module": "regression",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py",
+        "tests/__init__.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 240,
+      "regression": true
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "사용법",
+      "path": "README.md"
+    },
+    {
+      "label": "단일 flow 구현",
+      "path": "bootstrap/flow.mjs"
+    },
+    {
+      "label": "배포 파일",
+      "path": "dist/digitalpresso-proofstill-0.2.0.tgz"
+    }
+  ],
+  "limitations": [
+    "공개 npm 업로드는 별도 결정이다.",
+    "HTTP JSON 순차 flow이며 조건 분기·병렬 실행·전체 스키마 검증·UI 클릭은 범위 밖이다.",
+    "서버 메모리 데이터는 재시작시 사라진다. reset은 로컬 호출 기록만 지운다."
+  ]
+}

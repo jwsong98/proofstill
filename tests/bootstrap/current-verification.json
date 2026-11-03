@@ -1,0 +1,891 @@
+{
+  "id": "runtime-verification-v2",
+  "title": "하네스 0.5.0 현재 버전 실검증",
+  "intent": "사용자가 오래된 기준을 현재 버전에 맞추고 DB·스캐폴드·하네스를 실제 검사하며 실패 수정·독립 리뷰·웹 결과 및 남은 일 반영을 요청했다.",
+  "context": "기존 현재 12개 작업 44개 요구를 빠짐없이 대응한다. 버전 조건은 현재 package.json의 0.5.0, 스킬 수는 실제 설치 목록 9개로 현행화한다. remove-baseline의 리뷰 복사본은 이후 합의한 원본 독립 리뷰 정책으로 대체한다. 기존 원문·plan·실행·검토는 수정하지 않는다. 공개 패키지 다운로드는 허용되며 미리 채워진 개인 npm 캐시를 필수로 가정하지 않는다. 전역 설치 검사는 임시 사용자 폴더에서만 수행한다. 기존 개발 DB를 사용하거나 배포·공개·실제 사용자 설치를 변경하지 않는다. FastAPI 요구는 저장돼 있던 v6보다 이후 명세 tests/bootstrap/fastapi.json(v7)의 조건을 보존한다. 요구별 previous와 implementationPaths는 원래 요구와 코드 진입점 대응이며 검사 통과 선언이 아니다. 각 검사는 무엇을·왜·통과 조건을 설명하고 실제 실행 결과와 독립 리뷰를 구분한다. 실제 모델 turn이나 제품 UI 전체는 별도 범위다.",
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "bin",
+    "bootstrap",
+    "templates",
+    "vendor",
+    "proofstill",
+    ".agents/skills",
+    "AGENTS.md",
+    "README.md",
+    "examples",
+    "tests",
+    "dist/digitalpresso-proofstill-0.5.0.tgz"
+  ],
+  "context_files": [
+    "tests/bootstrap/current-verification.json"
+  ],
+  "requirements": [
+    {
+      "id": "bootstrap:R1",
+      "title": "개인 파일 없이 npm 패키지 설치",
+      "group": "프로젝트 생성·OpenAPI",
+      "text": "npm tgz에 지정한 실행 소스·템플릿·공개 도구/스킬 자산만 포함하고 작업 기록·키·개인 절대경로 없이 별도 디렉터리에 설치한다. 설치본에서 기존 Python 하네스를 실행하며 Node 22.18+, Python 3.10+, Codex CLI 로그인 전제를 명시한다. 키 검사는 개인키 PEM 및 sk-proj 패턴, 경로 검사는 /Users 또는 /home의 사용자 절대경로를 대상으로 한다.",
+      "checks": [
+        "bootstrap",
+        "harness"
+      ],
+      "previous": {
+        "taskId": "bootstrap-v14",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "package.json",
+        "bin/proofstill.mjs"
+      ]
+    },
+    {
+      "id": "bootstrap:R2",
+      "title": "앱 선택·npm/pnpm 모노레포 생성",
+      "group": "프로젝트 생성·OpenAPI",
+      "text": "domain은 infra/HTTP/DB 모듈을 import하지 않으며 infra에서 domain을 사용한다. 선택 가능한 apps와 packages/jwdesign/ui/api 및 npm/pnpm workspace를 생성하고 양쪽 설치·빌드를 실행한다. 기존 디렉터리/symlink와 알 수 없는/빈/중복 앱 선택을 거부한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "bootstrap-v14",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "bootstrap/scaffold.mjs",
+        "templates/monorepo"
+      ]
+    },
+    {
+      "id": "bootstrap:R3",
+      "title": "디자인 시스템·스킬·UI 패키지 포함",
+      "group": "프로젝트 생성·OpenAPI",
+      "text": "기존 jwdesign 컴포넌트/폰트/토큰과 요청한 두 디자인 스킬 및 하네스 스킬은 원본/이식 hash로 확인해 함께 설치한다. 새로 작성할 UI 패키지는 SSR 렌더링과 앱 번들 소비를, 새 API 사용 안내 스킬은 export/generate/flow/spec 사용 안내를 검토한다. 신규 UI/API 스킬은 비교할 원본 자산이 없다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "bootstrap-v14",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "bootstrap/scaffold.mjs",
+        "vendor/skills"
+      ]
+    },
+    {
+      "id": "bootstrap:R4",
+      "title": "OpenAPI 검증·내보내기·클라이언트 생성",
+      "group": "프로젝트 생성·OpenAPI",
+      "text": "JSON OpenAPI file/exporter argv/URL을 npm 명령으로 export한다. 유효성·중복 operationId 검사, 오류 시 기존 산출물 보존 및 검증·exporter·HTTP·저장 실패 후 임시 파일 정리를 확인한다. 실제 Python exporter operationId 변경을 Orval 생성 TypeScript 클라이언트에 반영한다. 스키마 유효성은 @apidevtools/swagger-parser에 위임하고 해당 validate 함수 호출과 실패 전파를 probe로 확인한다. 라이브러리 전체 스키마 규칙을 자체 구현하지 않는다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "bootstrap-v14",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "bootstrap/openapi.mjs",
+        "templates/monorepo/orval.config.mjs"
+      ]
+    },
+    {
+      "id": "bootstrap:R5",
+      "title": "실제 API flow와 응답 출처 연결",
+      "group": "프로젝트 생성·OpenAPI",
+      "text": "기존 API Tracker를 포함하고 생성 저장소에 실행 가능한 adapter와 flow를 설치한다. 실제 HTTP 호출/flow 기록, 명세 차이 실패, 서버 종료를 검증한다. 실제 HTTP 응답 instance와 구조화된 기록을 대조하고 종료 후 접속 실패를 확인한다. 후속 action은 첫 응답의 관측 ID를 입력으로 전달한다. 잘못된 순서, 누락/잘못된/허용 observedAs 그룹 밖의 입력이 HTTP 호출 전에 거부되는지 확인한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "bootstrap-v14",
+        "requirementId": "R5"
+      },
+      "implementationPaths": [
+        "bootstrap/flow.mjs",
+        "vendor/api-tracker"
+      ]
+    },
+    {
+      "id": "database:R1",
+      "title": "DB 관리 명령·revision·확인 절차",
+      "group": "DB migration·검증",
+      "text": "npm/pnpm에서 backend:setup, db:revision/migrate/status/rollback/seed/reset/check, test:unit/integration/fast/e2e를 실제 실행할 수 있다. 관리용 URL 누락/잘못된 revision/reset 확인 누락은 실패한다. 생성 revision SQL을 실제 upgrade/downgrade한다.",
+      "checks": [
+        "database",
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "database-v5",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/manage.py",
+        "templates/monorepo/scripts/backend.mjs"
+      ]
+    },
+    {
+      "id": "database:R2",
+      "title": "메모리 DB·seed·HTTP 격리 검사",
+      "group": "DB migration·검증",
+      "text": "E2E 전 단위·통합 검사는 실제 SQLite :memory: DB에서 Alembic migration과 고정 seed를 적용한다. seed 재적용은 중복/기존 수정 덮어쓰기를 만들지 않으며 DB/서버 간 격리, 실제 SQL 제약/서비스 검증, HTTP 상태/값, migration 실패 후 버전 미진행을 확인한다. 외부 DATABASE_URL에 의존하지 않는다.",
+      "checks": [
+        "database",
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "database-v5",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/database.py",
+        "templates/monorepo/apps/backend/seed"
+      ]
+    },
+    {
+      "id": "database:R3",
+      "title": "PostgreSQL 컨테이너·지속성 검사",
+      "group": "DB migration·검증",
+      "text": "E2E 명령은 실제 PostgreSQL Testcontainer를 띄워 같은 migration/seed를 적용한다. 실제 HTTP 단일 flow 출력과 PostgreSQL 행의 일치, 재시작 후 지속성, downgrade/upgrade와 종료 후 컨테이너 제거를 확인한다. Docker 오류를 실패로 보고하고 메모리 fallback이나 오래된 성공 보고를 남기지 않는다.",
+      "checks": [
+        "database"
+      ],
+      "previous": {
+        "taskId": "database-v5",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/tests/e2e",
+        "templates/monorepo/scripts/backend.mjs"
+      ]
+    },
+    {
+      "id": "database:R4",
+      "title": "DB 코드·명령·검사를 배포 패키지에 포함",
+      "group": "DB migration·검증",
+      "text": "DB 코드·migration·seed·테스트·설치 의존성·사용 안내가 0.5.0 tgz에 포함된다. 전달 tgz와 새 pack의 일치, 별도 npm/pnpm 설치·빌드·빠른 DB검사, 기존 API flow/OpenAPI/하네스 회귀를 확인한다. domain이 infra를 import하지 않는 경계를 유지한다.",
+      "checks": [
+        "bootstrap",
+        "harness"
+      ],
+      "previous": {
+        "taskId": "database-v5",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "package.json",
+        "bootstrap/scaffold.mjs"
+      ]
+    },
+    {
+      "id": "fastapi:R1",
+      "title": "FastAPI 요청 검증·문서·격리",
+      "group": "FastAPI·SQLAlchemy",
+      "text": "기본 scaffold가 FastAPI+Uvicorn이며 typed request/response, /docs·/redoc를 제공하고 기존 task/health 동작·400/404·소유권을 유지한다. 잘못된 JSON/타입·큰 body를 거부하고 memory 서버와 동시 요청이 격리된다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "fastapi-v6",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/app.py",
+        "templates/monorepo/apps/backend/infra/schemas.py"
+      ]
+    },
+    {
+      "id": "fastapi:R2",
+      "title": "SQLAlchemy 모델·CRUD·rollback",
+      "group": "FastAPI·SQLAlchemy",
+      "text": "SQLAlchemy 2 declarative Task 모델과 Session CRUD/rollback이 실제 ORM으로 동작하고 기존 SQL 제약·Alembic metadata·migration/seed/DB 명령을 유지한다. 개발용 model→migration→endpoint 경로를 안내한다.",
+      "checks": [
+        "bootstrap",
+        "database"
+      ],
+      "previous": {
+        "taskId": "fastapi-v6",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/models.py",
+        "templates/monorepo/apps/backend/infra/task_repository.py"
+      ]
+    },
+    {
+      "id": "fastapi:R3",
+      "title": "라우트에서 OpenAPI·클라이언트 생성",
+      "group": "FastAPI·SQLAlchemy",
+      "text": "명세는 실제 FastAPI 라우트에서 자동 생성하며 앱 import/export가 DB를 열지 않는다. managed Python에서 export하고 서버 openapi.json·contract와 일치하며 route 변경→export→Orval 생성이 연결된다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "fastapi-v6",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/export_openapi.py",
+        "bootstrap/openapi.mjs"
+      ]
+    },
+    {
+      "id": "fastapi:R4",
+      "title": "설치·빌드·DB·API 회귀 검증",
+      "group": "FastAPI·SQLAlchemy",
+      "text": "npm/pnpm 설치·빌드·타입 검사·메모리 unit/integration·실제 PostgreSQL Testcontainers E2E·API Tracker lifecycle/flow/기존 하네스 검사가 통과하고 새 파일·고정 의존성이 로컬 tgz에 포함된다. Docker 오류는 실패하고 stale E2E 결과를 제거한다.",
+      "checks": [
+        "database",
+        "bootstrap",
+        "harness"
+      ],
+      "previous": {
+        "taskId": "fastapi-v6",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "templates/monorepo/scripts/backend.mjs",
+        "tests/bootstrap/test_fastapi.py"
+      ]
+    },
+    {
+      "id": "global-setup:R1",
+      "title": "짧은 명령으로 runtime·스킬 등록",
+      "group": "전역 설치·기존 설정 보존",
+      "text": "추가 명령 없는 실행으로 Codex 전역 runtime, 9개 스킬, 전역 지침을 등록하고 낯선 환경에서 사용할 짧은 npx GitHub 명령과 자연어 사용 예를 안내한다. --help는 설치하지 않는다.",
+      "checks": [
+        "setup",
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "global-setup-v1",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "bin/proofstill.mjs",
+        "bootstrap/setup.mjs"
+      ]
+    },
+    {
+      "id": "global-setup:R2",
+      "title": "기존 설정·키·지침·사용자 스킬 보존",
+      "group": "전역 설치·기존 설정 보존",
+      "text": "기존 config/auth, 사용자 AGENTS 본문과 override, 동명 사용자 스킬을 보존하고 관리 블록은 재실행해도 중복하지 않는다. 변경 전 지침 백업이 남는다. CODEX_HOME 및 명시 대상 옵션을 지원한다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "global-setup-v1",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "bootstrap/setup.mjs"
+      ]
+    },
+    {
+      "id": "global-setup:R3",
+      "title": "설치 실패·원본 제거 후 runtime 유지",
+      "group": "전역 설치·기존 설정 보존",
+      "text": "npm 캐시/다운로드 원본을 제거해도 설치 runtime에서 harness/scaffold/flow 명령과 스킬 상대 자산이 사용 가능하다. 의존성 설치 실패는 실패 종료하고 이전 설치를 보존한다. 관리 경로 충돌·잘못된 마커·지침 symlink를 덮어쓰지 않는다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "global-setup-v1",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "bootstrap/setup.mjs",
+        "bootstrap/scaffold.mjs"
+      ]
+    },
+    {
+      "id": "global-setup:R4",
+      "title": "배포 패키지·설치 안내 일치",
+      "group": "전역 설치·기존 설정 보존",
+      "text": "0.5.0 패키지에 전역 설치 코드를 포함하고 기존 npm/pnpm 스캐폴드/OpenAPI/Orval/DB fast/flow와 Python 하네스 회귀를 유지한다. 설치 즉시 등록과 새 세션 적용의 차이를 안내한다.",
+      "checks": [
+        "setup",
+        "bootstrap",
+        "harness"
+      ],
+      "previous": {
+        "taskId": "global-setup-v1",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "package.json",
+        "README.md"
+      ]
+    },
+    {
+      "id": "single-flow:R1",
+      "title": "단일 flow 실행·조회·재시도",
+      "group": "단일 API 사용자 흐름",
+      "text": "설치 CLI는 session 선택 없이 단일 flow run/step/show/validate/reset/retry를 제공하고 session 관련 명령/옵션을 거부한다. 현재 기록은 flow-record.json 하나다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "single-flow-v4",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "bootstrap/flow.mjs",
+        "bin/proofstill.mjs"
+      ]
+    },
+    {
+      "id": "single-flow:R2",
+      "title": "사용자 행동·목적·실측 결과 표시",
+      "group": "단일 API 사용자 흐름",
+      "text": "할 일 등록→완료→결과 확인을 실제 서버에서 수행한다. 사용자 행동·목적·기대 결과가 정의/조회/실행 기록에 표시되고 요청·응답 결과도 함께 읽을 수 있다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "single-flow-v4",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "bootstrap/flow.mjs",
+        "templates/monorepo/.api-tracker/flow.yaml"
+      ]
+    },
+    {
+      "id": "single-flow:R3",
+      "title": "응답 출처 연결·실패 중단·동시 실행 차단",
+      "group": "단일 API 사용자 흐름",
+      "text": "이전 성공 응답 ID를 후속 요청에 자동 연결하고 출처를 기록한다. 순서 오류·잘못된 정의/참조·누락 출력은 해당 HTTP 호출 전에 차단한다. 실패 시 중단/기록, 명시 재시도 이력, 완료 재실행 방지, 정의변경 거부, 동시 실행 잠금·중단 running 재실행 방지를 검사한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "single-flow-v4",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "bootstrap/flow.mjs"
+      ]
+    },
+    {
+      "id": "single-flow:R4",
+      "title": "설치한 프로젝트에서 flow 실행",
+      "group": "단일 API 사용자 흐름",
+      "text": "변경 CLI/템플릿/안내/스킬 의존성이 npm 패키지에 포함되고 별도 설치 후 npm/pnpm 빌드와 실제 flow가 동작한다. 기존 OpenAPI export 및 Python 하네스 회귀를 검사한다.",
+      "checks": [
+        "bootstrap",
+        "harness"
+      ],
+      "previous": {
+        "taskId": "single-flow-v4",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "bootstrap/scaffold.mjs",
+        "package.json"
+      ]
+    },
+    {
+      "id": "ux-machine:R1",
+      "title": "앱 snapshot과 UX 전이 ID 연결",
+      "group": "UX 상태·Trace 검증",
+      "text": "UX 상태·전이 ID를 실제 앱 snapshot과 Flow.transition에 기록하고 같은 화면의 편집/저장 중/실패를 구별한다. 앱 상태 소유는 유지한다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "ux-machine-v1",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "proofstill/trace.py",
+        "examples/ux_save"
+      ]
+    },
+    {
+      "id": "ux-machine:R2",
+      "title": "허용 전이·필드·수명·필수 경로 검사",
+      "group": "UX 상태·Trace 검증",
+      "text": "초기 상태·허용 전이·operation·화면/기능 소유·허용 필드와 preserve/drop을 검사하고 ID 누락·잘못된 경로·실제 관측 누락을 거부한다. 필수 전이 미실행은 거부하고 미실행 분기를 보고한다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "ux-machine-v1",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "proofstill/trace_check.py"
+      ]
+    },
+    {
+      "id": "ux-machine:R3",
+      "title": "UX 계약·Trace·스킬·예제 연결",
+      "group": "UX 상태·Trace 검증",
+      "text": "기획/UX/개발/검증 스킬이 확정한 UX 흐름→상태머신 계약→실제 Trace를 같은 ID로 연결하고 설계와 UI 실행 증거를 구분한다. 예제가 스캐폴드 runtime에도 포함되어 CLI 수집·검사되며 명령 성공만으로 틀린 상태머신을 통과시키지 않는다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "ux-machine-v1",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-ux/SKILL.md",
+        "bootstrap/scaffold.mjs"
+      ]
+    },
+    {
+      "id": "ux-machine:R4",
+      "title": "기존 Trace·하네스 회귀 유지",
+      "group": "UX 상태·Trace 검증",
+      "text": "기존 상태 계약·Trace·CLI 하네스의 회귀 검사를 유지한다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "ux-machine-v1",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "proofstill/trace_check.py",
+        "tests/unit/test_ux_machine.py"
+      ]
+    },
+    {
+      "id": "engineer-interview:R1",
+      "title": "중요 기술 선택은 사용자 답변으로 결정",
+      "group": "기술 결정·프로젝트 생성",
+      "text": "시니어 개발자 인터뷰가 구현 가능성·아키텍처의 중요한 선택을 사용자와 논의하고 실제 답변·명시적 위임으로 결정하도록 한다. 추천·무응답을 사용자 선택으로 대체하지 않는다.",
+      "checks": [
+        "bootstrap",
+        "setup"
+      ],
+      "previous": {
+        "taskId": "engineer-interview-v1",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-engineer/SKILL.md"
+      ]
+    },
+    {
+      "id": "engineer-interview:R2",
+      "title": "스택·구조 합의 후 프로젝트 생성",
+      "group": "기술 결정·프로젝트 생성",
+      "text": "결정 이후 스택·폴더 구조를 확정하고 생성한다. 미정 결정에 의존하는 설치·생성·구현을 보류하며 기존 합의와 사용자의 직접 CLI 선택을 존중한다. 템플릿 불일치를 조용히 덮지 않는다.",
+      "checks": [
+        "bootstrap",
+        "setup"
+      ],
+      "previous": {
+        "taskId": "engineer-interview-v1",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-engineer/SKILL.md",
+        "bootstrap/scaffold.mjs"
+      ]
+    },
+    {
+      "id": "engineer-interview:R3",
+      "title": "개발·검증 스킬을 설치·생성에 연결",
+      "group": "기술 결정·프로젝트 생성",
+      "text": "기획·UX·개발·독립 검증과 새 스킬을 연결하고 패키지 배포 목록·전역 설치·스캐폴드에 포함한다. 기존 파일 보존·선택 앱·설치 이식성 검사를 유지한다.",
+      "checks": [
+        "bootstrap",
+        "setup"
+      ],
+      "previous": {
+        "taskId": "engineer-interview-v1",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "bootstrap/setup.mjs",
+        "bootstrap/scaffold.mjs"
+      ]
+    },
+    {
+      "id": "requirements-first:R1",
+      "title": "원문·조건·구현·검사를 요구 ID로 연결",
+      "group": "요구 근거 중심 개발",
+      "text": "긴 제공 명세를 원문 근거와 요구 ID·조건·구현/검사·상태로 모아 보존하고 담당자 실제 답변과 추가 요청을 변경 영향 단위로 반영한다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "requirements-first-v2",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-develop/SKILL.md"
+      ]
+    },
+    {
+      "id": "requirements-first:R2",
+      "title": "명확한 요구는 구현, 미정 정책만 질문",
+      "group": "요구 근거 중심 개발",
+      "text": "명확한 범위를 즉시 구현하고 인터뷰·전체 사전 설계·Trace를 불필요한 관문으로 만들지 않는다. 미정 업무 결정과 연락 권한을 임의 확정하지 않는다. 필수 검사와 최종 독립 리뷰를 유지한다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "requirements-first-v2",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-interview/SKILL.md",
+        ".agents/skills/proofstill-develop/SKILL.md"
+      ]
+    },
+    {
+      "id": "requirements-first:R3",
+      "title": "선택 이유·검사·한계를 실제 근거로 설명",
+      "group": "요구 근거 중심 개발",
+      "text": "사람이 조건·로직·데이터 흐름·선택 이유와 AI 수정·검증·조치를 실제 코드/검사 근거로 설명하도록 하고 데이터 변경 검사 및 미검증 한계를 드러낸다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "requirements-first-v2",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        ".agents/skills/proofstill-develop/SKILL.md",
+        ".agents/skills/proofstill-verify/SKILL.md"
+      ]
+    },
+    {
+      "id": "requirements-first:R4",
+      "title": "저장소·생성 프로젝트·설치 지침 일치",
+      "group": "요구 근거 중심 개발",
+      "text": "저장소·생성 프로젝트 지침·설치 전달을 일관되게 유지하고 실제 시간 단축·통근버스 검증·전역 설치 갱신을 수행했다고 주장하지 않는다.",
+      "checks": [
+        "setup"
+      ],
+      "previous": {
+        "taskId": "requirements-first-v2",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "AGENTS.md",
+        "templates/monorepo/AGENTS.md",
+        "bootstrap/setup.mjs"
+      ]
+    },
+    {
+      "id": "direct-review:R1",
+      "title": "원본 소스에서 최종 독립 리뷰",
+      "group": "독립 리뷰·작업 격리",
+      "text": "사전 리뷰/Red 없이 검사 후 한 번의 독립 리뷰를 수행하며 코드 복사본을 만들지 않는다. 원본 변경과 오래된 결과를 감지한다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "direct-review-v1",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "proofstill/reviewer.py",
+        "proofstill/workflow.py"
+      ]
+    },
+    {
+      "id": "direct-review:R2",
+      "title": "작업별 검사 격리·동일 작업 중복 차단",
+      "group": "독립 리뷰·작업 격리",
+      "text": "서로 다른 작업은 독립 기록으로 동시에 검사하고 동일 작업의 중복 명령은 상태를 덮어쓰지 못한다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "direct-review-v1",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "proofstill/workflow.py"
+      ]
+    },
+    {
+      "id": "direct-review:R3",
+      "title": "메모리 DB에서 CLI·HTTP flow 검사",
+      "group": "독립 리뷰·작업 격리",
+      "text": "생성 프로젝트 test:flow와 test:fast가 외부 DB·Docker 없이 CLI/HTTP/메모리 DB를 검사하며 동시 실행과 실패 정리에서 공유 기록을 보존한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "direct-review-v1",
+        "requirementId": "R3"
+      },
+      "implementationPaths": [
+        "templates/monorepo/scripts/backend.mjs",
+        "templates/monorepo/apps/backend/tests/flow"
+      ]
+    },
+    {
+      "id": "direct-review:R4",
+      "title": "공유 통합 책임·휴대 가능한 스캐폴드",
+      "group": "독립 리뷰·작업 격리",
+      "text": "스캐폴드는 앱/기능별 파일과 공유 통합 책임을 구분하고 새 스킬·명령·파일을 휴대 가능하게 생성한다. worktree는 자동 사용하지 않는다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "direct-review-v1",
+        "requirementId": "R4"
+      },
+      "implementationPaths": [
+        "bootstrap/scaffold.mjs",
+        ".agents/skills/proofstill-develop/SKILL.md"
+      ]
+    },
+    {
+      "id": "remove-baseline:R1",
+      "title": "초기 코드 복사본·보고 링크 제외",
+      "group": "초기 코드 복사본 제외",
+      "text": "init은 초기 코드 복사본을 만들지 않고 보고서도 해당 링크를 생성하지 않는다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "remove-baseline-v2",
+        "requirementId": "R1"
+      },
+      "implementationPaths": [
+        "proofstill/workflow.py",
+        "proofstill/report.py"
+      ]
+    },
+    {
+      "id": "remove-baseline:R2",
+      "title": "변경 감지·검사·리뷰·보고 유지",
+      "group": "초기 코드 복사본 제외",
+      "text": "기존 변경 감지, Red/Green, 원본 소스 독립 리뷰, 보고 및 정리 동작을 유지한다. 이후 direct-review-v1에서 정한 원본 리뷰 정책을 따르며 리뷰용 코드 복사본을 만들지 않는다.",
+      "checks": [
+        "harness"
+      ],
+      "previous": {
+        "taskId": "remove-baseline-v2",
+        "requirementId": "R2"
+      },
+      "implementationPaths": [
+        "proofstill/workflow.py",
+        "proofstill/reviewer.py",
+        "proofstill/report.py"
+      ]
+    },
+    {
+      "id": "scaffold-jwt:JWT-1",
+      "title": "임의 JSON 데이터 JWT 발급·검증",
+      "group": "JWT 발급·인증 설정",
+      "text": "임의 JSON 객체를 발급·검증하고 데이터 구조를 고정하지 않으며 만료/발급 시각을 관리한다. 변조·다른 키·다른 알고리즘·누락·만료 토큰을 거부한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-jwt-v1",
+        "requirementId": "JWT-1"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/auth.py"
+      ]
+    },
+    {
+      "id": "scaffold-jwt:JWT-2",
+      "title": "Bearer 인증 실패·설정 누락 구분",
+      "group": "JWT 발급·인증 설정",
+      "text": "FastAPI Bearer 의존성은 유효한 토큰의 사용자 데이터를 반환하며 누락·잘못된 인증은 401, 설정 누락은 503이다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-jwt-v1",
+        "requirementId": "JWT-2"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/auth.py"
+      ]
+    },
+    {
+      "id": "scaffold-jwt:JWT-3",
+      "title": "고유 키 생성·재실행 보존·환경 로딩",
+      "group": "JWT 발급·인증 설정",
+      "text": "생성 스캐폴드에 .env.example과 auth:setup을 제공하고 고유 키 생성·재실행 보존·환경 로딩을 실제 명령으로 확인한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-jwt-v1",
+        "requirementId": "JWT-3"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/auth_setup.py",
+        "templates/monorepo/scripts/backend.mjs"
+      ]
+    },
+    {
+      "id": "scaffold-cors:CORS-1",
+      "title": "허용 출처·인증 헤더·오류 응답 CORS",
+      "group": "CORS·프런트 API 연결",
+      "text": "루트 env와 환경변수로 허용 출처·credentials를 설정한다. 로컬 기본값과 JSON/Bearer preflight를 제공하며 미허용출처·헤더를 거부하고 정상·400·401·404 API응답에 CORS 헤더를 제공한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-cors-v2",
+        "requirementId": "CORS-1"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/settings.py",
+        "templates/monorepo/apps/backend/infra/app.py"
+      ]
+    },
+    {
+      "id": "scaffold-cors:CONNECT-1",
+      "title": "Vite 프록시·API 주소로 실제 flow 연결",
+      "group": "CORS·프런트 API 연결",
+      "text": "Vite 전체 /api 프록시와 생성클라이언트 runtime base URL을 연결한다. 프록시 및 절대 API주소 두 모드에서 생성함수로 등록→수정→조회가 동작한다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-cors-v2",
+        "requirementId": "CONNECT-1"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/app/vite.config.ts",
+        "templates/monorepo/packages/api"
+      ]
+    },
+    {
+      "id": "scaffold-cors:AUTH-REGRESSION",
+      "title": "환경 설정 변경 후 JWT·HTTP 회귀 유지",
+      "group": "CORS·프런트 API 연결",
+      "text": "env 설정을 공유해도 기존 JWT 발급·검증·키 보존과 백엔드 저장/HTTP 동작이 유지된다.",
+      "checks": [
+        "bootstrap"
+      ],
+      "previous": {
+        "taskId": "scaffold-cors-v2",
+        "requirementId": "AUTH-REGRESSION"
+      },
+      "implementationPaths": [
+        "templates/monorepo/apps/backend/infra/auth.py",
+        "templates/monorepo/apps/backend/infra/settings.py"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "database",
+      "module": "database",
+      "kind": "integration",
+      "label": "실제 DB 저장·재시작·복구 확인",
+      "purpose": "메모리 DB에서 migration·seed·HTTP를 검사하고 임시 PostgreSQL에서 실제 저장값, 서버 재시작 후 유지와 컨테이너 정리를 확인해요.",
+      "rationale": "메모리 검사만으로는 실제 DB의 제약이나 재시작 후 데이터 유실을 발견할 수 없어 실제 PostgreSQL에서도 확인해야 해요.",
+      "expected": "메모리 검사와 npm/pnpm PostgreSQL 흐름이 모두 통과하고 재시작 후 값이 유지돼야 해요. 테스트 컨테이너를 정리하고 Docker 실패를 정상 결과로 바꾸지 않아야 해요.",
+      "scope": "격리된 SQLite와 PostgreSQL의 migration·seed·실제 HTTP 흐름·지속성·정리. 제품 화면은 포함하지 않음.",
+      "argv": [
+        "python3",
+        "tests/bootstrap/run_database_checks.py"
+      ],
+      "files": [
+        "tests/bootstrap/test_database.py",
+        "tests/bootstrap/e2e",
+        "tests/bootstrap/run_database_checks.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-fixtures",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "timeout": 900,
+      "green_pattern": "(?s)Ran [1-9][0-9]* tests.*\\nOK"
+    },
+    {
+      "id": "bootstrap",
+      "module": "bootstrap",
+      "kind": "integration",
+      "label": "새 프로젝트 생성·설치·API 연결 확인",
+      "purpose": "새 npm/pnpm 프로젝트를 생성해 설치·빌드·타입 검사와 FastAPI·ORM·JWT·CORS·OpenAPI·생성 클라이언트·API 흐름을 실제 실행해요.",
+      "rationale": "개발 중인 저장소에서만 동작하고 새로 설치한 사용자의 프로젝트에서는 실패하는 문제를 찾기 위해 필요해요.",
+      "expected": "현재 배포용 tgz가 소스와 일치하고 개인 파일 없이 설치돼야 해요. 생성한 프로젝트의 테스트·빌드·API 흐름이 통과하고 잘못된 입력과 기존 폴더 덮어쓰기는 거부해야 해요.",
+      "scope": "임시 저장소에서 npm/pnpm 설치, 생성 코드, JWT/CORS, 프런트 API 연결과 CLI/API 흐름 검사. 실제 제품 UI 클릭은 제외.",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "timeout": 1800,
+      "green_pattern": "(?s)Ran [1-9][0-9]* tests.*\\nOK"
+    },
+    {
+      "id": "harness",
+      "module": "harness",
+      "kind": "unit",
+      "label": "핵심 하네스의 기준·실행·리뷰 회귀 확인",
+      "purpose": "요구·검사 기준 고정, 실제 명령 결과 수집, 오래된 근거 감지, 작업 격리, Trace·UX 상태·인계·리뷰 연결을 검사해요.",
+      "rationale": "검사 실패나 미실행을 완료로 표시하거나, 다른 작업의 결과를 잘못 연결하는 오류를 막기 위해 필요해요.",
+      "expected": "핵심 하네스 검사가 모두 통과해야 해요. 잘못된 기준·출처·상태는 거부하고 실패·중단·오래된 결과를 통과로 표시하지 않아야 해요.",
+      "scope": "핵심 Python 하네스 단위·통합 회귀. 리뷰 실행기는 fixture로 검사하며 실제 독립 검토는 별도 단계.",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-q"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py"
+      ],
+      "timeout": 300,
+      "green_pattern": "(?s)Ran [1-9][0-9]* tests.*\\nOK"
+    },
+    {
+      "id": "setup",
+      "module": "setup",
+      "kind": "integration",
+      "label": "설치 후 실행·기존 사용자 파일 보존 확인",
+      "purpose": "격리된 사용자 폴더에서 9개 스킬과 runtime을 설치하고 재설치·원본 제거·실패·경로 충돌을 확인해요.",
+      "rationale": "설치나 갱신이 기존 설정·인증·사용자 스킬을 덮어쓰거나, 다운로드 원본이 사라진 뒤 실행되지 않는 문제를 막기 위해 필요해요.",
+      "expected": "9개 스킬과 runtime이 동작하고 기존 사용자 파일과 키를 보존해야 해요. 실패 시 이전 설치를 유지하고 관리 블록을 중복 생성하지 않아야 해요.",
+      "scope": "임시 CODEX_HOME과 스킬 디렉터리만 사용. 실제 사용자 전역 설치는 변경하지 않음.",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/setup",
+        "-v"
+      ],
+      "files": [
+        "tests/setup"
+      ],
+      "timeout": 900,
+      "green_pattern": "(?s)Ran [1-9][0-9]* tests.*\\nOK"
+    }
+  ],
+  "limitations": [
+    "macOS/POSIX·현재 Node/Python·npm/pnpm 환경에서 검증한다. Windows와 실제 모델 turn·제품 전체 UI는 검증 범위 밖이다."
+  ],
+  "artifacts": [
+    {
+      "label": "현재 버전 로컬 배포 패키지",
+      "path": "dist/digitalpresso-proofstill-0.5.0.tgz"
+    }
+  ]
+}

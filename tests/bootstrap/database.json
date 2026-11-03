@@ -1,0 +1,133 @@
+{
+  "id": "database-v6",
+  "title": "DB migration 명령과 메모리·컨테이너 검증",
+  "intent": "Db migration 등등 필요한 기능이 다 명령어로 셋팅 되어 있어야 해. 그리고 실제 e2e 전까지는 메모리 db + seed 데이터로 검증이 되어야 하고 e2e는 테스트컨테이너 기반 테스트가 가능해야 함",
+  "context": "기존 Python 백엔드·단일 API flow를 확장한다. 메모리 객체 대신 SQLAlchemy SQLite :memory: DB와 고정 seed를 사용한다. Alembic migration/revision/status/rollback/seed/reset/check, backend:setup, test:unit/integration/fast/e2e를 npm/pnpm 명령으로 제공한다. 개발 기본 서버와 빠른 검사는 매번 memory DB에 실제 migration과 seed를 적용한다. 외부 DATABASE_URL은 빠른 검사가 사용하지 않는다. 관리용 DB 명령은 사용자가 DATABASE_URL을 명시해야 하며 reset은 --yes가 필요하다. E2E는 기존 실제 HTTP API 사용자 흐름을 기본 범위로 해석한다. 브라우저 범위는 선호 질문을 보냈으나 답변은 없으며, 브라우저 클릭/화면 구현을 이번 확정 동작으로 간주하지 않는다. PostgreSQL Testcontainer에 실제 migration과 seed를 적용하고 같은 HTTP/flow/DB 값·서버 재시작 지속성·downgrade/upgrade·컨테이너 정리를 검사한다. Docker가 없으면 E2E 실패이고 skip/memory fallback/오래된 성공 보고를 허용하지 않는다. SQLAlchemy 2.0.55/Alembic 1.20.1/psycopg 3.3.6/testcontainers 4.15.0을 고정하며 의존성 전체를 requirements fixture에 고정한다. userenv SDK/engine 준비는 backend:setup 및 Docker를 요구한다. package 0.3.0 실제 전달 tgz를 새 npm pack과 바이트 비교해 별도 설치한다. 이번 신규 명령은 backend를 포함한 scaffold에 적용한다. 공개 npm 업로드는 별도 결정이다. v5 실행에서 검사용 Alembic MagicMock이 라이브러리 metaclass와 충돌해 migration까지 도달하지 못한 오류를 발견했다. 동일 실패를 실제 함수로 주입하도록 고쳤다. pnpm 명령은 npm으로 설정된 프로젝트가 아닌 pnpm으로 생성한 독립 프로젝트에서 검사한다. 빠른 유지보수 flow/install fixture도 외부 DATABASE_URL을 사용하지 않도록 고정했다. assertion/기능 범위는 완화하지 않았다.",
+  "context_files": [],
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "bin",
+    "bootstrap",
+    "templates",
+    "vendor",
+    "proofstill",
+    ".agents/skills",
+    "examples",
+    "README.md",
+    "dist/digitalpresso-proofstill-0.3.0.tgz"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "npm/pnpm에서 backend:setup, db:revision/migrate/status/rollback/seed/reset/check, test:unit/integration/fast/e2e를 실제 실행할 수 있다. 관리용 URL 누락/잘못된 revision/reset 확인 누락은 실패한다. 생성 revision SQL을 실제 upgrade/downgrade한다.",
+      "checks": [
+        "database",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "E2E 전 단위·통합 검사는 실제 SQLite :memory: DB에서 Alembic migration과 고정 seed를 적용한다. seed 재적용은 중복/기존 수정 덮어쓰기를 만들지 않으며 DB/서버 간 격리, 실제 SQL 제약/서비스 검증, HTTP 상태/값, migration 실패 후 버전 미진행을 확인한다. 외부 DATABASE_URL에 의존하지 않는다.",
+      "checks": [
+        "database",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "E2E 명령은 실제 PostgreSQL Testcontainer를 띄워 같은 migration/seed를 적용한다. 실제 HTTP 단일 flow 출력과 PostgreSQL 행의 일치, 재시작 후 지속성, downgrade/upgrade와 종료 후 컨테이너 제거를 확인한다. Docker 오류를 실패로 보고하고 메모리 fallback이나 오래된 성공 보고를 남기지 않는다.",
+      "checks": [
+        "database"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "DB 코드·migration·seed·테스트·설치 의존성·사용 안내가 0.3.0 tgz에 포함된다. 전달 tgz와 새 pack의 일치, 별도 npm/pnpm 설치·빌드·빠른 DB검사, 기존 API flow/OpenAPI/하네스 회귀를 확인한다. domain이 infra를 import하지 않는 경계를 유지한다.",
+      "checks": [
+        "bootstrap",
+        "regression"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "database",
+      "kind": "integration",
+      "module": "database",
+      "argv": [
+        "python3",
+        "tests/bootstrap/run_database_checks.py"
+      ],
+      "files": [
+        "tests/bootstrap/test_database.py",
+        "tests/bootstrap/e2e",
+        "tests/bootstrap/run_database_checks.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-fixtures",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "red_pattern": "AssertionError: False is not true : DATABASE_(BOOTSTRAP|E2E)_MISSING",
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 900
+    },
+    {
+      "id": "bootstrap",
+      "kind": "integration",
+      "module": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 1200,
+      "regression": true
+    },
+    {
+      "id": "regression",
+      "kind": "unit",
+      "module": "regression",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py",
+        "tests/__init__.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 240,
+      "regression": true
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "사용법",
+      "path": "README.md"
+    },
+    {
+      "label": "DB와 E2E npm 패키지",
+      "path": "dist/digitalpresso-proofstill-0.3.0.tgz"
+    }
+  ],
+  "limitations": [
+    "E2E는 실제 HTTP API→PostgreSQL 흐름이며 브라우저 클릭은 포함하지 않는다.",
+    "Docker 및 공개 컨테이너/패키지 다운로드가 필요하며 시험 환경 허용 여부를 보장하지 않는다.",
+    "공개 npm 업로드와 다른 DB 엔진/Windows 검증은 별도다."
+  ]
+}

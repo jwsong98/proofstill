@@ -1,0 +1,195 @@
+{
+  "id": "fastapi-v7",
+  "title": "FastAPI + SQLAlchemy ORM 기본 백엔드",
+  "intent": "그럼 백엔드를 FastAPI 템플릿으로 바꿔줘. 기존 DB랑 OpenAPI, 테스트 구성도 그대로 연결되게 해줘. alchemy 인가 orm 도 같이 넣어서 하네스 사용자가 쉽게 개발을 시작할 수 있어야 함.",
+  "context": "명확한 요청으로 추가 인터뷰 결정 없음. SQLAlchemy Core 기반 기본 Python http.server를 FastAPI + SQLAlchemy 2 ORM 모델·Session으로 교체한다. 기존 API operationId/정상 상태/400 입력 오류/404/health 연결, SQLite memory migration+seed 격리, 외부 DB 명시적 migration/seed, PostgreSQL Testcontainers E2E, npm/pnpm DB 명령·API Tracker 소유권/시작/종료/HTTP 기록을 유지한다. 실제 FastAPI app.openapi()를 서버/오프라인 export/Orval에 연결하고 DB 연결 없이 export한다. backend:setup의 전용 가상환경을 exporter도 사용한다. /docs와 /redoc 기본 제공, README에 모델/스키마/라우트/마이그레이션 시작법을 제공한다. UI 변경·외부 공개 릴리스는 요청 범위 밖. 생성 예제와 로컬 tgz는 갱신한다. 테스트 fixture는 Session 생성/종료에 맞게 갱신하되 원래 DB 검증을 보존한다. 공개 릴리스 업로드 없이 로컬 소스·tgz를 갱신한다. 버전 번호 결정은 구현 방법이며 사용자 수용 기준이 아니다.",
+  "context_files": [],
+  "sources": [
+    "templates",
+    "bootstrap",
+    "bin",
+    "package.json",
+    "package-lock.json",
+    "README.md",
+    "vendor",
+    "proofstill",
+    ".agents/skills",
+    "examples",
+    "dist/digitalpresso-proofstill-0.3.0.tgz"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "기본 scaffold가 FastAPI+Uvicorn이며 typed request/response, /docs·/redoc를 제공하고 기존 task/health 동작·400/404·소유권을 유지한다. 잘못된 JSON/타입·큰 body를 거부하고 memory 서버와 동시 요청이 격리된다.",
+      "checks": [
+        "api",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "SQLAlchemy 2 declarative Task 모델과 Session CRUD/rollback이 실제 ORM으로 동작하고 기존 SQL 제약·Alembic metadata·migration/seed/DB 명령을 유지한다. 개발용 model→migration→endpoint 경로를 안내한다.",
+      "checks": [
+        "orm",
+        "database",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "명세는 실제 FastAPI 라우트에서 자동 생성하며 앱 import/export가 DB를 열지 않는다. managed Python에서 export하고 서버 openapi.json·contract와 일치하며 route 변경→export→Orval 생성이 연결된다.",
+      "checks": [
+        "api",
+        "bootstrap"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "npm/pnpm 설치·빌드·타입 검사·메모리 unit/integration·실제 PostgreSQL Testcontainers E2E·API Tracker lifecycle/flow/기존 하네스 검사가 통과하고 새 파일·고정 의존성이 로컬 tgz에 포함된다. Docker 오류는 실패하고 stale E2E 결과를 제거한다.",
+      "checks": [
+        "database",
+        "bootstrap",
+        "harness"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "orm",
+      "kind": "unit",
+      "module": "orm",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-p",
+        "test_fastapi.py",
+        "-k",
+        "orm_models",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/test_fastapi.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "red_pattern": "AssertionError: False is not true : ORM_MODEL_MISSING",
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 240
+    },
+    {
+      "id": "api",
+      "kind": "integration",
+      "module": "api",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-p",
+        "test_fastapi.py",
+        "-k",
+        "fastapi_lifespan",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/test_fastapi.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "red_pattern": "AssertionError: False is not true : FASTAPI_APP_MISSING",
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 240
+    },
+    {
+      "id": "database",
+      "kind": "integration",
+      "module": "database",
+      "argv": [
+        "python3",
+        "tests/bootstrap/run_database_checks.py"
+      ],
+      "files": [
+        "tests/bootstrap/test_database.py",
+        "tests/bootstrap/e2e",
+        "tests/bootstrap/run_database_checks.py",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-fixtures",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "regression": true,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 900
+    },
+    {
+      "id": "bootstrap",
+      "kind": "integration",
+      "module": "bootstrap",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "regression": true,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 1200
+    },
+    {
+      "id": "harness",
+      "kind": "unit",
+      "module": "harness",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py",
+        "tests/__init__.py"
+      ],
+      "regression": true,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 240
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "FastAPI 앱",
+      "path": "templates/monorepo/apps/backend/infra/app.py"
+    },
+    {
+      "label": "ORM 모델",
+      "path": "templates/monorepo/apps/backend/infra/models.py"
+    },
+    {
+      "label": "시작 안내",
+      "path": "templates/monorepo/README.md"
+    },
+    {
+      "label": "로컬 패키지",
+      "path": "dist/digitalpresso-proofstill-0.3.0.tgz"
+    }
+  ],
+  "limitations": [
+    "로컬 개발 템플릿이며 공개 GitHub 릴리스 업로드는 수행하지 않는다.",
+    "API/DB E2E이며 실제 브라우저 클릭과 운영 배포는 범위 밖. Python 3.10+ 호환 의존성을 고정하되 실제 검증 환경은 macOS Node24 Python3.14이다."
+  ]
+}

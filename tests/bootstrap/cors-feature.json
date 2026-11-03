@@ -1,0 +1,109 @@
+{
+  "id": "scaffold-cors-v2",
+  "title": "바로 기능 개발할 수 있는 CORS와 API 연결 기본값",
+  "intent": "CORS나 이런것도 설정해서 바로바로 기능 개발에 들어갈 수 있어야 해",
+  "context": "기존 스캐폴드의 FastAPI/Vite/Orval과 JWT 기반을 유지하며 사용자 후속 요청에 따라 연결 설정을 완성한다. UI 변경은 없다. 기본 개발 앱 127.0.0.1:5173→/api 프록시→backend8000, env로 BACKEND_URL과 VITE_API_BASE_URL을 변경한다. 로컬 5173/4173 출처와 Authorization/Content-Type 및 일반 CRUD 메서드 프리플라이트를 허용한다. CORS_ORIGINS 빈 값은 비허용, 명시 출처만 허용, CORS_ALLOW_CREDENTIALS 기본false와 선택true를 제공한다. JWT/쿠키 로그인 정책은 확정하지 않는다. 새 settings.py는 auth와 CORS의 루트 env읽기 책임을 공유한다. frontend-connection의 외부 경로는 이번에 실제 생성하고 npm install한 임시 프로젝트이며, 검사 시작 때 원본 설정/백엔드 파일과 동일한지 대조한다. 준비 환경은 py requirements 설치된 격리 venv이다. 개발 및 빌드 후 Vite runtime API 주소가 반영된다. 배포 시 /api 역방향 proxy를 배포서버에 구성하거나 절대 API주소를 사용하도록 문서화한다. 브라우저의 실제 생성클라이언트 CRUD 및 별도origin Bearer헤더 GET은 output/playwright/cors-result.txt로 별도 확인했다. v1의 고정 integration 명령은 backend cwd를 요구하는 기존 HTTP 검사를 저장소 루트에서 실행해 실패했다. v2는 backend cwd에서 같은 검사들을 실행하며 요구와 구현은 동일하다.",
+  "sources": [
+    "bootstrap/scaffold.mjs",
+    "templates/monorepo/apps/backend",
+    "templates/monorepo/apps/app/vite.config.ts",
+    "templates/monorepo/packages/api",
+    "templates/monorepo/orval.config.mjs",
+    "templates/monorepo/scripts/backend.mjs",
+    "templates/monorepo/.env.example",
+    "templates/monorepo/README.md",
+    "README.md",
+    "package.json",
+    "tests/bootstrap/distribution.json"
+  ],
+  "context_files": [],
+  "requirements": [
+    {
+      "id": "CORS-1",
+      "text": "루트 env와 환경변수로 허용 출처·credentials를 설정한다. 로컬 기본값과 JSON/Bearer preflight를 제공하며 미허용출처·헤더를 거부하고 정상·400·401·404 API응답에 CORS 헤더를 제공한다.",
+      "checks": [
+        "backend-integration"
+      ]
+    },
+    {
+      "id": "CONNECT-1",
+      "text": "Vite 전체 /api 프록시와 생성클라이언트 runtime base URL을 연결한다. 프록시 및 절대 API주소 두 모드에서 생성함수로 등록→수정→조회가 동작한다.",
+      "checks": [
+        "frontend-connection"
+      ]
+    },
+    {
+      "id": "AUTH-REGRESSION",
+      "text": "env 설정을 공유해도 기존 JWT 발급·검증·키 보존과 백엔드 저장/HTTP 동작이 유지된다.",
+      "checks": [
+        "backend-unit",
+        "backend-integration"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "backend-unit",
+      "kind": "unit",
+      "module": "backend",
+      "argv": [
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python",
+        "-c",
+        "import os,sys,unittest;os.chdir('templates/monorepo/apps/backend');sys.path.insert(0,os.getcwd());suite=unittest.defaultTestLoader.discover('tests/unit');result=unittest.TextTestRunner(verbosity=2).run(suite);raise SystemExit(0 if result.wasSuccessful() else 1)"
+      ],
+      "files": [
+        "templates/monorepo/apps/backend/tests/unit"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 90
+    },
+    {
+      "id": "backend-integration",
+      "kind": "integration",
+      "module": "backend",
+      "argv": [
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python",
+        "-c",
+        "import os,sys,unittest;os.chdir('templates/monorepo/apps/backend');sys.path.insert(0,os.getcwd());suite=unittest.defaultTestLoader.discover('tests/integration');result=unittest.TextTestRunner(verbosity=2).run(suite);raise SystemExit(0 if result.wasSuccessful() else 1)"
+      ],
+      "files": [
+        "templates/monorepo/apps/backend/tests/integration"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 90
+    },
+    {
+      "id": "frontend-connection",
+      "kind": "integration",
+      "module": "frontend-api",
+      "argv": [
+        "node",
+        "tests/bootstrap/check_frontend_connection.mjs",
+        "/private/tmp/proofstill-cors-20261103",
+        ".proofstill/work/scaffold-auth-ui/venv/bin/python"
+      ],
+      "files": [
+        "tests/bootstrap/check_frontend_connection.mjs"
+      ],
+      "green_pattern": "FRONTEND_CONNECTION_VERIFIED:",
+      "timeout": 90
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "환경 설정 예제",
+      "path": "templates/monorepo/.env.example"
+    },
+    {
+      "label": "연결 안내",
+      "path": "templates/monorepo/README.md"
+    },
+    {
+      "label": "실제 브라우저 확인",
+      "path": "output/playwright/cors-result.txt"
+    }
+  ],
+  "limitations": [
+    "쿠키 로그인/토큰 저장 정책·운영 배포 구성은 별도이며 기본 Bearer 방식과 개발 연결만 제공한다."
+  ]
+}

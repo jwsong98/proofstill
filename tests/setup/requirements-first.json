@@ -1,0 +1,74 @@
+{
+  "id": "requirements-first-v2",
+  "title": "요구 근거 중심 빠른 개발 절차",
+  "intent": "구현 속도가 느리다. 긴 제공 요구사항을 따로 모아 근거 기반으로 바로 개발하고 담당자와 추가 요구를 반영해야 한다. 사람이 복합 조건의 로직을 파악하고 AI 지시·수정·검증 근거, 구현 범위와 미검증, 데이터 변경 검사, 입력부터 저장까지 흐름, 판단 이유를 설명할 수 있어야 한다.",
+  "context": "사용자 요청은 Proofstill 개발 방식 개선이다. 첨부 통근버스 과제는 사용 상황이며 버스 앱 신규 구현 요청이 아니다. 기존 제공 명세와 실제 답변을 재사용하고 명확한 범위를 즉시 구현하며 미정 업무 조건만 확인한다. 요구사항 문서는 사용자가 요청한 지속 개발 근거다. 시험 자료는 외부 전달하지 않는다. 이 변경은 절차 지침이며 CLI 기능 추가, 전역 설치 갱신, 공개 배포는 범위 밖이다. 설치 회귀는 지침 전달만 확인하므로 실제 개발 속도·에이전트 행동 개선은 별도 실사용으로 확인해야 한다. 독립 검토에서는 원문 요청과 지침의 일관성, 질문/승인 경계 유지, 추적 근거와 사용자 이해 지원을 직접 검토한다.",
+  "sources": [
+    ".agents/skills/proofstill-develop/SKILL.md",
+    ".agents/skills/proofstill-interview/SKILL.md",
+    ".agents/skills/proofstill-ux/SKILL.md",
+    ".agents/skills/proofstill-verify/SKILL.md",
+    "AGENTS.md",
+    "templates/monorepo/AGENTS.md",
+    "README.md"
+  ],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "긴 제공 명세를 원문 근거와 요구 ID·조건·구현/검사·상태로 모아 보존하고 담당자 실제 답변과 추가 요청을 변경 영향 단위로 반영한다.",
+      "checks": [
+        "install"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "명확한 범위를 즉시 구현하고 인터뷰·전체 사전 설계·Trace를 불필요한 관문으로 만들지 않는다. 미정 업무 결정과 연락 권한을 임의 확정하지 않는다. 필수 검사와 최종 독립 리뷰를 유지한다.",
+      "checks": [
+        "install"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "사람이 조건·로직·데이터 흐름·선택 이유와 AI 수정·검증·조치를 실제 코드/검사 근거로 설명하도록 하고 데이터 변경 검사 및 미검증 한계를 드러낸다.",
+      "checks": [
+        "install"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "저장소·생성 프로젝트 지침·설치 전달을 일관되게 유지하고 실제 시간 단축·통근버스 검증·전역 설치 갱신을 수행했다고 주장하지 않는다.",
+      "checks": [
+        "install"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "install",
+      "kind": "integration",
+      "module": "setup",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "tests.setup.test_setup.SetupTests.test_default_install_survives_source_removal_and_runs_scaffold",
+        "-v"
+      ],
+      "files": [
+        "tests/setup/test_setup.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 180
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "개발 스킬",
+      "path": ".agents/skills/proofstill-develop/SKILL.md"
+    }
+  ],
+  "limitations": [
+    "설치 회귀와 지침 독립 검토이며 실제 개발 시간·담당자 대화 행동·제품 동작은 이번 작업에서 측정하지 않는다.",
+    "전역 설치본과 공개 배포본은 갱신하지 않는다."
+  ]
+}

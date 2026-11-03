@@ -1,0 +1,152 @@
+{
+  "id": "latest-push-v1",
+  "title": "최신 소스와 전역 설치 통합 배포",
+  "intent": "지금 최신본으로 push해줘. 기존 공개 하네스는 한 줄 npx 설치로 Codex 전역 설정에 반영되어야 한다.",
+  "context": "현재 로컬의 FastAPI/SQLAlchemy ORM·빠른 CLI flow·선택적 사전 리뷰/Red 및 최종 독립 리뷰·UX 상태머신을 공개 0.4.0 전역 설치와 통합해 0.5.0으로 배포한다. 기존 전역 설정 보존과 실패 복구를 유지한다. GitHub 원격 이력을 보존하고 배포 소스와 필요한 테스트/lockfile을 공개한다. 개인 전역 파일·작업 기록·검증 복사본·시험 자료는 업로드하지 않는다. 대상 저장소 jwsong98/proofstill의 main push는 사용자가 명시 요청했다. 공개 명령은 push 후 별도로 비인증 다운로드·버전·등록을 검사한다. 모델/로그인/권한은 변경하지 않는다.",
+  "sources": [
+    "package.json",
+    "package-lock.json",
+    "bin",
+    "bootstrap",
+    "proofstill",
+    "templates",
+    "vendor",
+    ".agents/skills",
+    "examples",
+    "README.md",
+    "dist/digitalpresso-proofstill-0.5.0.tgz"
+  ],
+  "context_files": [],
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "최신 FastAPI/ORM·OpenAPI·CLI flow·UX 상태머신·간소화된 하네스가 0.5.0 패키지와 공개 소스에 포함되며 이전 구현으로 돌아가지 않는다.",
+      "checks": [
+        "bootstrap",
+        "regression",
+        "postgres"
+      ]
+    },
+    {
+      "id": "R2",
+      "text": "무인자 전역 설치, 기존 설정·개인 스킬 보존, 재설치·설치 실패 복구, 원본/cache 삭제 뒤 runtime 실행 및 새 세션 안내가 유지된다.",
+      "checks": [
+        "setup"
+      ]
+    },
+    {
+      "id": "R3",
+      "text": "npm/pnpm scaffold·OpenAPI/Orval·빌드·메모리 DB flow·실제 PostgreSQL Testcontainers와 Python 하네스/UX 회귀가 통과한다.",
+      "checks": [
+        "bootstrap",
+        "regression",
+        "postgres"
+      ]
+    },
+    {
+      "id": "R4",
+      "text": "검증한 소스로 동일한 0.5.0 tgz를 만들고, CLI·스킬·사용 안내 및 clone 수정 절차를 제공한다. 비밀과 개인 작업 기록을 공개 파일에 넣지 않는다.",
+      "checks": [
+        "bootstrap",
+        "setup"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "setup",
+      "module": "setup",
+      "kind": "integration",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/setup",
+        "-v"
+      ],
+      "files": [
+        "tests/setup/test_setup.py"
+      ],
+      "timeout": 300,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b"
+    },
+    {
+      "id": "bootstrap",
+      "module": "bootstrap",
+      "kind": "integration",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap"
+      ],
+      "timeout": 1200,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b"
+    },
+    {
+      "id": "regression",
+      "module": "regression",
+      "kind": "unit",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/__init__.py",
+        "tests/support.py"
+      ],
+      "timeout": 300,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b"
+    },
+    {
+      "id": "postgres",
+      "module": "postgres",
+      "kind": "integration",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/bootstrap/e2e",
+        "-v"
+      ],
+      "files": [
+        "tests/bootstrap/e2e",
+        "tests/bootstrap/backend_support.py",
+        "tests/bootstrap/db-requirements.txt"
+      ],
+      "timeout": 600,
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b"
+    }
+  ],
+  "artifacts": [
+    {
+      "label": "사용 안내",
+      "path": "README.md"
+    },
+    {
+      "label": "npm 배포본",
+      "path": "dist/digitalpresso-proofstill-0.5.0.tgz"
+    }
+  ],
+  "limitations": [
+    "macOS/POSIX 검증. Windows와 제품 UI 클릭은 범위 밖.",
+    "npm registry가 아닌 GitHub main 및 Release 배포."
+  ]
+}
