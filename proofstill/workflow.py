@@ -155,7 +155,8 @@ class Harness:
     @staticmethod
     def evidence_current(run):
         return bool(run and not run.get('pending') and
-                    Path(run.get('log', '')).is_file() and Path(run.get('receipt', '')).is_file() and
+                    all(Path(run.get(key, '')).is_file() and run.get('evidence_hashes', {}).get(key) == file_hash(Path(run[key]))
+                        for key in ['log', 'receipt']) and
                     all(file_hash(Path(t['path'])) == t['sha256'] for t in run.get('traces', [])))
 
     def _run_check(self, plan, state, check, phase, criteria):
@@ -207,6 +208,7 @@ class Harness:
             raise
         finally:
             save_json(folder / 'result.json', record)
+            record['evidence_hashes'] = {key: file_hash(Path(record[key])) for key in ['log', 'receipt']}
             self.save(plan, state)
 
     @exclusive
@@ -247,6 +249,7 @@ class Harness:
             raise
         finally:
             save_json(folder / 'receipt.json', record)
+            record['evidence_hashes'] = {name: file_hash(folder / name) for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']}
             self.save(plan, state)
         return record
 
@@ -255,7 +258,8 @@ class Harness:
         folder = Path(record.get('folder', '/nonexistent-proofstill-review'))
         return bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
                     and record.get('session') and record['session'] != state['developer_session']
-                    and all((folder / name).is_file() for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json'])
+                    and all((folder / name).is_file() and record.get('evidence_hashes', {}).get(name) == file_hash(folder / name)
+                            for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json'])
                     and all(self.evidence_current(self.latest(state, 'green', c['id']))
                             and self.latest(state, 'green', c['id'])['accepted'] for c in plan['checks']))
 

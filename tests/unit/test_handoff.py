@@ -123,3 +123,20 @@ class HandoffTests(unittest.TestCase):
         (Path(state['reviews']['implementation']['folder']) / 'answer.json').unlink()
         self.assertEqual(self.row()['verification']['review']['status'], 'stale')
         self.assertFalse(self.h.status('counter')['complete'])
+
+    def test_modified_review_and_execution_evidence_invalidate_completion(self):
+        (self.root / 'src/counter.py').write_text('VALUE = 1\n')
+        self.h.run('counter')
+        self.h.review('counter')
+        _, state = self.h.load('counter')
+        folder = Path(state['reviews']['implementation']['folder'])
+        for path in [folder / name for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']] + [Path(state['runs'][-1][key]) for key in ['log', 'receipt']]:
+            original = path.read_bytes()
+            with self.subTest(path=path.name):
+                path.write_text('{"tampered":true}')
+                self.assertFalse(self.h.status('counter')['complete'])
+                self.assertNotEqual(self.row()['verification']['review']['status'], 'passed')
+                report = self.h.report('counter').read_text()
+                self.assertNotIn('- 기준·구현 최종 검토: 통과', report)
+                path.write_bytes(original)
+        self.assertTrue(self.h.status('counter')['complete'])
