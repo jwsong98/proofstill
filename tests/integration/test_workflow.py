@@ -26,6 +26,8 @@ class WorkflowTests(unittest.TestCase):
             (root / 'src/counter.py').write_text('VALUE = 1\n')
             call('test', 'counter', '--kind', 'unit', '--module', 'counter')
             call('review', 'counter')
+            call('implement', 'counter', 'R1', '--status', 'implemented', '--path', 'src/counter.py')
+            call('checkpoint', 'counter', '--next', '사용자가 출력과 원문 대조')
             report = Path(call('report', 'counter').strip())
             call('cleanup', 'counter')
             self.assertIn('검증 완료', report.read_text())

@@ -109,6 +109,7 @@ class RunnerTests(unittest.TestCase):
                                    argv=['python3', 'tests/storage.py'], files=['tests/storage.py'],
                                    red_pattern='AssertionError: EXPECTED_STORAGE', green_pattern='STORAGE_EXECUTED'))
         plan['requirements'].append({'id': 'R2', 'text': 'storage is written', 'checks': ['storage-integration']})
+        plan['collaboration']['human_checks'].append({'requirement': 'R2', 'action': 'tests/storage.py를 실행한다.', 'expected': 'STORAGE_EXECUTED 출력과 종료 코드 0.'})
         self.plan.write_text(json.dumps(plan))
         self.start()
         self.assertTrue(self.h.run('counter', 'red', module='counter')[0]['accepted'])

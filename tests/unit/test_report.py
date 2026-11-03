@@ -22,6 +22,8 @@ class ReportTests(unittest.TestCase):
         (self.root / 'src/counter.py').write_text('VALUE = 1\n')
         self.h.run('counter', 'green')
         self.h.review('counter', 'implementation')
+        self.h.implement('counter', 'R1', 'implemented', ['src/counter.py'])
+        self.h.checkpoint('counter', '사용자가 실제 출력과 원문 대조')
 
     def test_init_and_report_do_not_keep_initial_source_copy(self):
         self.assertEqual({p.name for p in self.h.folder('counter').iterdir()},

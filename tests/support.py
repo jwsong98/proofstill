@@ -18,6 +18,12 @@ def make_plan(root):
         'intent': '새 카운터의 값은 1이다.',
         'context': '로컬 파일 기반 동작을 확인하는 합성 테스트 과제.',
         'sources': ['src/counter.py'],
+        'collaboration': {
+            'human': '값 요구와 최종 수용을 결정한다(합성 fixture).',
+            'ai': '카운터 구현·검사·인계를 맡는다(합성 fixture).',
+            'human_checks': [{'requirement': 'R1', 'action': 'tests/check.py를 직접 실행하고 값을 확인한다.',
+                              'expected': '값 1, CHECK_EXECUTED 출력과 종료 코드 0.'}],
+        },
         'requirements': [{'id': 'R1', 'text': '초기값은 1', 'checks': ['counter-unit']}],
         'checks': [{
             'id': 'counter-unit', 'kind': 'unit', 'module': 'counter',

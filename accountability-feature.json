@@ -1,0 +1,121 @@
+{
+  "id": "accountability-check-v1",
+  "title": "Q1~Q5를 근거와 확인 행동으로 인계",
+  "intent": "사용자 원문: Q1. 무엇이 구현되었고, 구현되지 않았는지, 무엇이 검증되었고 검증되지 않았는지 어떤 기준으로 나누었가? Q2. Q1에 이어 아무것도 모르는 제3자가 왔을 때 이를 어떻게 이해할 수 있는가? Q3. 무엇을 사람이 하고, 무엇을 AI에게 맡기는지 기준이 무엇인가? Q4. AI의 Context 관리를 어떻게 하는가? Q5. 사람은 AI가 준 결과물을 그대로 믿지 않고 어떻게 검증하고 행동하는가? 사람인 내가 봤을 때 만족스럽지 않다면 계속해서 발전시켜야 합니다. 다른 구현 세션에 이를 전달하여 만족스러울 때까지 구현합니다. 답변을 브리핑하고 나에게 YES/NO를 물어보고 NO라면 추가 구현을 진행하라.",
+  "context": "기존 Python CLI handoff/report와 앱의 원본 공유 경계를 사용한다. 별도 UI/스택을 추가하지 않는다. 기존 console 미커밋 변경은 다른 작업 소유이며 수정하지 않는다. 이 구현 세션은 부모에 결과를 반환하고 실제 YES/NO 수용은 부모 채팅에서 사람이 판단한다. 형식/버전/누락 검사는 거짓 입력, 등록 밖 변경이나 하네스 우회를 막는 보안 경계가 아니다. 원문은 requirements.md U22이며 과거 문서의 완료 주장을 근거로 믿지 말고 필요한 코드와 실제 실행을 대조한다.",
+  "sources": [
+    "proofstill",
+    ".agents/skills/proofstill-develop/SKILL.md",
+    "README.md"
+  ],
+  "context_files": [
+    "requirements.md"
+  ],
+  "requirements": [
+    {
+      "id": "Q1",
+      "text": "구현 선언·현재 버전·자동 검사·독립 리뷰·사용자 수용을 구분하고 미기록/변경/사라진 근거를 완료로 확대하지 않는다.",
+      "checks": [
+        "python"
+      ]
+    },
+    {
+      "id": "Q2",
+      "text": "제3자가 기존 CLI brief/report에서 목표·요구·상태·코드·재현 명령·기대 결과·미검증 한계를 읽는다.",
+      "checks": [
+        "python"
+      ]
+    },
+    {
+      "id": "Q3",
+      "text": "사람의 의도·범위·수용과 AI의 위임 범위를 명시하고 빠진 협업 기준·인간 결정을 감지한다.",
+      "checks": [
+        "python"
+      ]
+    },
+    {
+      "id": "Q4",
+      "text": "재개할 다음 행동·가정·결정·근거를 보존하고 현재 파일과 대조하며 자동 저장이 미정 결정을 지우지 않는다.",
+      "checks": [
+        "python"
+      ]
+    },
+    {
+      "id": "Q5",
+      "text": "요구별 사람이 직접 확인할 행동·기대 결과 누락을 감지하고 사용자 YES/NO를 기술 통과로 꾸미지 않는다.",
+      "checks": [
+        "python"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "python",
+      "kind": "integration",
+      "module": "harness",
+      "label": "CLI 인계·재개·결정·검증 회귀",
+      "purpose": "실제 파일과 보존 상태, CLI 출력, 부정 사례로 Q1~Q5 경계를 확인한다.",
+      "rationale": "성공 기록만 있거나 재개 중 결정이 사라지는 잘못된 완료를 막아야 한다.",
+      "expected": "unittest가 1개 이상 실행되고 OK로 끝나며 모든 요구의 부정 사례를 확인한다.",
+      "scope": "Python 하네스 단위/통합 검사. 실제 사용자의 이해·수용, 앱 UI/HTML 새 필드 표시, 악의적 우회는 포함하지 않는다.",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-q"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/integration",
+        "tests/support.py"
+      ],
+      "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
+      "timeout": 120
+    }
+  ],
+  "collaboration": {
+    "human": "목표·범위 변경과 최종 YES/NO 수용은 사용자, 브리핑과 수용 질문은 부모 채팅이 담당한다.",
+    "ai": "이 구현 세션은 Python CLI/인계/리포트·회귀 검사·최소 안내를 수정하고 관심사별 로컬 커밋한다. console 기존 변경, 새 UI/스택, push·배포·외부 전송은 제외한다.",
+    "human_checks": [
+      {
+        "requirement": "Q1",
+        "action": "brief와 report의 구현/자동검사/리뷰 표를 읽고 원문·코드·출력 링크를 대조한다.",
+        "expected": "미기록·미실행·변경된 근거를 완료로 읽지 않으며 사용자 수용은 미확인이다."
+      },
+      {
+        "requirement": "Q2",
+        "action": "python3 -m proofstill brief accountability-check-v1를 실행해 요구 ID부터 코드와 검사 명령을 따라간다.",
+        "expected": "처음 보는 사람도 무엇을 확인할지와 남은 한계를 찾아갈 수 있다. 이해가 안 되는 지점은 NO로 피드백한다."
+      },
+      {
+        "requirement": "Q3",
+        "action": "담당 범위와 제약을 읽고 인간 결정이 AI 구현 범위로 넘어간 부분이 있는지 확인한다.",
+        "expected": "사람은 의도·범위·수용을 결정하고 AI는 위임된 구현/검증을 수행한다. 실제 결정을 꾸며 쓰지 않는다."
+      },
+      {
+        "requirement": "Q4",
+        "action": "checkpoint 이후 파일을 변경하는 회귀 검사를 직접 실행하고 재개 brief의 결정·가정을 대조한다.",
+        "expected": "맥락이 오래되면 갱신 필요가 보이고 결정 대기가 유지된다."
+      },
+      {
+        "requirement": "Q5",
+        "action": "brief의 요구별 확인 행동을 실제 수행한 뒤 부모 채팅에 YES/NO와 불만족한 요구 ID를 답한다.",
+        "expected": "YES를 자동 기록하지 않는다. NO이면 해당 차이를 수정하고 다시 검증한다."
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "label": "Q1~Q5 사용자 원문·수용 기준",
+      "path": "requirements.md"
+    }
+  ],
+  "limitations": [
+    "사용자의 이해도·만족과 YES/NO는 이 세션에서 확인하지 않았다. 부모 채팅에서 수용을 받는다.",
+    "실제 앱 UI/HTML의 협업 필드 표시는 이번 CLI 변경에 포함하지 않았다.",
+    "거짓 결정 출처·등록하지 않은 코드·공유 파일 조작·하네스 우회는 보안적으로 차단하지 않는다. 독립 세션도 무결함을 보증하지 않는다."
+  ]
+}

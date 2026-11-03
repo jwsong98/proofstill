@@ -1,7 +1,7 @@
 """Current requirement progress, separate from test and review verdicts."""
 import shlex
 from pathlib import Path
-from .contract import HarnessError, project_path, require
+from .contract import HarnessError, digest, inventory, project_path, require
 
 IMPLEMENTATION = {'unknown': '미기록', 'not_started': '미착수', 'in_progress': '진행 중', 'partial': '일부 구현', 'implemented': '구현 완료'}
 VERIFICATION = {'not_run': '미실행', 'partial': '일부 확인', 'passed': '통과', 'failed': '실패', 'stale': '재검증 필요', 'unverified': '확인 불가', 'interrupted': '중단'}
@@ -52,6 +52,7 @@ def snapshot(h, feature):
         checks[check['id']] = {'id': check['id'], 'label': check.get('label', check['id']), 'kind': check['kind'],
                                 'purpose': check.get('purpose', ''), 'rationale': check.get('rationale', ''), 'expected': check.get('expected', ''),
                                 'command': shlex.join(check['argv']), 'status': label, 'output': log, 'outputTruncated': output_truncated,
+                                'logPath': run.get('log') if run else None, 'receiptPath': run.get('receipt') if run else None,
                                 'exitCode': run.get('exit_code') if run else None, 'recordedAt': run.get('recorded_at') if run else None,
                                 'files': check['files'], 'scope': check.get('scope', '등록된 검사 범위. 제품 화면 확인 여부는 검사 내용을 확인하세요.')}
     record = state.get('reviews', {}).get('implementation')
@@ -62,7 +63,8 @@ def snapshot(h, feature):
         recorded = state.get('implementations', {}).get(req['id'], {})
         implementation = {key: recorded.get(key, default) for key, default in {'status': 'unknown', 'paths': [], 'remaining': '', 'note': ''}.items()}
         implementation_current = bool(recorded.get('source_digest') == source and criteria and recorded.get('criteria_digest') == criteria
-                                      and all((h.root / p).exists() for p in implementation['paths'])) if recorded.get('source_digest') else None
+                                      and all((h.root / p).exists() for p in implementation['paths'])
+                                      and recorded.get('paths_digest') == digest(inventory(h.root, implementation['paths']))) if recorded.get('source_digest') else None
         issues = []
         if implementation['status'] != 'implemented':
             issues.append('구현 완료 기록이 없습니다. 코드와 남은 범위를 확인하세요.')
@@ -81,7 +83,6 @@ def snapshot(h, feature):
 
 
 def record_implementation(h, feature, requirement, status, paths, remaining='', note=''):
-    from .workflow import save_json
     plan, state = h.load(feature)
     require(requirement in [r['id'] for r in plan['requirements']], '알 수 없는 요구 ID')
     require(status in IMPLEMENTATION, '잘못된 구현 상태')
@@ -92,9 +93,12 @@ def record_implementation(h, feature, requirement, status, paths, remaining='', 
     require(status != 'implemented' or paths, '구현 완료에는 구현 경로가 필요합니다')
     require(status != 'partial' or remaining.strip(), '일부 구현에는 남은 범위가 필요합니다')
     state.setdefault('implementations', {})[requirement] = {'status': status, 'paths': paths, 'remaining': remaining, 'note': note,
-        'source_digest': h.source_digest(plan), 'criteria_digest': h.criteria_digest(plan, state)}
+        'source_digest': h.source_digest(plan), 'criteria_digest': h.criteria_digest(plan, state),
+        'paths_digest': digest(inventory(h.root, paths))}
     # This is an implementation declaration, never a test/review success claim.
-    save_json(h.folder(feature) / 'state.json', state)
+    from .collaboration import require_decisions_resolved
+    require_decisions_resolved(state)
+    h.save(plan, state)
     return {key: state['implementations'][requirement][key] for key in ['status', 'paths', 'remaining', 'note']}
 
 
@@ -110,19 +114,29 @@ def markdown(rows):
 
 
 def briefing(h, feature):
-    plan, _ = h.load(feature)
+    from .collaboration import context_lines, readiness
+    plan, state = h.load(feature)
     rows = snapshot(h, feature)
     lines = [f"# {plan['title']} — 인계 브리핑", '', f"목표: {plan['intent']}", f"맥락: {plan['context']}",
-             f"실행 위치: `{h.root}`", '', markdown(rows), '', '## 지금 확인할 일', '']
+             f"실행 위치: `{h.root}`", f"기준·원문: {h.folder(feature) / 'plan.json'}",
+             '맥락 자료: ' + (', '.join(plan['context_files']) or '기능 정의의 intent/context'),
+             '', markdown(rows), '', '## 지금 확인할 일', '']
     for row in rows:
         lines.append(f"- {row['requirementId']}: {row['description']}")
         lines.append('- 구현 경로: ' + (', '.join(row['implementation']['paths']) or '미기록'))
         for issue in row['issues']:
             lines.append('- ' + issue)
-        for check in row['verification']['checks']:
-            lines.append(f"- {check['label']}: {VERIFICATION[check['status']]} · `{check['command']}`")
-            lines.append('- 확인할 결과: ' + (check['expected'] or '검사 파일의 조건과 실제 출력 대조: ' + ', '.join(check['files'])))
-            lines.append('- 확인 범위: ' + check['scope'])
+    lines += ['', '## 재현 검사', '']
+    checks = {check['id']: check for row in rows for check in row['verification']['checks']}
+    for check in checks.values():
+        lines.append(f"- {check['label']}: {VERIFICATION[check['status']]} · `{check['command']}`")
+        lines.append('- 확인할 결과: ' + (check['expected'] or '검사 파일의 조건과 실제 출력 대조: ' + ', '.join(check['files'])))
+        lines.append('- 확인 범위: ' + check['scope'])
+        lines.append('- 실제 출력: ' + (check['logPath'] or '미실행 — 출력 없음'))
+    lines += context_lines(plan, state)
+    issues = readiness(h, plan, state, rows)
+    lines += ['', '인계 정보: ' + ('보완 필요' if issues else '필수 정보 있음 — 기술 검사/리뷰 결과는 위 표에서 별도 확인')]
+    lines += ['- ' + issue for issue in issues]
     lines += ['', '사용자 수용: 미확인. 사람이 원문·코드·실행 출력을 대조한 뒤 YES/NO로 판단합니다.',
               'NO이면 차이를 요구 ID에 연결해 수정하고 영향받는 검사·독립 리뷰를 다시 수행합니다.',
               '한계: 기록은 AI의 사실성을 보증하지 않습니다. 등록 밖 코드·검사, 하네스 우회, 거짓 기록은 별도 확인이 필요합니다.']

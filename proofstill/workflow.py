@@ -60,11 +60,8 @@ class Harness:
         save_json(self.folder(plan['id']) / 'state.json', state)
         work = self.work(plan['id'])
         if work.is_dir():
-            (work / 'brief.md').write_text(
-                f"# {plan['title']}\n\n목표: {plan['intent']}\n\n"
-                f"상태: {state['next']}\n미정 결정: 없음 — 미해결 사용자 결정이 생기면 실행을 보류하고 여기에 기록.\n"
-                f"기준: {self.folder(plan['id']) / 'plan.json'}\n"
-            )
+            from .handoff import briefing
+            (work / 'brief.md').write_text(briefing(self, plan['id']))
 
     def basis(self, plan):
         paths = [p for c in plan['checks'] for p in c['files']] + plan['context_files']
@@ -78,7 +75,8 @@ class Harness:
             require(digest(current) == state['plan_digest'], '원래 기능 정의/명령이 변경되었습니다. 새 작업 ID로 기준을 재검토하세요')
         else:
             require(state.get('closed'), '원래 기능 정의가 사라졌습니다')
-        return digest(self.basis(plan))
+        basis = self.basis(plan)
+        return digest({'basis': basis, 'decisions': state['decisions']}) if state.get('decisions') else digest(basis)
 
     def source_digest(self, plan):
         return digest(inventory(self.root, plan['sources']))
@@ -103,6 +101,8 @@ class Harness:
         return next((r for r in reversed(state['runs']) if r['phase'] == phase and r['check'] == check), None)
 
     def green_ready(self, plan, state):
+        from .collaboration import require_decisions_resolved
+        require_decisions_resolved(state)
         criteria = self.criteria_digest(plan, state)
         source = self.source_digest(plan)
         for check in plan['checks']:
@@ -139,6 +139,8 @@ class Harness:
     def run(self, feature, phase='green', kind=None, module=None):
         require(phase in ['red', 'green'], 'phase는 red/green이어야 합니다')
         plan, state = self.load(feature)
+        from .collaboration import require_decisions_resolved
+        require_decisions_resolved(state)
         criteria = self.criteria_digest(plan, state)
         selected = [c for c in plan['checks'] if (kind is None or c['kind'] == kind) and (module is None or c['module'] == module)]
         require(selected, '실행할 검사가 없습니다')
@@ -211,6 +213,8 @@ class Harness:
     def review(self, feature, stage='implementation'):
         require(stage in ['criteria', 'implementation'], '알 수 없는 검토 단계')
         plan, state = self.load(feature)
+        from .collaboration import require_decisions_resolved
+        require_decisions_resolved(state)
         if stage == 'criteria':
             criteria = self.criteria_digest(plan, state)
             source = self.source_digest(plan)
@@ -222,7 +226,7 @@ class Harness:
         save_json(manifest, inventory(self.root, plan['sources'] + [p for c in plan['checks'] for p in c['files']] + plan['context_files']))
         packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
-                  'manifest': str(manifest)}
+                  'manifest': str(manifest), 'decisions': state.get('decisions', {})}
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
                   'folder': str(folder), 'launcher': self.codex, 'model': self.model,
                   'ignore_user_config': self.ignore_user_config}
@@ -267,12 +271,39 @@ class Harness:
         for artifact in plan['artifacts']:
             if artifact.get('path') and not (self.root / artifact['path']).is_file():
                 reasons.append(f"아티팩트 파일 없음: {artifact['path']}")
-        return {'complete': not reasons, 'reasons': reasons}
+        from .collaboration import readiness
+        from .handoff import snapshot
+        handoff_reasons = reasons + readiness(self, plan, state, snapshot(self, feature))
+        return {'complete': not reasons, 'reasons': reasons, 'handoff_ready': not handoff_reasons,
+                'handoff_reasons': handoff_reasons, 'user_acceptance': 'unconfirmed'}
 
     @exclusive
     def implement(self, feature, requirement, status, paths, remaining='', note=''):
         from .handoff import record_implementation
         return record_implementation(self, feature, requirement, status, paths, remaining, note)
+
+    @exclusive
+    def checkpoint(self, feature, next_action, assumptions=None):
+        plan, state = self.load(feature)
+        require(isinstance(next_action, str) and next_action.strip(), '다음 행동이 필요합니다')
+        if assumptions is None:
+            assumptions = state.get('checkpoint', {}).get('assumptions', [])
+        require(isinstance(assumptions, list) and all(isinstance(a, str) and a.strip() for a in assumptions), '가정은 비어 있지 않은 문자열 배열이어야 합니다')
+        state['checkpoint'] = {'next': next_action, 'assumptions': assumptions,
+                               'source_digest': self.source_digest(plan), 'criteria_digest': self.criteria_digest(plan, state)}
+        self.save(plan, state)
+        return state['checkpoint']
+
+    @exclusive
+    def decision(self, feature, decision_id, question, answer='', source=''):
+        plan, state = self.load(feature)
+        require(isinstance(decision_id, str) and re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9-]{0,63}', decision_id), '잘못된 결정 ID')
+        require(isinstance(question, str) and question.strip(), '사람이 결정할 질문이 필요합니다')
+        require(isinstance(answer, str) and isinstance(source, str), '답변/출처는 문자열이어야 합니다')
+        require(bool(answer.strip()) == bool(source.strip()), '결정 해소에는 실제 답변과 출처가 함께 필요합니다')
+        state.setdefault('decisions', {})[decision_id] = {'question': question, 'answer': answer.strip(), 'source': source.strip()}
+        self.save(plan, state)
+        return state['decisions'][decision_id]
 
     @exclusive
     def report(self, feature):
@@ -293,7 +324,9 @@ class Harness:
     @exclusive
     def cleanup(self, feature):
         plan, state = self.load(feature)
-        require(self.status(feature)['complete'], '미완료 작업의 임시 상태는 보존합니다')
+        status = self.status(feature)
+        require(status['complete'], '미완료 작업의 임시 상태는 보존합니다')
+        require(status['handoff_ready'], '인계 준비 미완료: ' + '; '.join(status['handoff_reasons']) + '. 재개 맥락을 보존합니다')
         report = Path(state.get('report', '/nonexistent-proofstill-report'))
         require(report.is_file(), '보고를 생성하고 사용자에게 전달한 뒤 정리하세요')
         self._report(feature)

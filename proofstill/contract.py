@@ -114,4 +114,6 @@ def validate_plan(root, plan):
         require(bool(artifact.get('path')) != bool(artifact.get('url')), '아티팩트는 path 또는 url 하나를 지정하세요')
         if 'url' in artifact:
             require(isinstance(artifact['url'], str) and artifact['url'].startswith(('https://', 'http://')), 'http(s) 아티팩트 URL만 지원합니다')
+    from .collaboration import validate_collaboration
+    validate_collaboration(plan)
     return plan

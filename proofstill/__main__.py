@@ -31,6 +31,16 @@ def main():
     implement.add_argument('--path', action='append', default=[])
     implement.add_argument('--remaining', default='')
     implement.add_argument('--note', default='')
+    checkpoint = commands.add_parser('checkpoint', help='다음 행동과 가정을 현재 코드 버전과 함께 보존')
+    checkpoint.add_argument('feature')
+    checkpoint.add_argument('--next', required=True, dest='next_action')
+    checkpoint.add_argument('--assumption', action='append', default=None)
+    decision = commands.add_parser('decision', help='사람 결정 대기 또는 실제 답변·출처 기록')
+    decision.add_argument('feature')
+    decision.add_argument('decision_id')
+    decision.add_argument('--question', required=True)
+    decision.add_argument('--answer', default='')
+    decision.add_argument('--source', default='')
     trace = commands.add_parser('trace', help='데이터 흐름 기록 검증·UI 조회기 생성')
     trace.add_argument('action', choices=['verify', 'view'])
     trace.add_argument('path')
@@ -65,6 +75,10 @@ def main():
                 except (HarnessError, KeyError, TypeError, OSError, ValueError) as error:
                     errors.append({'taskId': feature, 'message': str(error)})
             print(json.dumps({'rows': rows, 'errors': errors}, ensure_ascii=False))
+        elif args.command == 'checkpoint':
+            print(json.dumps(h.checkpoint(args.feature, args.next_action, args.assumption), ensure_ascii=False))
+        elif args.command == 'decision':
+            print(json.dumps(h.decision(args.feature, args.decision_id, args.question, args.answer, args.source), ensure_ascii=False))
         elif args.command == 'brief':
             from .handoff import briefing
             print(briefing(h, args.feature), end='')

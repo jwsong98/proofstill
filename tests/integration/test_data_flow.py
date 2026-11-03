@@ -68,6 +68,8 @@ class DataFlowTests(unittest.TestCase):
             trace = Path(green['traces'][0]['path'])
             self.assertTrue(trace.is_file())
             h.review('counter', 'implementation')
+            h.implement('counter', 'R1', 'implemented', ['src/counter.py'])
+            h.checkpoint('counter', '사용자가 원문과 trace 대조')
             report = h.report('counter')
             self.assertIn(str(trace), report.read_text())
             h.cleanup('counter')

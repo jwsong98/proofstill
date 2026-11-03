@@ -20,7 +20,8 @@ def render(h, plan, state, status):
         return bool(criteria_valid and h.evidence_current(run) and run['criteria_digest'] == current_criteria
                     and (phase == 'red' or run['source_digest'] == current_source))
     lines = [f"# {plan['title']} — 기능 개발 보고", '',
-             f"- 상태: **{'검증 완료' if status['complete'] else '미완료'}**", '- 사용자 수용: 미확인',
+             f"- 자동 검사·독립 리뷰: **{'검증 완료' if status['complete'] else '미완료'}**",
+             f"- 인계 준비: {'필수 정보·기술 근거 있음' if status['handoff_ready'] else '보완 필요'}", '- 사용자 수용: 미확인',
              f"- 의도: {plan['intent']}", f"- 업무 맥락: {plan['context']}",
              f"- 명령 실행 위치: `{h.root}`",
              f"- 기준: {link('고정된 요구사항·명령', evidence / 'plan.json')}",
