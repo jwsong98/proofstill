@@ -9,6 +9,9 @@ def validate_assurance(root, plan):
     require(isinstance(required, list) and all(stage in ['criteria'] for stage in required), 'required_reviews에는 criteria만 추가할 수 있습니다')
     check_ids = {c['id'] for c in plan['checks']}
     for requirement in plan['requirements']:
+        for field in ['risk', 'rationale']:
+            if field in requirement:
+                require(isinstance(requirement[field], str) and requirement[field].strip(), f'요구별 {field}는 비어 있지 않은 설명이어야 합니다')
         ids = requirement.get('criteria_checks', [])
         require(isinstance(ids, list) and all(check in check_ids and check in requirement['checks'] for check in ids), '기준 검사는 해당 요구에 연결된 check ID여야 합니다')
     for check in plan['checks']:

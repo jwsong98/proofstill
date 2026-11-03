@@ -64,7 +64,7 @@ if s.get("unverified"):
     checks[0]["status"] = "unverified"
 if s.get("mutate_snapshot"):
     (Path(prompt["project_root"]) / s.get("mutate_path", "tests/check.py")).write_text("# weakened oracle")
-answer = {"verdict": s.get("verdict", "pass"), "checks": checks, "findings": [], "limitations": []}
+answer = {"verdict": s.get("verdict", "pass"), "checks": checks, "findings": s.get("findings", []), "limitations": []}
 output = Path(sys.argv[sys.argv.index("--output-last-message") + 1])
 output.write_text("not json" if s.get("invalid_json") else json.dumps(answer))
 if not s.get("no_thread"):

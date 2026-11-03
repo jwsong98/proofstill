@@ -39,7 +39,7 @@ class AssuranceTests(unittest.TestCase):
     def test_failed_criteria_findings_remain_visible_after_successful_recheck(self):
         self.init()
         behavior = self.root / 'review_behavior.json'
-        behavior.write_text(json.dumps({'verdict': 'fail'}))
+        behavior.write_text(json.dumps({'verdict': 'fail', 'findings': ['잘못된 기준 수정 필요 (synthetic fixture)']}))
         with self.assertRaises(HarnessError):
             self.h.review('counter', 'criteria')
         behavior.unlink()
@@ -47,6 +47,7 @@ class AssuranceTests(unittest.TestCase):
         summary = snapshot(self.h, 'counter')[0]['verification']['criteriaReview']
         self.assertEqual(summary['status'], 'passed')
         self.assertEqual(summary['history'][0]['verdict'], 'fail')
+        self.assertEqual(summary['history'][0]['findings'], ['잘못된 기준 수정 필요 (synthetic fixture)'])
         self.assertIn('이전 판정', summary['history'][0]['label'])
 
     def test_wrong_mapping_and_ungrounded_case_are_rejected(self):
@@ -87,3 +88,15 @@ class AssuranceTests(unittest.TestCase):
         folder = Path(state['reviews']['criteria']['folder'])
         (folder / 'answer.json').write_text('{"verdict":"pass"}')
         self.assertEqual(snapshot(self.h, 'counter')[0]['verification']['criteriaReview']['status'], 'stale')
+
+    def test_requirement_explanation_is_projected_and_invalid_text_rejected(self):
+        plan = json.loads(self.path.read_text())
+        plan['requirements'][0].update(risk='값이 유실되면 잘못된 판단을 해요.', rationale='다시 조회한 실제 값을 비교해야 해요.')
+        self.path.write_text(json.dumps(plan))
+        self.h.init(self.path)
+        row = snapshot(self.h, 'counter')[0]
+        self.assertEqual(row['risk'], '값이 유실되면 잘못된 판단을 해요.')
+        self.assertEqual(row['rationale'], '다시 조회한 실제 값을 비교해야 해요.')
+        plan['requirements'][0]['risk'] = 42
+        with self.assertRaises(HarnessError):
+            validate_plan(self.root, plan)
