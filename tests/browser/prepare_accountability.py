@@ -43,11 +43,17 @@ def prepare(directory):
             if kind!='criteria-missing':h.review('counter','criteria')
             h.review('counter')
         if kind=='criteria-failed':
-            (root/'review_behavior.json').write_text(json.dumps({'verdict':'fail','findings':['합성 기준 지적: 잘못된 기대값을 재검토해야 해요.']}))
+            (root/'review_behavior.json').write_text(json.dumps({'verdict':'fail','fail_check':True,'findings':['합성 기준 지적: 잘못된 기대값을 재검토해야 해요.']}))
             try:h.review('counter','criteria')
             except HarnessError:pass
         if kind=='decision-pending':h.decision('counter','D1','보존 기간 정책은 사람이 결정해 주세요.')
-        projects.append({'name':f'격리 fixture · {title}','rootPath':str(root)})
+        config={'name':f'격리 fixture · {title}','rootPath':str(root)}
+        if kind=='current':
+            old={'id':'historical','title':'격리 fixture · 과거 자료','intent':'과거 요구는 현재 작업의 확인으로 채우지 않아요.','context':'과거·미기록 자료 격리용 fixture','sources':['src/counter.py'],'requirements':[{'id':'OLD','title':'격리 fixture · 이전 요구','text':'확인하지 않은 이전 요구','checks':['old']}],'checks':[{'id':'old','kind':'unit','module':'old','argv':[sys.executable,'-c','print("OLD")'],'files':['tests/check.py'],'green_pattern':'OLD'}]}
+            oldpath=root/'historical.json';oldpath.write_text(json.dumps(old));h.init(oldpath)
+            config['currentTasks']=[{'taskId':'counter','title':plan['title'],'titles':{r['id']:r['title'] for r in plan['requirements']}}]
+            config['unrelatedTitle']='격리 fixture · 무관한 현재 요구'
+        projects.append(config)
     return projects
 
 if __name__=='__main__':print(json.dumps(prepare(sys.argv[1]),ensure_ascii=False))

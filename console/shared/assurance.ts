@@ -15,7 +15,7 @@ export function criteriaStatus(row: AssuredRow): VerificationStatus {
   const checks = Array.isArray(row.verification.criteriaChecks) ? row.verification.criteriaChecks : [];
   if (review?.status === 'failed' || checks.some(check => check?.status === 'failed')) return 'failed';
   if (review?.status === 'stale' || checks.some(check => check?.status === 'stale')) return 'stale';
-  if (review?.findings?.length) return 'failed';
+  if (review?.findings?.length && (!review.gateStatus || review.gateStatus === review.status)) return 'failed';
   if (!review) return 'not_run';
   if (!checks.length) return 'unverified';
   const statuses = ['not_run', 'partial', 'passed', 'failed', 'stale', 'unverified', 'interrupted'];

@@ -33,6 +33,8 @@ async function reviewMatches(review, group) {
 async function dataMatches(row, detail, html=false) {
   let text=await detail.innerText();
   insist(text.includes(row.risk)&&text.includes(row.rationale),'위험/필요성 API↔DOM 연결 오류');
+  const currentText=row.implementationCurrent===true?'현재 코드와 기록이 일치해요.':row.implementationCurrent===false?'기록 이후 변경됐거나 근거가 사라졌어요.':'확인할 버전 근거가 없어요.';
+  insist(text.includes('구현 현재성: '+currentText),'구현 현재성 오연결');
   if(row.limitations?.length)insist(text.includes(row.limitations[0]),'기본 미확인 범위 누락');
   const human=detail.locator('section[aria-label="사람이 지금 확인할 행동"]');
   const humanText=await human.innerText();

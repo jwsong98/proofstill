@@ -24,7 +24,7 @@ const reviewLabel = (status: ReviewEvidence['status']) => status === 'passed' ? 
 export function ReviewEvidenceView({ review, title }: { review?: ReviewEvidence; title: string }) {
   return <div role="group" aria-label={title}><h4>{title} · {reviewLabel(review?.status ?? 'not_run')}</h4><p>{review?.evidence || '현재 요구를 독립적으로 확인한 근거가 없어요.'}</p>
     {review?.gateStatus && review.gateStatus !== review.status && <p className="small">이 요구의 판정과 별도로 작업 전체 게이트는 {verificationLabels[review.gateStatus]} 상태예요.</p>}
-    {!!review?.findings?.length && <><h4>{review.status === 'stale' ? '이전 지적 · 현재 재검토 필요' : '현재 남은 지적'}</h4><ul>{review.findings.map((finding, i) => <li key={i}>{finding}</li>)}</ul></>}
+    {!!review?.findings?.length && <><h4>{review.status === 'stale' ? '이전 지적 · 현재 재검토 필요' : review.gateStatus && review.gateStatus !== review.status ? '작업 전체의 남은 지적 · 이 요구 판정과 구분' : '현재 남은 지적'}</h4><ul>{review.findings.map((finding, i) => <li key={i}>{finding}</li>)}</ul></>}
     {!!review?.limitations?.length && <><h4>이 검토에서 모르는 범위</h4><ul>{review.limitations.map((limit, i) => <li key={i}>{limit}</li>)}</ul></>}
     <details><summary>검토 근거와 이전 지적 펼치기</summary><p className="small">독립 세션: {review?.session || '미확인'}. 이전 판정은 현재 통과 근거가 아니에요. 현재 지적의 해결 여부는 위 재검토 판정·실행과 대조해 주세요.</p>
       {review?.history?.length ? review.history.map((previous, i) => <div key={i}><h4>{previous.label} · {previous.verdict}</h4>{previous.findings.map((finding, j) => <p key={j}>{finding}</p>)}{previous.checks.map((check, j) => <p key={j}>{check.id}: {check.status} · {check.evidence}</p>)}</div>) : <p className="small">보존된 이전 검토 기록이 없어요.</p>}

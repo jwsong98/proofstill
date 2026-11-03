@@ -62,6 +62,8 @@ if s.get("empty_evidence"):
     checks[0]["evidence"] = ""
 if s.get("unverified"):
     checks[0]["status"] = "unverified"
+if s.get("fail_check"):
+    checks[0]["status"] = "fail"
 if s.get("mutate_snapshot"):
     (Path(prompt["project_root"]) / s.get("mutate_path", "tests/check.py")).write_text("# weakened oracle")
 answer = {"verdict": s.get("verdict", "pass"), "checks": checks, "findings": s.get("findings", []), "limitations": []}

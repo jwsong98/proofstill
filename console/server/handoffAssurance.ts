@@ -8,7 +8,7 @@ export function caseHtml(check: AssuredCheck, escape: Escape): string {
 export function reviewHtml(review: ReviewEvidence | undefined, title: string, escape: Escape): string {
   return `<div role="group" aria-label="${escape(title)}"><h4>${escape(title)} · ${escape(review?.status === 'passed' ? '확인' : review?.status === 'failed' ? '결함 발견' : verificationLabels[review?.status ?? 'not_run'] ?? '확인 불가')}</h4><p>${escape(review?.evidence || '현재 요구를 독립적으로 확인한 근거가 없어요.')}</p>
 ${review?.gateStatus && review.gateStatus !== review.status ? `<p>작업 전체 게이트: ${escape(verificationLabels[review.gateStatus] ?? '확인 불가')}</p>` : ''}
-${review?.findings?.length ? `<h4>${review.status === 'stale' ? '이전 지적 · 현재 재검토 필요' : '현재 남은 지적'}</h4><ul>${review.findings.map(f => `<li>${escape(f)}</li>`).join('')}</ul>` : ''}
+${review?.findings?.length ? `<h4>${review.status === 'stale' ? '이전 지적 · 현재 재검토 필요' : review.gateStatus && review.gateStatus !== review.status ? '작업 전체의 남은 지적 · 이 요구 판정과 구분' : '현재 남은 지적'}</h4><ul>${review.findings.map(f => `<li>${escape(f)}</li>`).join('')}</ul>` : ''}
 ${review?.limitations?.length ? `<h4>이 검토에서 모르는 범위</h4><ul>${review.limitations.map(l => `<li>${escape(l)}</li>`).join('')}</ul>` : ''}
 <details><summary>검토 근거와 이전 지적 펼치기</summary><p>독립 세션: ${escape(review?.session || '미확인')}. 이전 판정은 현재 통과 근거가 아니에요. 현재 해결 여부는 위 재검토 판정·실행과 대조해 주세요.</p>${review?.history?.length ? review.history.map(previous => `<h4>${escape(previous.label)} · ${escape(previous.verdict)}</h4>${previous.findings.map(f => `<p>${escape(f)}</p>`).join('')}${previous.checks.map(c => `<p>${escape(c.id)}: ${escape(c.status)} · ${escape(c.evidence)}</p>`).join('')}`).join('') : '<p>보존된 이전 검토 기록이 없어요.</p>'}</details></div>`;
 }

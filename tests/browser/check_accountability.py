@@ -117,7 +117,11 @@ def main():
                     p=project('격리 fixture · 정상 근거')
                     result=run(choose(p['name'],p['name'])+f'''
                     const source=await(await page.request.get({json.dumps(base+'/api/projects/'+p['id']+'/handoff')})).json();
-                    const row=source.rows.find(r=>r.requirementId==='R1');await tableMatches(row,page,'passed');await dataMatches(row,detail);
+                    const current=source.rows.filter(r=>r.taskId==='counter'&&!r.historical),old=source.rows.find(r=>r.taskId==='historical'),unrelated=source.rows.find(r=>r.source==='console'&&r.title==='격리 fixture · 무관한 현재 요구');
+                    insist(current.length===2&&old?.historical&&unrelated,'현재/과거/무관 자료 fixture 누락');
+                    insist(!old.humanChecks?.length&&!old.risk&&!old.verification.criteriaChecks?.length,'검토하지 않은 과거 자료를 자동 채움');
+                    insist(!unrelated.humanChecks?.length&&!unrelated.risk&&!unrelated.verification.criteriaChecks?.length,'무관한 요구를 현재 기준으로 자동 채움');
+                    const row=current.find(r=>r.requirementId==='R1');await tableMatches(row,page,'passed');await dataMatches(row,detail);
                     const decision=await detail.locator('section[aria-label="지금 판단할 내용"]').innerText();
                     if(!decision.includes('등록한 범위의 기술 근거가 있어요.'))throw Error(decision);
                     if(!await detail.innerText().then(v=>v.includes('실제 초기값 1을 다시 읽었어요.')))throw Error('실제 관측 누락');
@@ -126,23 +130,42 @@ def main():
                     const html=await(await page.request.get(new URL(link,page.url()).href)).text();
                     for(const text of ['지금 판단할 내용','검증 기준의 적절성','사람이 지금 확인할 행동','실제 초기값 1을 다시 읽었어요.'])if(!html.includes(text))throw Error('인계 HTML 설명 누락: '+text);
                     const portable=await page.context().newPage();await portable.setContent(html);
-                    for(const item of source.rows){{
+                    for(const item of current){{
                       await tableMatches(item,portable,'passed','link');
                       const article=portable.locator('article').filter({{has:portable.getByRole('heading',{{name:item.title,exact:true}})}});
                       await dataMatches(item,article,true);
-                    }}await portable.close();
-                    for(const item of source.rows){{
+                    }}
+                    await tableMatches(unrelated,portable,'not_run','link');
+                    insist(await portable.locator('table').getByRole('link',{{name:old.title,exact:true}}).count()===0,'인계 현재 목록에 과거 요구 혼입');
+                    await portable.close();
+                    for(const item of current){{
                       await page.getByRole('textbox',{{name:'요구 검색',exact:true}}).fill(item.title);
                       await page.getByRole('button',{{name:item.title,exact:true}}).click();
                       await detail.getByRole('heading',{{name:item.title,exact:true}}).waitFor();
-                      await dataMatches(item,detail);
+                      await tableMatches(item,page,'passed');await dataMatches(item,detail);
                       const observation=await detail.locator('.check-example').allInnerTexts();
                       if(item.requirementId==='R2'&&observation.some(v=>v.includes('실제 초기값 1을 다시 읽었어요.')))throw Error('첫 요구 관찰이 두 번째 요구에 혼입');
                     }}
-                    await page.getByRole('textbox',{{name:'요구 검색',exact:true}}).fill(row.title);await page.getByRole('button',{{name:row.title,exact:true}}).click();
-                    await detail.getByRole('heading',{{name:row.title,exact:true}}).waitFor();
+                    await page.getByRole('textbox',{{name:'요구 검색',exact:true}}).fill('');
+                    insist(await page.getByRole('button',{{name:old.title,exact:true}}).count()===0,'현재 목록에 과거 요구 혼입');
+                    await page.getByRole('button',{{name:unrelated.title,exact:true}}).click();await detail.getByRole('heading',{{name:unrelated.title,exact:true}}).waitFor();
+                    await tableMatches(unrelated,page,'not_run');
+                    let unrelatedText=await detail.innerText();
+                    insist(unrelatedText.includes('이 요구에 연결된 확인 행동이 아직 없어요.')&&await detail.locator('.check-example').count()===0,'무관한 요구에 현재 행동/사례를 자동 채움');
+                    insist(!unrelatedText.includes(row.humanChecks[0].action)&&!unrelatedText.includes(row.risk),'현재 요구 설명이 무관 요구에 혼입');
+                    await page.getByRole('combobox',{{name:'목록 범위',exact:true}}).selectOption('history');
+                    for(const item of current)insist(await page.getByRole('button',{{name:item.title,exact:true}}).count()===0,'과거 목록에 현재 요구 혼입');
+                    await page.getByRole('button',{{name:old.title,exact:true}}).click();await detail.getByRole('heading',{{name:old.title,exact:true}}).waitFor();
+                    const oldText=await detail.innerText();
+                    insist(oldText.includes('이 요구에 연결된 확인 행동이 아직 없어요.')&&await detail.locator('.check-example').count()===0,'과거 미검토 자료에 현재 행동/관찰을 자동 채움');
+                    insist(!oldText.includes(row.risk)&&!oldText.includes(row.humanChecks[0].expected),'현재 근거가 과거 요구에 혼입');
+                    await page.getByRole('combobox',{{name:'목록 범위',exact:true}}).selectOption('current');
+                    await page.getByRole('textbox',{{name:'요구 검색',exact:true}}).fill(row.group);
+                    insist(await page.getByRole('button',{{name:old.title,exact:true}}).count()===0&&await page.getByRole('button',{{name:unrelated.title,exact:true}}).count()===0,'현재 작업 검색에 과거/무관 요구 혼입');
+                    insist(await page.locator('.handoff-table tbody tr').count()===2,'현재 작업 범위가 바뀜');
+                    await page.getByRole('button',{{name:row.title,exact:true}}).click();await detail.getByRole('heading',{{name:row.title,exact:true}}).waitFor();
                     await page.screenshot({{path:{json.dumps(str(output/'normal-fixture.png'))},fullPage:true}});
-                    return {{passed:true,summary:'격리 화면 fixture에서 정상 관찰·사람 확인 행동을 읽고 같은 API 원본의 인계 HTML에도 포함됨을 확인했어요. 합성 리뷰는 실제 적절성 검토로 쓰지 않아요.',dom:await detail.innerText(),html}};''')
+                    return {{passed:true,summary:'격리 화면과 인계 HTML의 값 대조 후, 과거 요구는 현재 목록에서 제외하고 무관 요구·과거 자료에 현재의 설명·행동·관찰을 자동 채우지 않음을 확인했어요. 합성 리뷰는 실제 적절성 근거가 아니에요.',dom:await detail.innerText(),html}};''')
                     (output/'portable.html').write_text(result.pop('html'));(output/'normal-fixture.dom.txt').write_text(result.pop('dom'));results.append(result);return result
                 flow.step('normal-display','정상 상태와 근거 포함 인계 HTML의 일치',normal_fixture)
                 def negative_states():
@@ -180,6 +203,7 @@ def main():
                       ['위임 범위',row=>row.responsibility.ai='다른 작업의 위임 범위'],
                       ['미정 결정',row=>row.pendingDecisions=[{{id:'wrong',question:'다른 요구의 결정'}}]],
                       ['구현 상태',row=>row.implementation.status='not_started'],
+                      ['구현 현재성',row=>row.implementationCurrent=false],
                       ['검사 상태',row=>row.verification.status='not_run'],
                       ['구현 리뷰 상태',row=>row.verification.review.status='not_run'],
                       ['기준 상태',row=>row.verification.criteriaReview.status='not_run'],
@@ -191,6 +215,7 @@ def main():
                       await page.getByRole('button',{{name:'새로고침',exact:true}}).waitFor();
                       const rendered=wrong.rows.find(r=>r.requirementId==='R1');
                       await tableMatches(rendered,page,name==='기준 상태'?'not_run':'passed');await dataMatches(rendered,detail);
+                      if(['구현 상태','구현 현재성','검사 상태','구현 리뷰 상태','기준 상태','미정 결정'].includes(name))insist(!(await detail.locator('section[aria-label="지금 판단할 내용"]').innerText()).includes('등록한 범위의 기술 근거가 있어요.'),'미확인 경계인데 승인 안내가 남음: '+name);
                       let caught=false;try{{await tableMatches(baseline,page,'passed');await dataMatches(baseline,detail);}}catch(error){{caught=true;}}
                       insist(caught,'잘못 연결한 UI를 대조 기준이 놓침: '+name);rejected.push(name);await page.unroute(endpoint);
                     }}
