@@ -16,7 +16,31 @@ npm run dev:backend
 pnpm을 선택했다면 위의 npm 대신 pnpm을 사용합니다. `npm run ui:add -- card`로 shadcn 컴포넌트를 추가합니다.
 `packages/jwdesign`은 실제 디자인 자산, `packages/ui`는 공유 UI, `packages/api`는 계약과 Orval 생성물을 보관합니다.
 백엔드는 FastAPI + Uvicorn + SQLAlchemy 2 ORM입니다. `npm run dev:backend` 실행 후 [Swagger UI](http://127.0.0.1:8000/docs)와 [ReDoc](http://127.0.0.1:8000/redoc)에서 API를 확인합니다.
-`domain`은 업무 검증, `infra/models.py`는 ORM 모델, `infra/schemas.py`는 요청·응답 타입, `infra/app.py`는 라우트와 요청별 Session을 담당합니다. `infra/task_repository.py`는 ORM 저장·조회를 연결합니다.
+백엔드의 import 방향은 `app → usecase → domain`, `infra → domain`입니다.
+
+- `domain/tasks.py`: 업무 규칙과 저장소 계약 `TaskStore`. 프레임워크를 사용하지 않습니다.
+- `usecase/tasks.py`: 계약을 통해 등록·완료·조회를 실행합니다.
+- `app/tasks.py`, `app/health.py`: HTTP 핸들러. `app/schemas.py`는 요청·응답 타입, `app/http.py`는 공통 HTTP 설정을 담당합니다.
+- `infra/task_repository.py`: `TaskStore`의 SQLAlchemy 구현. `infra/models.py`는 ORM 모델입니다.
+- `infra/app.py`: 저장소를 유스케이스에 주입하고 HTTP 앱과 DB 수명을 연결하는 조립 진입점입니다.
+
+`npm run test:architecture`가 역방향 의존과 순환 참조를 거부합니다. 동적 import의 모든 형태나 파일 접근을 격리하는 보안 장치는 아닙니다.
+
+## TDD와 병렬 작업
+
+업무 규칙이나 동작을 추가할 때 담당 테스트를 먼저 작성하고 기대한 실패(Red)를 확인합니다. 구현으로 Green을 만든 뒤 중복을 정리하고 관련 검사를 다시 실행합니다.
+
+```sh
+npm run test:domain
+npm run test:usecase
+npm run test:usecase -- tests.usecase.test_tasks.TaskListTests.test_create_update_get
+npm run test:architecture
+npm run test:fast
+```
+
+`apps/backend`에서 `python3 -S -m unittest discover -s tests/domain -v`와 `tests/usecase`를 실행하면 DB·웹 패키지 없이 순수 계층을 검사합니다. usecase 테스트의 `MemoryTaskStore`는 실행별 인스턴스를 사용합니다. DB 구현은 같은 domain 계약과 실제 SQL·HTTP 검사로 확인합니다.
+
+기능 담당자는 자신의 domain/usecase/app/infra 기능 파일과 대응 테스트만 수정합니다. 계층별로 나누면 domain 계약을 먼저 확정하고 저장소 구현과 HTTP 구현은 가짜 저장소를 기준으로 진행합니다. 공유 계약·조립 진입점·migration·lockfile·생성 코드는 한 담당자가 순차 통합합니다. `infra/app.py`에 기능별 라우트나 업무 규칙을 추가하지 않습니다.
 OpenAPI는 같은 FastAPI 앱의 `app.openapi()`에서 생성합니다. `openapi:export`는 `backend:setup`으로 설치한 전용 Python을 사용하며 DB 접속이나 서버 실행이 필요 없습니다. Python을 교체할 때는 `PROOFSTILL_BACKEND_PYTHON`에 실행 파일 경로를 지정합니다. 다른 언어의 서버는 proofstill.config.json의 exporter argv 또는 url/file을 변경합니다.
 
 ## 모델에서 API까지 확장하기
@@ -36,18 +60,7 @@ npm run db:migrate
 npm run db:seed
 ```
 
-`infra/app.py`의 `create_app()` 안, `return app` 앞에 아래 예제를 추가하면 ORM Session을 사용하는 조회 API가 됩니다. 기존 API의 필드를 확장할 때는 `infra/schemas.py`의 요청·응답 모델과 `task_repository.py`의 변환도 함께 고칩니다.
-
-```python
-    from infra.models import Task
-
-    @app.get('/task-notes/{id}', operation_id='getTaskNote')
-    def read_task_note(id: str, session: Session = Depends(get_session)):
-        row = session.get(Task, id)
-        if row is None:
-            raise HTTPException(404, 'Task not found')
-        return {'note': row.note}
-```
+필드를 API에 노출할 때는 domain의 `TaskData`와 규칙 → usecase 테스트 → `infra/task_repository.py`의 ORM 변환 → `app/schemas.py`의 요청·응답을 함께 맞춥니다. 새 행동은 `app/<기능>.py`에 두고 `app/http.py`에서 등록합니다. DB를 HTTP 핸들러에서 직접 조회하지 않고 domain의 저장소 계약과 usecase를 거칩니다. 필드 추가 후 기존 `/tasks/seed-planning` 조회가 유지되는지는 `test:fast`로 확인합니다.
 
 `npm run dev:backend`로 서버를 시작해 `/docs`에서 확인하고 `npm run openapi:export`, `npm run api:generate`, `npm run test:fast`로 명세·클라이언트·테스트를 갱신합니다. 받아들인 API 변경은 확인 후 `packages/api/openapi.contract.json`에 반영합니다. 자동 재시작이 필요하면 `apps/backend`에서 `.venv/bin/python -m uvicorn infra.app:app --reload`를 사용할 수 있습니다.
 
@@ -78,7 +91,10 @@ backend를 선택하지 않은 스캐폴드는 계약 파일을 export하며 tra
 |---|---|
 | `backend:setup` | Python 가상환경과 고정 의존성 설치 |
 | `db:check` | SQLite `:memory:`에서 실제 migration·seed 검사 |
-| `test:unit` | 메모리 DB의 도메인·SQL 제약·migration·seed 검사 |
+| `test:architecture` | import 방향·순환 참조 검사 |
+| `test:domain` | 프레임워크 없는 업무 규칙 검사, 단일 테스트 선택 지원 |
+| `test:usecase` | 가짜 저장소 기반 동작 검사, 단일 테스트 선택 지원 |
+| `test:unit` | architecture/domain/usecase 뒤 메모리 DB의 SQL 제약·migration·seed 검사 |
 | `test:integration` | seed를 적용한 메모리 DB의 실제 HTTP 검사 |
 | `test:flow` | CLI 사용자 흐름을 전용 메모리 DB·임의 포트·임시 기록으로 검사 |
 | `test:fast` | unit + integration + flow, Docker 불필요 |

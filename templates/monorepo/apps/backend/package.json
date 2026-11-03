@@ -18,6 +18,9 @@
     "test:integration": "node ../../scripts/backend.mjs test:integration",
     "test:flow": "node ../../scripts/backend.mjs test:flow",
     "test:fast": "node ../../scripts/backend.mjs test:fast",
-    "test:e2e": "node ../../scripts/backend.mjs test:e2e"
+    "test:e2e": "node ../../scripts/backend.mjs test:e2e",
+    "test:architecture": "node ../../scripts/backend.mjs test:architecture",
+    "test:domain": "node ../../scripts/backend.mjs test:domain",
+    "test:usecase": "node ../../scripts/backend.mjs test:usecase"
   }
 }

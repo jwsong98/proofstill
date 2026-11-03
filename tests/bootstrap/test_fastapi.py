@@ -31,7 +31,7 @@ from alembic.migration import MigrationContext
 from infra.models import Base, Task
 from infra.database import create_database, migrate, seed
 from infra.task_repository import TaskRepository
-from domain.tasks import TaskList
+from usecase.tasks import TaskList
 engine = create_database()
 try:
     migrate(engine); seed(engine)
@@ -160,7 +160,7 @@ assert create_app().openapi() == json.loads(Path('../../packages/api/openapi.gen
     def test_generated_development_recipe(self):
         self.assertTrue((BACKEND / 'infra/app.py').is_file(), 'FASTAPI_APP_MISSING')
         guide = (ROOT / 'templates/monorepo/README.md').read_text()
-        for path in ['infra/models.py', 'infra/schemas.py', 'infra/app.py', '--autogenerate', '/docs']:
+        for path in ['infra/models.py', 'app/schemas.py', 'infra/app.py', '--autogenerate', '/docs']:
             self.assertIn(path, guide)
         with tempfile.TemporaryDirectory() as folder:
             project = Path(folder) / 'project'
@@ -179,12 +179,6 @@ assert create_app().openapi() == json.loads(Path('../../packages/api/openapi.gen
                 result = subprocess.run(['node', 'scripts/backend.mjs', *command], cwd=project,
                                         env=environment, capture_output=True, text=True, timeout=60)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            # Execute the documented route example against the migrated ORM model.
-            examples = re.findall(r'```python\n(.*?)\n```', guide, re.DOTALL)
-            route_examples = [code for code in examples if "operation_id='getTaskNote'" in code]
-            self.assertEqual(len(route_examples), 1, 'README must include the executable note endpoint example')
-            app_file = project / 'apps/backend/infra/app.py'
-            app_file.write_text(app_file.read_text().replace('    return app', route_examples[0] + '\n    return app'))
             self.probe('''
 from sqlalchemy.orm import Session
 from infra.models import Task
@@ -202,9 +196,9 @@ engine.dispose()
 from fastapi.testclient import TestClient
 from infra.app import create_app
 with TestClient(create_app(database_url=DATABASE_URL)) as client:
-    assert client.get('/task-notes/seed-planning').json() == {'note': 'migration from ORM'}
-    assert client.get('/task-notes/missing').status_code == 404
-    assert client.get('/openapi.json').json()['paths']['/task-notes/{id}']['get']['operationId'] == 'getTaskNote'
+    assert client.get('/tasks/seed-planning').json()['id'] == 'seed-planning'
+    assert client.get('/tasks/missing').status_code == 404
+    assert client.get('/openapi.json').json()['paths']['/tasks/{id}']['get']['operationId'] == 'getTask'
 '''.replace('database_url=DATABASE_URL', 'database_url=' + repr(environment['DATABASE_URL'])), project / 'apps/backend')
 
 

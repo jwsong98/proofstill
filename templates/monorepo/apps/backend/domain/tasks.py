@@ -1,26 +1,26 @@
-from typing import Protocol
+from typing import Protocol, TypedDict
 from uuid import uuid4
 
 
+class TaskData(TypedDict):
+    id: str
+    title: str
+    completed: bool
+
+
 class TaskStore(Protocol):
-    def create(self, task: dict) -> dict: ...
-    def get(self, task_id: str) -> dict: ...
-    def update(self, task_id: str, completed: bool) -> dict: ...
+    def create(self, task: TaskData) -> TaskData: ...
+    def get(self, task_id: str) -> TaskData: ...
+    def update(self, task_id: str, completed: bool) -> TaskData: ...
 
 
-class TaskList:
-    def __init__(self, store: TaskStore):
-        self.store = store
+def new_task(title: str) -> TaskData:
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError('title must be a nonempty string')
+    return {'id': str(uuid4()), 'title': title.strip(), 'completed': False}
 
-    def create(self, title):
-        if not isinstance(title, str) or not title.strip():
-            raise ValueError('title must be a nonempty string')
-        return self.store.create({'id': str(uuid4()), 'title': title.strip(), 'completed': False})
 
-    def get(self, task_id):
-        return self.store.get(task_id)
-
-    def update(self, task_id, completed):
-        if not isinstance(completed, bool):
-            raise ValueError('completed must be boolean')
-        return self.store.update(task_id, completed)
+def validate_completed(completed: bool) -> bool:
+    if not isinstance(completed, bool):
+        raise ValueError('completed must be boolean')
+    return completed

@@ -1,5 +1,5 @@
 {
-  "id": "scaffold-layers-v5",
+  "id": "scaffold-layers-v6",
   "title": "단방향 계층과 독립 TDD 스캐폴드",
   "intent": "지금 스캐폴딩 구조가 단방향 의존성 관계로, 멀티 에이전트가 작업을 하더라도 서로의 작업을 방해하지 않은 구조로 되어야 합니다. app -> usecase -> domain 의존성이고, 인프라 계층을 중간에 넣어서 domain 구현체를 만든다. TDD 방식으로 제대로 구현할 수 있게 만들어 봅시다.",
   "context": "기존 스택과 HTTP/DB 계약 유지. domain은 규칙과 저장소 Protocol, usecase는 이를 호출하고 app은 usecase만 호출. infra는 domain 계약의 SQLAlchemy 구현이며 infra/app.py는 조립 진입점으로만 app/usecase/infra를 연결한다. UI 변경/새 스택/보안 격리는 범위 밖. 기능별 담당 파일과 테스트를 분리하고 공유 계약·조립·생성물·migration·lockfile은 단일 담당 순차 통합. TDD는 순수 domain/usecase 테스트 및 단일 테스트 선택 실행, 의도한 Red와 Green으로 지원한다. 현재 저장소는 Git 메타데이터 없음.",

@@ -1,7 +1,7 @@
 import unittest
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
-from domain.tasks import TaskList
+from usecase.tasks import TaskList
 from infra.database import create_database, migrate, seed, status, reset
 from infra.task_repository import TaskRepository
 

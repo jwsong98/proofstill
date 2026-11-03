@@ -86,7 +86,7 @@ class InstallTests(unittest.TestCase):
             shutil.rmtree(project / 'packages/api/src/generated')
             self.run_ok(['npm', 'run', 'api:generate'], project)
             self.assertEqual((project / 'packages/api/src/generated/client.ts').read_bytes(), expected_client)
-            exporter = project / 'apps/backend/infra/app.py'
+            exporter = project / 'apps/backend/app/health.py'
             original = exporter.read_text()
             exporter.write_text(original.replace('getHealth', 'getHealthProbe'))
             self.run_ok(['npm', 'run', 'openapi:export'], project)

@@ -67,7 +67,7 @@ pnpm이 설치된 환경에서는 `--package-manager pnpm --install`을 사용�
 
 `--apps backend,cli,app`로 생성할 앱을 선택합니다. 기존 디렉터리(빈 디렉터리 포함)를 덮어쓰지 않습니다. 기본 백엔드는 FastAPI + Uvicorn + SQLAlchemy 2 ORM/Alembic, 웹 앱은 React/Vite입니다.
 
-- `apps/backend/domain`: 업무 함수. `infra/app.py`: FastAPI 라우트와 Session 의존성. `infra/models.py`: ORM 모델. `infra/schemas.py`: 요청·응답 타입. 서버 실행 후 `/docs`·`/redoc`를 제공합니다.
+- 백엔드는 `app → usecase → domain`, `infra → domain`으로 나눕니다. domain은 업무 규칙·저장소 계약, usecase는 실행 순서, app은 HTTP, infra는 저장소 구현을 소유합니다. `infra/app.py`만 조립 진입점이며 `app/schemas.py`가 요청·응답 타입을 정의합니다. 서버 실행 후 `/docs`·`/redoc`를 제공합니다.
 - `packages/jwdesign`: 실제 컴포넌트·타입·폰트·토큰. 번들러용 React/portal import를 적용합니다.
 - `packages/ui`: Radix Slot/CVA 기반 공유 버튼, jwdesign 토큰을 사용하는 shadcn 설정. `npm run ui:add -- card`로 확장합니다.
 - `packages/api`: 수용한 계약, 서버 생성 명세, Orval TypeScript 클라이언트.
@@ -121,7 +121,9 @@ flow는 하나이며 별도 session 이름이나 ID를 선택하지 않습니다
 | `test:unit` | 메모리 DB의 도메인·SQL 제약·migration·seed 검사 |
 | `test:integration` | seed를 적용한 메모리 DB의 실제 HTTP 검사 |
 | `test:flow` | CLI 사용자 흐름을 전용 메모리 DB·임의 포트·임시 기록으로 검사 |
-| `test:fast` | unit + integration + flow, Docker 불필요 |
+| `test:architecture` | import 방향·순환 참조 검사 |
+| `test:domain` / `test:usecase` | 외부 패키지 없는 순수 계층 검사, 단일 테스트 선택 지원 |
+| `test:fast` | architecture + domain + usecase + unit + integration + flow, Docker 불필요 |
 | `test:e2e` | PostgreSQL Testcontainers + 실제 HTTP flow + DB 값·지속성·정리 검사 |
 | `db:revision -- --message "change"` | migration 생성, `--autogenerate` 지원 |
 | `db:migrate` | migration 적용, `--revision`으로 목표 지정 |
@@ -146,7 +148,7 @@ test:e2e는 메모리 DB의 unit/integration/flow를 먼저 실행하고 통과�
 
 개발 중 `npm run test:integration` 또는 `npm run test:flow`, 통합 시 `npm run test:fast`를 사용합니다. flow 검사는 할 일 등록 → 완료 처리 → 재조회 CLI 흐름을 실행마다 별도 메모리 DB·임의 포트·임시 기록으로 검사합니다. 두 실행을 동시에 돌려 데이터가 섞이지 않는지도 확인합니다. Node/Python 의존성 설치는 필요하지만 Docker와 외부 DB는 필요하지 않습니다. 브라우저 클릭 검사는 포함하지 않습니다.
 
-병렬 구현은 앱·기능별 폴더로 나눕니다. UI 기능은 `apps/app/src/features/<기능>`에 두고, 백엔드는 domain의 기능 파일 및 대응 infra·테스트 파일을 담당합니다. API 계약·생성 코드·공유 UI·migration·package/lockfile·진입점 연결은 한 담당자가 통합합니다. Git worktree는 이러한 경계와 실행별 자원 분리로 해결되지 않을 때만 고려합니다.
+병렬 구현은 앱·기능별 폴더로 나눕니다. UI 기능은 `apps/app/src/features/<기능>`에 두고, 백엔드는 기능별 domain/usecase/app/infra 파일 및 대응 테스트를 담당합니다. 새로운 동작은 실패 테스트(Red) → 구현(Green) → 정리 순서로 진행합니다. API 계약·생성 코드·공유 UI·migration·package/lockfile·진입점 연결은 한 담당자가 통합합니다. Git worktree는 이러한 경계와 실행별 자원 분리로 해결되지 않을 때만 고려합니다.
 
 ORM 필드 추가 → `db:revision -- --message "change" --autogenerate` → migration 검토·적용 → 라우트 추가의 실행 예제는 [생성 프로젝트 안내](templates/monorepo/README.md#모델에서-api까지-확장하기)에 있습니다. OpenAPI는 수동 명세 대신 실제 FastAPI 앱에서 생성하며 export는 DB에 접속하지 않습니다. 구성 근거: [FastAPI lifespan](https://fastapi.tiangolo.com/advanced/events/), [SQLAlchemy declarative models](https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html).
 

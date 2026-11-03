@@ -75,7 +75,7 @@ export async function scaffold(destination, { apps = allApps.join(','), packageM
       'ui:add': 'proofstill ui',
     };
     if (selected.includes('backend')) {
-      for (const command of ['backend:setup', 'auth:setup', 'db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check', 'test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e']) scripts[command] = `node scripts/backend.mjs ${command}`;
+      for (const command of ['backend:setup', 'auth:setup', 'db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check', 'test:architecture', 'test:domain', 'test:usecase', 'test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e']) scripts[command] = `node scripts/backend.mjs ${command}`;
       scripts.test = 'node scripts/backend.mjs test:fast';
     }
     for (const name of selected) scripts[`dev:${name}`] = name === 'backend' ? 'node scripts/backend.mjs dev' : name === 'cli' ? 'node apps/cli/src/index.mjs' : `vite apps/${name}`;
@@ -98,7 +98,7 @@ export async function scaffold(destination, { apps = allApps.join(','), packageM
     } });
     await fs.copyFile(path.join(stage, 'packages/api/openapi.contract.json'), path.join(stage, 'packages/api/openapi.generated.json'));
     if (selected.includes('backend')) {
-      for (const name of ['domain', 'infra']) await fs.writeFile(path.join(stage, 'apps/backend', name, '__init__.py'), '');
+      for (const name of ['domain', 'usecase', 'app', 'infra']) await fs.writeFile(path.join(stage, 'apps/backend', name, '__init__.py'), '');
       const adapters = path.join(stage, 'apps/backend/scripts');
       await fs.mkdir(adapters, { recursive: true });
       for (const action of ['server-start', 'server-stop', 'server-reset', 'server-health', 'generate-openapi']) {

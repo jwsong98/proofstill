@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const project = path.resolve(process.argv[2]);
 const python = path.resolve(process.argv[3]);
 // The supplied workspace must be a fresh scaffold of the implementation under review.
-for (const relative of ['apps/app/vite.config.ts', 'orval.config.mjs', 'packages/api/src/base-url.ts', 'apps/backend/infra/app.py', 'apps/backend/infra/auth.py', 'apps/backend/infra/settings.py', 'apps/backend/infra/server.py']) {
+for (const relative of ['apps/app/vite.config.ts', 'orval.config.mjs', 'packages/api/src/base-url.ts', 'apps/backend/infra/app.py', 'apps/backend/app/http.py', 'apps/backend/app/health.py', 'apps/backend/app/tasks.py', 'apps/backend/infra/auth.py', 'apps/backend/infra/settings.py', 'apps/backend/infra/server.py']) {
   assert.equal(readFileSync(path.join(project, relative), 'utf8'), readFileSync(path.join(root, 'templates/monorepo', relative), 'utf8'), relative);
 }
 const require = createRequire(path.join(project, 'package.json'));

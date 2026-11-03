@@ -39,9 +39,16 @@ try {
     else if (command === 'openapi:export') run(python, ['export_openapi.py', ...args]);
     else if (['db:revision', 'db:migrate', 'db:status', 'db:rollback', 'db:seed', 'db:reset', 'db:check'].includes(command)) {
       run(python, ['-m', 'infra.manage', command.slice(3), ...args]);
-    } else if (['test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e'].includes(command)) {
-      if (args.length) throw new Error(`${command} does not take arguments`);
-      const kinds = command === 'test:e2e' ? ['unit', 'integration', 'flow', 'e2e'] : command === 'test:fast' ? ['unit', 'integration', 'flow'] : [command.slice(5)];
+    } else if (['test:architecture', 'test:domain', 'test:usecase', 'test:unit', 'test:integration', 'test:flow', 'test:fast', 'test:e2e'].includes(command)) {
+      if (args.length) {
+        if (!['test:unit', 'test:domain', 'test:usecase'].includes(command)) throw new Error(`${command} does not take arguments`);
+        run(python, ['-m', 'unittest', ...args, '-v'], { ...env, DATABASE_URL: 'sqlite+pysqlite:///:memory:' });
+        process.exit(0);
+      }
+      const core = ['architecture', 'domain', 'usecase', 'unit'];
+      const kinds = command === 'test:e2e' ? [...core, 'integration', 'flow', 'e2e']
+        : command === 'test:fast' ? [...core, 'integration', 'flow']
+        : command === 'test:unit' ? core : [command.slice(5)];
       for (const kind of kinds) {
         const environment = kind === 'e2e' ? env : { ...env, DATABASE_URL: 'sqlite+pysqlite:///:memory:' };
         run(python, ['-m', 'unittest', 'discover', '-s', `tests/${kind}`, '-v'], environment);
