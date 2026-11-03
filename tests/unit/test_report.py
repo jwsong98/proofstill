@@ -79,6 +79,8 @@ class ReportTests(unittest.TestCase):
         argv = capture['argv']
         self.assertIn('exec', argv)
         self.assertIn('--ephemeral', argv)
+        schema = json.loads(Path(argv[argv.index('--output-schema') + 1]).read_text())
+        self.assertEqual(schema['properties']['checks']['items']['properties']['id']['enum'], ['R1'])
         self.assertEqual(argv[argv.index('--sandbox') + 1], 'workspace-write')
         self.assertNotIn('resume', argv)
         self.assertNotIn('fork', argv)

@@ -28,7 +28,8 @@ def review_prompt(packet):
         'stage=implementation은 요구사항·검증 기준의 적절성과 현재 구현을 함께 검토하고 검사를 직접 실행하세요. '
         'project_root는 원본 작업 폴더입니다. 소스·테스트·기준을 편집하지 말고 임시 쓰기는 TMPDIR를 사용하세요. '
         '실행이 불가능하거나 원래 의도가 미정이면 pass하지 마세요. '
-        '전달된 모든 requirement ID에 대해 근거를 붙여 판정하세요. '
+        '전달된 모든 requirement ID에 대해 근거를 붙여 정확히 한 번씩 판정하세요. '
+        'checks의 id에는 requirement ID만 넣고 실행 명령/check ID는 해당 요구의 evidence에 기록하세요. '
         'findings에는 미해결 결함만 쓰고, verdict=pass이면 findings는 빈 배열이어야 합니다. '
         '검사 결과와 확인 사실은 checks의 evidence에, 검증 한계는 limitations에 기록하세요. '
         'PASS는 지정 기준의 확인 범위에 한정하며 모든 버그의 부재를 뜻하지 않습니다.\n'
@@ -39,7 +40,9 @@ def review_prompt(packet):
 def launch(harness, packet, folder):
     schema = folder / 'schema.json'
     answer = folder / 'answer.json'
-    schema.write_text(json.dumps(VERDICT_SCHEMA))
+    verdict_schema = json.loads(json.dumps(VERDICT_SCHEMA))
+    verdict_schema['properties']['checks']['items']['properties']['id']['enum'] = [r['id'] for r in packet['plan']['requirements']]
+    schema.write_text(json.dumps(verdict_schema))
     prompt = review_prompt(packet)
     (folder / 'input.txt').write_text(prompt)
     workspace = Path(packet['project_root'])
