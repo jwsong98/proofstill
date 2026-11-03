@@ -94,3 +94,32 @@ class HandoffTests(unittest.TestCase):
         report = self.h.report('counter').read_text()
         self.assertIn('| R1: 초기값은 1 | 일부 구현 | 미실행 | 미실행 | 조회 기능 |', report)
         self.assertLess(report.index('구현·검증 현황'), report.index('기준 버전'))
+
+    def test_implementation_freshness_is_separate_and_legacy_is_unknown(self):
+        self.h.implement('counter', 'R1', 'implemented', ['src/counter.py'])
+        self.assertTrue(self.row()['implementationCurrent'])
+        (self.root / 'src/counter.py').unlink()
+        row = self.row()
+        self.assertEqual(row['implementation']['status'], 'implemented')
+        self.assertFalse(row['implementationCurrent'])
+        self.assertTrue(row['issues'])
+        from proofstill.workflow import save_json
+        _, state = self.h.load('counter')
+        state['implementations']['R1'].pop('source_digest')
+        save_json(self.h.folder('counter') / 'state.json', state)
+        self.assertIsNone(self.row()['implementationCurrent'])
+
+    def test_brief_names_unverified_scope_and_reproduction(self):
+        from proofstill.handoff import briefing
+        text = briefing(self.h, 'counter')
+        for expected in ['새 카운터', '미기록', '미실행', 'tests/check.py', '사용자 수용: 미확인', 'NO이면', '하네스 우회']:
+            self.assertIn(expected, text)
+
+    def test_missing_review_evidence_cannot_remain_passed(self):
+        (self.root / 'src/counter.py').write_text('VALUE = 1\n')
+        self.h.run('counter')
+        self.h.review('counter')
+        _, state = self.h.load('counter')
+        (Path(state['reviews']['implementation']['folder']) / 'answer.json').unlink()
+        self.assertEqual(self.row()['verification']['review']['status'], 'stale')
+        self.assertFalse(self.h.status('counter')['complete'])

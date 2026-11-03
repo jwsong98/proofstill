@@ -55,16 +55,25 @@ def snapshot(h, feature):
                                 'exitCode': run.get('exit_code') if run else None, 'recordedAt': run.get('recorded_at') if run else None,
                                 'files': check['files'], 'scope': check.get('scope', '등록된 검사 범위. 제품 화면 확인 여부는 검사 내용을 확인하세요.')}
     record = state.get('reviews', {}).get('implementation')
-    review_current = bool(record and criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source)
+    review_current = h.review_current(plan, state, criteria, source)
     review_checks = {c['id']: c for c in (record or {}).get('answer', {}).get('checks', [])}
     rows = []
     for req in plan['requirements']:
-        implementation = state.get('implementations', {}).get(req['id'], {'status': 'unknown', 'paths': [], 'remaining': '', 'note': ''})
+        recorded = state.get('implementations', {}).get(req['id'], {})
+        implementation = {key: recorded.get(key, default) for key, default in {'status': 'unknown', 'paths': [], 'remaining': '', 'note': ''}.items()}
+        implementation_current = bool(recorded.get('source_digest') == source and criteria and recorded.get('criteria_digest') == criteria
+                                      and all((h.root / p).exists() for p in implementation['paths'])) if recorded.get('source_digest') else None
+        issues = []
+        if implementation['status'] != 'implemented':
+            issues.append('구현 완료 기록이 없습니다. 코드와 남은 범위를 확인하세요.')
+        if implementation_current is not True:
+            issues.append('구현 기록의 현재 버전 근거가 없거나 변경됐습니다. 코드를 확인하고 다시 기록하세요.')
         linked = [checks[c] for c in req['checks']]
         review = review_checks.get(req['id'])
         review_status = 'not_run' if not record else 'stale' if not review_current else 'passed' if review and review['status'] == 'pass' and record.get('passed') else 'failed' if (review and review['status'] == 'fail') or (record or {}).get('answer', {}).get('verdict') == 'fail' else 'unverified'
         rows.append({'id': f'harness:{feature}:{req["id"]}', 'source': 'harness', 'taskId': feature, 'requirementId': req['id'],
                      'title': req.get('title', req['text']), 'description': req['text'], 'group': req.get('group', plan['title']), 'origin': plan['intent'] + '\n\n' + plan['context'], 'implementation': implementation,
+                     'implementationCurrent': implementation_current, 'issues': issues,
                      'verification': {'status': verification_status(linked), 'checks': linked,
                                       'review': {'status': review_status, 'evidence': (review or {}).get('evidence', (record or {}).get('error', ''))}},
                      'limitations': plan['limitations'] + (record or {}).get('answer', {}).get('limitations', []) + [str(f) for f in (record or {}).get('answer', {}).get('findings', [])]})
@@ -82,10 +91,11 @@ def record_implementation(h, feature, requirement, status, paths, remaining='', 
         require(project_path(h.root, path).exists(), f'구현 경로 없음: {path}')
     require(status != 'implemented' or paths, '구현 완료에는 구현 경로가 필요합니다')
     require(status != 'partial' or remaining.strip(), '일부 구현에는 남은 범위가 필요합니다')
-    state.setdefault('implementations', {})[requirement] = {'status': status, 'paths': paths, 'remaining': remaining, 'note': note}
+    state.setdefault('implementations', {})[requirement] = {'status': status, 'paths': paths, 'remaining': remaining, 'note': note,
+        'source_digest': h.source_digest(plan), 'criteria_digest': h.criteria_digest(plan, state)}
     # This is an implementation declaration, never a test/review success claim.
     save_json(h.folder(feature) / 'state.json', state)
-    return state['implementations'][requirement]
+    return {key: state['implementations'][requirement][key] for key in ['status', 'paths', 'remaining', 'note']}
 
 
 def markdown(rows):
@@ -97,3 +107,25 @@ def markdown(rows):
         i, v = row['implementation'], row['verification']
         lines.append('| ' + ' | '.join(map(cell, [row['requirementId'] + ': ' + row['title'], IMPLEMENTATION[i['status']], VERIFICATION[v['status']], VERIFICATION[v['review']['status']], i.get('remaining') or '미기록'])) + ' |')
     return '\n'.join(lines)
+
+
+def briefing(h, feature):
+    plan, _ = h.load(feature)
+    rows = snapshot(h, feature)
+    lines = [f"# {plan['title']} — 인계 브리핑", '', f"목표: {plan['intent']}", f"맥락: {plan['context']}",
+             f"실행 위치: `{h.root}`", '', markdown(rows), '', '## 지금 확인할 일', '']
+    for row in rows:
+        lines.append(f"- {row['requirementId']}: {row['description']}")
+        lines.append('- 구현 경로: ' + (', '.join(row['implementation']['paths']) or '미기록'))
+        for issue in row['issues']:
+            lines.append('- ' + issue)
+        for check in row['verification']['checks']:
+            lines.append(f"- {check['label']}: {VERIFICATION[check['status']]} · `{check['command']}`")
+            lines.append('- 확인할 결과: ' + (check['expected'] or '검사 파일의 조건과 실제 출력 대조: ' + ', '.join(check['files'])))
+            lines.append('- 확인 범위: ' + check['scope'])
+    lines += ['', '사용자 수용: 미확인. 사람이 원문·코드·실행 출력을 대조한 뒤 YES/NO로 판단합니다.',
+              'NO이면 차이를 요구 ID에 연결해 수정하고 영향받는 검사·독립 리뷰를 다시 수행합니다.',
+              '한계: 기록은 AI의 사실성을 보증하지 않습니다. 등록 밖 코드·검사, 하네스 우회, 거짓 기록은 별도 확인이 필요합니다.']
+    for limitation in dict.fromkeys(x for row in rows for x in row['limitations']):
+        lines.append('- ' + limitation)
+    return '\n'.join(lines) + '\n'

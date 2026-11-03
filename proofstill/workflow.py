@@ -246,13 +246,22 @@ class Harness:
             self.save(plan, state)
         return record
 
+    def review_current(self, plan, state, criteria, source):
+        record = state.get('reviews', {}).get('implementation', {})
+        folder = Path(record.get('folder', '/nonexistent-proofstill-review'))
+        return bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
+                    and record.get('session') and record['session'] != state['developer_session']
+                    and all((folder / name).is_file() for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json'])
+                    and all(self.evidence_current(self.latest(state, 'green', c['id']))
+                            and self.latest(state, 'green', c['id'])['accepted'] for c in plan['checks']))
+
     def status(self, feature):
         plan, state = self.load(feature)
         reasons = []
         try:
             criteria, source = self.green_ready(plan, state)
             review = state['reviews'].get('implementation', {})
-            require(review.get('passed') and review.get('criteria_digest') == criteria and review.get('source_digest') == source, '현재 버전의 독립 구현 리뷰가 필요합니다')
+            require(review.get('passed') and self.review_current(plan, state, criteria, source), '현재 버전의 독립 구현 리뷰가 필요합니다')
         except HarnessError as error:
             reasons.append(str(error))
         for artifact in plan['artifacts']:

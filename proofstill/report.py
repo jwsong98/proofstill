@@ -77,7 +77,7 @@ def render(h, plan, state, status):
         folder = Path(record['folder'])
         valid = criteria_valid and record['criteria_digest'] == current_criteria and (stage == 'criteria' or record['source_digest'] == current_source)
         if stage == 'implementation':
-            valid = valid and all(current_run(h.latest(state, 'green', c['id']))
+            valid = valid and h.review_current(plan, state, current_criteria, current_source) and all(current_run(h.latest(state, 'green', c['id']))
                                   and h.latest(state, 'green', c['id'])['accepted'] for c in plan['checks'])
         label = '현재 버전에서 무효' if not valid else ('통과' if record['passed'] else '실패/미검증')
         lines += [f"- {title}: {label} · 세션 `{record.get('session', '미확인')}` · 실행기 `{record['launcher']}`"]
@@ -101,7 +101,7 @@ def render(h, plan, state, status):
     for limitation in dict.fromkeys(limitations):
         lines.append('- ' + limitation)
     lines.append('- 검증은 위 기준과 대상 버전에 한정하며, 모든 버그의 부재나 사용자의 최종 수용을 뜻하지 않는다.')
-    from .handoff import snapshot, markdown
-    overview = markdown(snapshot(h, plan['id']))
+    from .handoff import briefing
+    overview = briefing(h, plan['id'])
     lines[2:2] = [overview, '']
     return '\n'.join(lines) + '\n'

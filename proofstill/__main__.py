@@ -36,7 +36,7 @@ def main():
     trace.add_argument('path')
     trace.add_argument('--expect', help='구현 전에 고정한 기대 흐름 JSON')
     trace.add_argument('--output', help='HTML 저장 위치')
-    for name in ['status', 'report', 'cleanup']:
+    for name in ['status', 'report', 'cleanup', 'brief']:
         command = commands.add_parser(name)
         command.add_argument('feature')
     args = parser.parse_args()
@@ -65,6 +65,9 @@ def main():
                 except (HarnessError, KeyError, TypeError, OSError, ValueError) as error:
                     errors.append({'taskId': feature, 'message': str(error)})
             print(json.dumps({'rows': rows, 'errors': errors}, ensure_ascii=False))
+        elif args.command == 'brief':
+            from .handoff import briefing
+            print(briefing(h, args.feature), end='')
         elif args.command == 'implement':
             print(json.dumps(h.implement(args.feature, args.requirement, args.status, args.path, args.remaining, args.note), ensure_ascii=False))
         elif args.command == 'init':
