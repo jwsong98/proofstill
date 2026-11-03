@@ -1,12 +1,13 @@
 {
-  "id": "accountability-check-v1",
+  "id": "accountability-check-v2",
   "title": "Q1~Q5를 근거와 확인 행동으로 인계",
   "intent": "사용자 원문: Q1. 무엇이 구현되었고, 구현되지 않았는지, 무엇이 검증되었고 검증되지 않았는지 어떤 기준으로 나누었가? Q2. Q1에 이어 아무것도 모르는 제3자가 왔을 때 이를 어떻게 이해할 수 있는가? Q3. 무엇을 사람이 하고, 무엇을 AI에게 맡기는지 기준이 무엇인가? Q4. AI의 Context 관리를 어떻게 하는가? Q5. 사람은 AI가 준 결과물을 그대로 믿지 않고 어떻게 검증하고 행동하는가? 사람인 내가 봤을 때 만족스럽지 않다면 계속해서 발전시켜야 합니다. 다른 구현 세션에 이를 전달하여 만족스러울 때까지 구현합니다. 답변을 브리핑하고 나에게 YES/NO를 물어보고 NO라면 추가 구현을 진행하라.",
   "context": "기존 Python CLI handoff/report와 앱의 원본 공유 경계를 사용한다. 별도 UI/스택을 추가하지 않는다. 기존 console 미커밋 변경은 다른 작업 소유이며 수정하지 않는다. 이 구현 세션은 부모에 결과를 반환하고 실제 YES/NO 수용은 부모 채팅에서 사람이 판단한다. 형식/버전/누락 검사는 거짓 입력, 등록 밖 변경이나 하네스 우회를 막는 보안 경계가 아니다. 원문은 requirements.md U22이며 과거 문서의 완료 주장을 근거로 믿지 말고 필요한 코드와 실제 실행을 대조한다.",
   "sources": [
     "proofstill",
     ".agents/skills/proofstill-develop/SKILL.md",
-    "README.md"
+    "README.md",
+    "package.json"
   ],
   "context_files": [
     "requirements.md"
@@ -16,35 +17,40 @@
       "id": "Q1",
       "text": "구현 선언·현재 버전·자동 검사·독립 리뷰·사용자 수용을 구분하고 미기록/변경/사라진 근거를 완료로 확대하지 않는다.",
       "checks": [
-        "python"
+        "python",
+        "package"
       ]
     },
     {
       "id": "Q2",
       "text": "제3자가 기존 CLI brief/report에서 목표·요구·상태·코드·재현 명령·기대 결과·미검증 한계를 읽는다.",
       "checks": [
-        "python"
+        "python",
+        "package"
       ]
     },
     {
       "id": "Q3",
-      "text": "사람의 의도·범위·수용과 AI의 위임 범위를 명시하고 빠진 협업 기준·인간 결정을 감지한다.",
+      "text": "사람의 의도·범위·수용과 AI의 위임 범위를 명시하고 빠진 협업 기준·인간 결정을 감지한다. 인계 미준비 시 cleanup으로 맥락을 제거할 수 없다.",
       "checks": [
-        "python"
+        "python",
+        "package"
       ]
     },
     {
       "id": "Q4",
       "text": "재개할 다음 행동·가정·결정·근거를 보존하고 현재 파일과 대조하며 자동 저장이 미정 결정을 지우지 않는다.",
       "checks": [
-        "python"
+        "python",
+        "package"
       ]
     },
     {
       "id": "Q5",
       "text": "요구별 사람이 직접 확인할 행동·기대 결과 누락을 감지하고 사용자 YES/NO를 기술 통과로 꾸미지 않는다.",
       "checks": [
-        "python"
+        "python",
+        "package"
       ]
     }
   ],
@@ -74,6 +80,25 @@
       ],
       "green_pattern": "Ran [1-9][0-9]* tests?[\\s\\S]*\\bOK\\b",
       "timeout": 120
+    },
+    {
+      "id": "package",
+      "kind": "integration",
+      "module": "distribution",
+      "label": "설치 패키지의 CLI 모듈 포함",
+      "purpose": "협업과 인계 모듈이 npm 배포 파일에 포함돼 설치본에서 import 가능한지 확인한다.",
+      "rationale": "로컬 검사만 통과하고 패키지에서 필수 모듈이 빠지는 실패를 막는다.",
+      "expected": "npm pack dry-run 결과에 collaboration.py와 handoff.py가 모두 있으며 모듈 import가 성공한다.",
+      "scope": "로컬 npm pack dry-run 및 나열된 Python 파일로 격리 import. 전역 설치·외부 전송 없음.",
+      "argv": [
+        "python3",
+        "tests/setup/check_handoff_package.py"
+      ],
+      "files": [
+        "tests/setup/check_handoff_package.py"
+      ],
+      "green_pattern": "HANDOFF_PACKAGE_OK",
+      "timeout": 60
     }
   ],
   "collaboration": {
@@ -87,7 +112,7 @@
       },
       {
         "requirement": "Q2",
-        "action": "python3 -m proofstill brief accountability-check-v1를 실행해 요구 ID부터 코드와 검사 명령을 따라간다.",
+        "action": "python3 -m proofstill brief accountability-check-v2를 실행해 요구 ID부터 코드와 검사 명령을 따라간다.",
         "expected": "처음 보는 사람도 무엇을 확인할지와 남은 한계를 찾아갈 수 있다. 이해가 안 되는 지점은 NO로 피드백한다."
       },
       {

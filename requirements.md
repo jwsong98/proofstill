@@ -183,7 +183,7 @@ U15 검증 근거: [최종 보고](reports/console-session-repair-v2.md), `.proo
 
 | 요구 ID | 조건·수용 기준 | 근거 | 구현·검사 위치 | 상태 |
 |---|---|---|---|---|
-| Q1 | 구현 선언·현재 버전·자동 검사·독립 리뷰·사용자 수용을 구분한다. 미기록/변경/사라진 구현·리뷰 근거를 완료로 확대하지 않는다. | U22 Q1 | proofstill/handoff.py, workflow.py; tests/unit/test_handoff.py | 현재 구현·검사·리뷰 판정은 reports/accountability-check-v1.md 참조 |
+| Q1 | 구현 선언·현재 버전·자동 검사·독립 리뷰·사용자 수용을 구분한다. 미기록/변경/사라진 구현·리뷰 근거를 완료로 확대하지 않는다. | U22 Q1 | proofstill/handoff.py, workflow.py; tests/unit/test_handoff.py | 현재 구현·검사·리뷰 판정은 reports/accountability-check-v2.md 참조 |
 | Q2 | 기존 CLI 인계 원본에서 목표·요구·상태·경로·재현 명령·기대 결과·한계를 짧은 brief와 report로 전달한다. | U22 Q2 | proofstill/handoff.py, __main__.py, report.py; tests/unit/test_handoff.py | 현재 판정은 동일 보고 참조 |
 | Q3 | 사람의 의도·범위·수용과 AI의 위임 범위를 명시하고, 빠진 협업 기준과 미해결 인간 결정을 감지하고 인계 미준비 시 cleanup을 거부한다. 기술 통과를 사용자 YES로 기록하지 않는다. | U22 Q3 | proofstill/collaboration.py, workflow.py; tests/unit/test_collaboration.py | 현재 판정은 동일 보고 참조 |
 | Q4 | 목표·근거·위임 경계·다음 행동·미정 결정·가정을 파일로 보존한다. 재개 시 현재 코드/기준과 대조하며 저장 중 미정 결정을 지우지 않는다. | U22 Q4 | proofstill/workflow.py, handoff.py; tests/unit/test_collaboration.py | 현재 판정은 동일 보고 참조 |
