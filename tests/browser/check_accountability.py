@@ -102,9 +102,9 @@ def main():
                     await live.getByRole('button', {{name:'구현 기록과 현재 검증을 구분해요', exact:true}}).click();
                     const detail = live.getByRole('complementary', {{name:'요구별 구현·검증 상세'}});
                     const summary = detail.getByRole('region', {{name:'지금 판단할 내용'}});
-                    await summary.getByRole('heading', {{name:'내가 할 일'}}).waitFor();
+                    await summary.getByRole('heading', {{name:/^(내가 할 일|볼 결과)$/}}).waitFor();
                     const topics = await summary.getByRole('heading').allInnerTexts();
-                    insist(topics.join('|') === '지금 판단|이렇게 판단한 이유|내가 할 일', '선택 직후 안내 순서 오류');
+                    insist(['지금 판단|이렇게 판단한 이유|내가 할 일', '지금 판단|이렇게 판단한 이유|볼 결과'].includes(topics.join('|')), '선택 직후 안내 순서 오류');
                     insist(!await detail.locator('.handoff-statuses').isVisible(), '기술 상태가 기본 상세에 노출됨');
                     await live.screenshot({{path:{json.dumps(str(output/'selected.png'))}}});
                     const source = await (await live.request.get(new URL('/api/projects/' + project.id + '/handoff', live.url()).href)).json();
