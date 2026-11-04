@@ -52,6 +52,7 @@
     "proofstill/assurance.py",
     "proofstill/collaboration.py",
     "proofstill/contract.py",
+    "proofstill/execution.py",
     "proofstill/handoff.py",
     "proofstill/report.py",
     "proofstill/reviewer.py",

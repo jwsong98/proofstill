@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from .contract import HarnessError, digest, file_hash, inventory, read_json, require, validate_check_files, validate_plan
 from . import reviewer
+from .execution import ExecutionControl, stop_process
 
 
 def save_json(path, value):
@@ -37,11 +38,18 @@ def exclusive(method):
 
 
 class Harness:
-    def __init__(self, root, codex='codex', developer_session=None, review_timeout=300, model=None, ignore_user_config=False):
+    def __init__(self, root, codex='codex', developer_session=None, review_timeout=300, model=None, ignore_user_config=False,
+                 review_idle_timeout=None, review_retries=0, run_control=None):
         self.root = Path(root).resolve()
         self.codex = codex
         self.developer_session = developer_session or os.environ.get('CODEX_THREAD_ID') or 'local-' + uuid.uuid4().hex
+        require(review_timeout > 0, 'review timeout must be positive')
+        require(review_idle_timeout is None or review_idle_timeout > 0, 'idle timeout must be positive')
+        require(isinstance(review_retries, int) and 0 <= review_retries <= 2, 'review retries must be 0..2')
         self.review_timeout = review_timeout
+        self.review_idle_timeout = review_idle_timeout
+        self.review_retries = review_retries
+        self.run_control = run_control
         self.model = model
         self.ignore_user_config = ignore_user_config
 
@@ -137,25 +145,42 @@ class Harness:
 
     def execute(self, argv, timeout, input_text=None, cwd=None, environment=None):
         process = None
-        env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+        control = ExecutionControl(self.run_control)
+        env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', **control.environment())
         env.update(environment or {})
+        import time
+        started = time.monotonic()
+        reason = control.reason()
+        if reason:
+            return {'exit_code': None, 'timed_out': True, 'stop_reason': reason, 'stdout': '', 'stderr': reason}
         try:
             process = subprocess.Popen(argv, cwd=cwd or self.root, stdin=subprocess.PIPE if input_text is not None else subprocess.DEVNULL,
                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env, start_new_session=True)
-            try:
-                stdout, stderr = process.communicate(input=input_text, timeout=timeout)
-            except subprocess.TimeoutExpired:
-                os.killpg(process.pid, signal.SIGKILL)
-                stdout, stderr = process.communicate()
-                return {'exit_code': None, 'timed_out': True, 'stdout': stdout, 'stderr': stderr}
-            return {'exit_code': process.returncode, 'timed_out': False, 'stdout': stdout, 'stderr': stderr}
+            control.register(process, 'check')
+            first = True
+            while True:
+                try:
+                    stdout, stderr = process.communicate(input=input_text if first else None, timeout=.1)
+                    break
+                except subprocess.TimeoutExpired:
+                    first = False
+                    reason = control.reason() or ('wall' if time.monotonic() - started >= timeout else None)
+                    if reason:
+                        stop_process(process)
+                        stdout, stderr = process.communicate()
+                        break
+            return {'exit_code': process.returncode if not reason else None, 'timed_out': bool(reason),
+                    'stop_reason': reason, 'stdout': stdout, 'stderr': stderr}
         except OSError as error:
-            return {'exit_code': None, 'timed_out': False, 'stdout': '', 'stderr': str(error)}
+            reason = 'spawn_error'
+            return {'exit_code': None, 'timed_out': False, 'stop_reason': reason, 'stdout': '', 'stderr': str(error)}
         except BaseException:
-            if process and process.poll() is None:
-                os.killpg(process.pid, signal.SIGKILL)
-                process.communicate()
+            reason = 'cancelled'
             raise
+        finally:
+            if process:
+                stop_process(process)
+                control.finish(reason, process.returncode)
 
     @exclusive
     def run(self, feature, phase='green', kind=None, module=None, *, reuse=False):

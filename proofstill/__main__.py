@@ -9,9 +9,16 @@ def main():
     parser.add_argument('--root', default='.', help='대상 프로젝트 경로')
     parser.add_argument('--codex', default='codex', help='독립 리뷰용 Codex CLI 실행 파일')
     parser.add_argument('--review-timeout', type=int, default=300)
+    parser.add_argument('--review-idle-timeout', type=float, default=None, help='선택적 무출력 제한 초. 기본은 wall 제한만 적용')
+    parser.add_argument('--review-retries', type=int, default=0, help='명시적으로 허용한 재시도 횟수(0~2)')
+    parser.add_argument('--run-control', help='자식 실행과 공유할 deadline/cancel JSON')
     parser.add_argument('--model', help='독립 리뷰에서 사용할 모델. 생략하면 Codex 설정을 유지')
     parser.add_argument('--ignore-user-config', action='store_true', help='이번 리뷰만 Codex 기본 설정으로 실행. auth는 유지')
     commands = parser.add_subparsers(dest='command', required=True)
+    control = commands.add_parser('control', help='공유 실행 제한 변경/취소')
+    control.add_argument('path')
+    control.add_argument('--minutes', type=float, help='최초 시작으로부터 제한 분')
+    control.add_argument('--cancel', action='store_true')
     init = commands.add_parser('init', help='기능 정의와 기준 고정')
     init.add_argument('plan')
     test = commands.add_parser('test', help='고정 명령으로 Red/Green 실행')
@@ -53,9 +60,13 @@ def main():
         command.add_argument('feature')
     args = parser.parse_args()
     h = Harness(args.root, codex=args.codex, review_timeout=args.review_timeout,
-                model=args.model, ignore_user_config=args.ignore_user_config)
+                model=args.model, ignore_user_config=args.ignore_user_config,
+                review_idle_timeout=args.review_idle_timeout, review_retries=args.review_retries, run_control=args.run_control)
     try:
-        if args.command == 'trace':
+        if args.command == 'control':
+            from .execution import configure
+            print(json.dumps(configure(args.path, minutes=args.minutes, cancel=args.cancel)))
+        elif args.command == 'trace':
             from .contract import read_json
             from .trace_check import verify_trace
             expected = read_json(args.expect) if args.expect else None
@@ -104,10 +115,21 @@ def main():
             h.cleanup(args.feature)
             print('임시 상태 정리 완료. 보고·증거는 보존했습니다.')
         return 0
-    except HarnessError as error:
+    except (HarnessError, ValueError) as error:
         print(f'proofstill: {error}', file=sys.stderr)
         return 2
 
 
+def cli():
+    import signal
+    def interrupt(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupt)
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+
+
 if __name__ == '__main__':
-    raise SystemExit(main())
+    cli()

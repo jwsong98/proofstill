@@ -6,8 +6,9 @@ import tempfile
 import time
 from pathlib import Path
 from .contract import require, read_json
+from .execution import ExecutionControl, stop_process, write_json
 
-IDLE_TIMEOUT = 30
+
 
 VERDICT_SCHEMA = {
     'type': 'object', 'additionalProperties': False,
@@ -63,13 +64,15 @@ def launch(harness, packet, folder):
     if harness.ignore_user_config:
         argv.insert(2, '--ignore-user-config')
     attempts = []
-    for index in range(1, 3):
+    for index in range(1, harness.review_retries + 2):
         if answer.exists():
             answer.replace(folder / 'interrupted-answer.json')
         with tempfile.TemporaryDirectory(prefix='proofstill-review-') as scratch:
-            result = execute_review(argv, workspace, folder, scratch, index, harness.review_timeout)
+            result = execute_review(argv, workspace, folder, scratch, index, harness.review_timeout,
+                                    idle_timeout=harness.review_idle_timeout, control_path=harness.run_control)
         attempts.append(result)
-        if result['timeout'] is None:
+        write_json(folder / 'attempts.json', attempts)
+        if result['timeout'] not in ('idle', 'wall'):
             break
     (folder / 'attempts.json').write_text(json.dumps(attempts, indent=2))
     for name in ('events.jsonl', 'stderr.log'):
@@ -87,10 +90,11 @@ def launch(harness, packet, folder):
     return sessions[0], read_json(answer)
 
 
-def execute_review(argv, workspace, folder, scratch, index, timeout):
+def execute_review(argv, workspace, folder, scratch, index, timeout, *, idle_timeout=None, control_path=None):
     """Watch complete Codex events while keeping stdout and stderr on disk."""
     events = folder / f'attempt-{index}.events.jsonl'
-    env = dict(os.environ, TMPDIR=scratch, PYTHONDONTWRITEBYTECODE='1')
+    control = ExecutionControl(control_path)
+    env = dict(os.environ, TMPDIR=scratch, PYTHONDONTWRITEBYTECODE='1', **control.environment())
     started = last_progress = time.monotonic()
     commands = set()
     usage = None
@@ -98,12 +102,15 @@ def execute_review(argv, workspace, folder, scratch, index, timeout):
     exit_code = None
     with (folder / 'input.txt').open('rb') as prompt, events.open('wb') as stdout, \
             events.open('rb') as stream, (folder / f'attempt-{index}.stderr.log').open('wb') as stderr:
+        if control.reason():
+            return {'exit_code': None, 'timeout': control.reason(), 'seconds': 0, 'usage': None}
         try:
             process = subprocess.Popen(argv, cwd=workspace, stdin=prompt, stdout=stdout,
                                        stderr=stderr, env=env, start_new_session=True)
         except OSError as error:
             stderr.write(str(error).encode())
             return {'exit_code': None, 'timeout': None, 'seconds': round(time.monotonic() - started, 3), 'usage': None}
+        control.register(process, 'review')
         try:
             while True:
                 exit_code = process.poll()
@@ -131,23 +138,26 @@ def execute_review(argv, workspace, folder, scratch, index, timeout):
                         last_progress = time.monotonic()
                     if event_type == 'turn.completed':
                         usage = event.get('usage')
+                        control.update(usage=usage)
                 if exit_code is not None:
                     break
                 now = time.monotonic()
+                reason = control.reason()
+                if reason:
+                    break
                 if now - started >= timeout:
                     reason = 'wall'
                     break
-                if not commands and now - last_progress >= IDLE_TIMEOUT:
+                if idle_timeout is not None and not commands and now - last_progress >= idle_timeout:
                     reason = 'idle'
                     break
                 time.sleep(0.05)
+        except BaseException:
+            reason = 'cancelled'
+            raise
         finally:
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
+            stop_process(process)
+            control.finish(reason, process.returncode)
     return {'exit_code': exit_code, 'timeout': reason, 'seconds': round(time.monotonic() - started, 3), 'usage': usage}
 
 

@@ -27,6 +27,8 @@ if attempt <= s.get('stall_attempts', 0):
     output.write_text('partial answer')
     print(json.dumps({'type': 'thread.started', 'thread_id': 'abandoned'}), flush=True)
     sleep(10)
+if s.get('silent_thinking'):
+    sleep(1.1)
 if s.get('long_command'):
     item = {'type': 'command_execution', 'id': 'command-1'}
     print(json.dumps({'type': 'item.started', 'item': item}), flush=True)
@@ -37,8 +39,9 @@ if s.get('long_command'):
 
     def review(self, **behavior):
         (self.root / 'review_behavior.json').write_text(json.dumps(behavior))
-        with patch('proofstill.reviewer.IDLE_TIMEOUT', 0.7):
-            return self.h.review('counter', 'criteria')
+        self.h.review_idle_timeout = .7
+        self.h.review_retries = 1
+        return self.h.review('counter', 'criteria')
 
     def attempts(self):
         record = self.h.load('counter')[1]['reviews']['criteria']
@@ -60,3 +63,16 @@ if s.get('long_command'):
         with self.assertRaises(HarnessError):
             self.review(long_command=True, verdict='fail')
         self.assertEqual([a['timeout'] for a in self.attempts()], [None])
+
+    def test_default_allows_silent_thinking_without_retry(self):
+        (self.root / 'review_behavior.json').write_text(json.dumps({'silent_thinking': True}))
+        result = self.h.review('counter', 'criteria')
+        self.assertTrue(result['passed'])
+        self.assertEqual(len(self.attempts()), 1)
+
+    def test_wall_timeout_does_not_retry_by_default(self):
+        self.h.review_timeout = .3
+        (self.root / 'review_behavior.json').write_text(json.dumps({'stall_attempts': 2}))
+        with self.assertRaisesRegex(HarnessError, '시간 초과'):
+            self.h.review('counter', 'criteria')
+        self.assertEqual([a['timeout'] for a in self.attempts()], ['wall'])
