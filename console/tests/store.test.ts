@@ -30,7 +30,7 @@ test('empty database and migration survive reopening without seeding fake record
     assert.deepEqual(store.getSession(session.id).contextNodeIds, [node.id]);
     assert.deepEqual(store.listMessages(session.id).map(message => message.content), ['왜 필요한지 설명해줘', '이유 설명', '추가 질문']);
     assert.deepEqual(store.listMessages(session.id).map(message => message.createdAt), [42, 42, 42]);
-    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 5);
+    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 6);
     store.close();
   } finally { rmSync(folder, { recursive: true, force: true }); }
 });
@@ -61,7 +61,7 @@ test('evidence is separate raw data, immutable even through direct SQL, with app
   } finally { store.close(); }
 });
 
-test('graph semantic relations are symmetric, task order is directed and acyclic', () => {
+test('graph semantic relations are symmetric, review flow is directed and acyclic', () => {
   const { store, projectId } = setup();
   try {
     const feature = store.createNode(projectId, { kind: 'feature', title: '기능' });
@@ -73,7 +73,13 @@ test('graph semantic relations are symmetric, task order is directed and acyclic
     store.createEdge(projectId, { sourceId: a.id, targetId: b.id, kind: 'precedes' });
     store.createEdge(projectId, { sourceId: b.id, targetId: c.id, kind: 'precedes' });
     assert.throws(() => store.createEdge(projectId, { sourceId: c.id, targetId: a.id, kind: 'precedes' }), /cycle/);
-    assert.throws(() => store.createEdge(projectId, { sourceId: feature.id, targetId: a.id, kind: 'precedes' }), /task/);
+    const result = store.recordExecution(projectId, { title: '검사 결과', kind: 'test', status: 'passed', output: 'PASS' });
+    const follow = store.createNode(projectId, { kind: 'task', title: '후속 구현' });
+    for (const [sourceId, targetId] of [[feature.id, a.id], [c.id, result.id], [result.id, follow.id]]) {
+      const link = store.createEdge(projectId, { sourceId, targetId, kind: 'precedes' });
+      assert.deepEqual([link.sourceId, link.targetId], [sourceId, targetId]);
+    }
+    assert.throws(() => store.createEdge(projectId, { sourceId: result.id, targetId: feature.id, kind: 'precedes' }), /cycle/);
     assert.throws(() => store.createEdge(projectId, { sourceId: a.id, targetId: a.id, kind: 'related' }), /itself/);
     assert.throws(() => store.db.prepare('UPDATE nodes SET kind=? WHERE id=?').run('feature', a.id), /immutable/);
     const other = store.createProject({ name: '다른 프로젝트', rootPath: '/workspace/two' });
@@ -316,7 +322,7 @@ test('feature checks migrate an existing database and persist actual association
     assert.equal(feature.acceptance!.fulfilled, true);
     assert.equal(feature.acceptance!.checks[0].executionId, result.executionId);
     assert.equal(feature.acceptance!.checks[0].execution!.output, result.execution!.output);
-    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 5);
+    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 6);
     store.close();
   } finally { rmSync(folder, { recursive: true, force: true }); }
 });

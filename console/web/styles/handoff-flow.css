@@ -1,0 +1,38 @@
+.handoff-flow-index, .handoff-flow-index ul, .handoff-flow, .handoff-flow-links { list-style: none; padding: 0; margin: 0; }
+.handoff-flow-index h3 { margin: 16px 0 4px; font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.handoff-flow-index button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--border);
+  background: transparent;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.handoff-flow-index button:hover { background: var(--bg-subtle); }
+.handoff-flow-index button[aria-pressed="true"] { background: var(--fill); border-color: var(--border-control); border-radius: var(--radius-sm); }
+.handoff-flow-index small, .handoff-flow-links small { color: var(--text-secondary); display: block; overflow-wrap: anywhere; }
+.handoff-flow { counter-reset: handoff-stage; margin: 20px 0; }
+.handoff-flow > li { counter-increment: handoff-stage; position: relative; margin-left: 12px; padding: 0 0 16px 24px; border-left: 1px solid var(--border-control); }
+.handoff-flow > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.handoff-flow > li::before {
+  content: counter(handoff-stage);
+  position: absolute;
+  inset: 0 auto auto -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 12px;
+}
+.handoff-flow h3, .handoff-flow h4 { margin: 0; }
+.handoff-flow h4 { font-size: 13px; margin-top: 8px; }
+.handoff-flow p { margin: 4px 0; }
+.handoff-flow-links li { padding: 4px 0; font-size: 13px; }
+.handoff-flow-links button { text-align: left; overflow-wrap: anywhere; }

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import type { HandoffRow, HandoffSnapshot, ImplementationProgress } from '../server/types.ts';
+import type { Graph, HandoffRow, HandoffSnapshot, ImplementationProgress } from '../server/types.ts';
 import { implementationLabels, verificationLabels, filterHandoffRows, verificationStatus } from '../shared/progress.ts';
 import { CriteriaAssurance, HumanConfirmation, RequirementDecision, RequirementContext, ReviewEvidenceView, decisionLabel } from './RequirementAssurance.tsx';
+import { HandoffFlow } from './HandoffFlow.tsx';
 import { VerificationChecks } from './VerificationChecks.tsx';
 import { api } from './api.ts';
 import { ErrorNotice, Loading } from './components.tsx';
 import './styles/handoff-guide.css';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
-export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { projectId: string; initialNodeId?: string | null; onGraphSelect: (id: string) => void }) {
+export function HandoffView({ projectId, graph, initialNodeId, onGraphSelect }: { projectId: string; graph: Graph; initialNodeId?: string | null; onGraphSelect: (id: string) => void }) {
   const [data, setData] = useState<HandoffSnapshot | null>(null), [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialNodeId ? `console:${initialNodeId}` : null), [filter, setFilter] = useState('all'), [search, setSearch] = useState('');
   const [scope, setScope] = useState('current');
@@ -29,6 +30,12 @@ export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { proje
   const rows = data?.rows ?? [], selected = rows.find(r => r.id === selectedId && (scope === 'all' || (scope === 'history' ? r.historical : !r.historical))) ?? (selectedId ? rows.find(r => r.nodeId === initialNodeId && (scope === 'all' || (scope === 'history' ? r.historical : !r.historical))) : undefined);
   const scopedRows = rows.filter(r => scope === 'all' || (scope === 'history' ? r.historical : !r.historical));
   const visible = filterHandoffRows(rows, scope, filter, search);
+  const groups = new Map<string, HandoffRow[]>();
+  for (const row of visible) {
+    const group = groups.get(row.group) ?? [];
+    group.push(row);
+    groups.set(row.group, group);
+  }
   const automaticChecks = selected?.verification.checks.filter(c => c.kind !== 'scenario' && c.surface !== 'browser') ?? [];
   const automaticDetails = automaticChecks.filter(c => !selected?.verification.criteriaChecks?.some(negative => negative.id === c.id));
   const usageChecks = selected?.verification.checks.filter(c => c.kind === 'scenario' || c.surface === 'browser') ?? [];
@@ -43,15 +50,16 @@ export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { proje
     <ErrorNotice message={saveError || (error && data ? '최신 상태를 읽지 못했어요. 아래는 이전 조회 자료예요. 지금은 통과로 판단하지 마세요. ' + error : error)} />{data?.errors.map((e, i) => <div className="error-notice" role="alert" key={i}>{e.taskId}: {e.message} 이 범위는 현황에 포함되지 않았어요.</div>)}
     {!data && loading ? <Loading /> : <div className="handoff-workspace"><section className="handoff-list" aria-label="구현·검증 현황">
       <div className="handoff-filters"><select aria-label="목록 범위" value={scope} disabled={saving} onChange={e => { setScope(e.target.value); setSelectedId(null); setEditing(false); setSaveError(null); }}><option value="current">현재 기능</option><option value="history">이전 작업</option><option value="all">전체 기록</option></select><input aria-label="요구 검색" placeholder="이름으로 찾기 (선택)" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="현황 필터" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">전체</option><option value="remaining">남은 구현</option><option value="verification">검증 필요</option><option value="failed">실패 발견</option></select></div>
-      {!rows.length ? <div className="empty-page"><h2>아직 요구·기능이 없어요.</h2><p>관계 그래프에 요구·기능을 추가하거나, 프로젝트에서 하네스 작업을 등록하면 여기에 표시돼요.</p><p className="small">기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.</p></div> : <><div className="handoff-table-scroll"><table className="handoff-table">
-        <thead><tr><th scope="col">확인할 항목</th><th scope="col">지금 판단</th></tr></thead>
-        <tbody>{visible.map(row => <tr key={row.id} className={selected?.id === row.id ? 'selected' : ''}>
-          <td><button className="text-button" aria-pressed={selected?.id === row.id} disabled={saving} onClick={() => { setSelectedId(row.id); setEditing(false); setSaveError(null); }}>{row.title}</button></td>
-          <td>{decisionLabel(row, !error)}</td>
-        </tr>)}</tbody>
-      </table></div>{!visible.length && <p className="small">조건에 맞는 항목이 없어요.</p>}</>}
+      {!rows.length ? <div className="empty-page"><h2>아직 요구·기능이 없어요.</h2><p>관계 그래프에 요구·기능을 추가하거나, 프로젝트에서 하네스 작업을 등록하면 여기에 표시돼요.</p><p className="small">기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.</p></div> : <><ul className="handoff-flow-index">{[...groups].map(([group, groupRows]) => <li key={group}>
+        <h3>{group}</h3><ul>{groupRows.map(row => <li key={row.id}>
+          <button aria-pressed={selected?.id === row.id} disabled={saving} onClick={() => { setSelectedId(row.id); setEditing(false); setSaveError(null); }}>
+            <strong>{row.title}</strong><small>{decisionLabel(row, !error)}</small>
+          </button>
+        </li>)}</ul>
+      </li>)}</ul>{!visible.length && <p className="small">조건에 맞는 항목이 없어요.</p>}</>}
     </section><aside key={selected?.id ?? 'unselected'} className="handoff-detail" aria-label="요구별 구현·검증 상세">
       {selected ? <><header><span className="small">{selected.group} · {selected.requirementId}</span><h2>{selected.title}</h2></header>
+        <HandoffFlow row={selected} graph={graph} currentRead={!error} onSelect={onGraphSelect} />
         <RequirementDecision row={selected} currentRead={!error} />
         <details className="handoff-full-detail"><summary>판정 근거</summary>
         <RequirementContext row={selected} />
