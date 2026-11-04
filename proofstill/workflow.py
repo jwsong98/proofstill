@@ -244,7 +244,7 @@ class Harness:
             self.save(plan, state)
 
     @exclusive
-    def review(self, feature, stage='implementation'):
+    def review(self, feature, stage='implementation', *, reuse=False):
         require(stage in ['criteria', 'implementation'], '알 수 없는 검토 단계')
         plan, state = self.load(feature)
         from .collaboration import require_decisions_resolved
@@ -254,6 +254,13 @@ class Harness:
             source = self.source_digest(plan)
         else:
             criteria, source = self.green_ready(plan, state)
+        previous = state['reviews'].get(stage, {})
+        launcher = {'launcher': self.codex, 'model': self.model, 'ignore_user_config': self.ignore_user_config}
+        if (reuse and previous.get('passed') and previous.get('criteria_digest') == criteria
+                and previous.get('source_digest') == source
+                and all(previous.get(key) == value for key, value in launcher.items())
+                and self.review_evidence_current(previous, state['developer_session'])):
+            return dict(previous, reused=True)
         folder = self.folder(feature) / 'reviews' / (stage + '-' + uuid.uuid4().hex[:12])
         folder.mkdir(parents=True)
         manifest = folder / 'manifest.json'
@@ -261,10 +268,14 @@ class Harness:
         packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
                   'manifest': str(manifest), 'decisions': state.get('decisions', {})}
+        if stage == 'implementation':
+            runs = [self.latest(state, 'green', check['id']) for check in plan['checks']]
+            packet['current_green'] = [
+                {key: run[key] for key in ('check', 'receipt', 'log', 'evidence_hashes', 'traces')}
+                for run in runs
+            ]
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
-                  'folder': str(folder), 'launcher': self.codex, 'model': self.model,
-                  'ignore_user_config': self.ignore_user_config}
-        previous = state['reviews'].get(stage)
+                  'folder': str(folder), **launcher}
         history = state.setdefault('review_history', [])
         if previous and not any(item.get('folder') == previous.get('folder') for item in history):
             history.append(dict(previous, stage=stage))
@@ -279,6 +290,8 @@ class Harness:
             state['review_sessions'].append(session)
             reviewer.validate_verdict(plan, answer)
             require(self.criteria_digest(plan, state) == criteria and self.source_digest(plan) == source, '리뷰 도중 기준/코드가 변경되었습니다')
+            if stage == 'implementation':
+                self.green_ready(plan, state)
             record['passed'] = True
             state['next'] = '구현 및 필요한 검사 실행' if stage == 'criteria' else '보고 생성 및 사용자 전달'
         except HarnessError as error:

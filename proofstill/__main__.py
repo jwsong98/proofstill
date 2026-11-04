@@ -23,6 +23,7 @@ def main():
     review = commands.add_parser('review', help='새 세션으로 독립 검토')
     review.add_argument('feature')
     review.add_argument('stage', choices=['criteria', 'implementation'], nargs='?', default='implementation')
+    review.add_argument('--force', action='store_true', help='현재 독립 판정도 새 세션에서 다시 검토')
     handoff = commands.add_parser('handoff', help='현재 요구별 구현·검증 JSON 조회')
     handoff.add_argument('feature', nargs='?')
     implement = commands.add_parser('implement', help='요구별 구현 기록 — 검증 판정과 분리')
@@ -92,7 +93,7 @@ def main():
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if all(r['accepted'] for r in result) else 1
         elif args.command == 'review':
-            print(json.dumps(h.review(args.feature, args.stage), ensure_ascii=False, indent=2))
+            print(json.dumps(h.review(args.feature, args.stage, reuse=not args.force), ensure_ascii=False, indent=2))
         elif args.command == 'status':
             result = h.status(args.feature)
             print(json.dumps(result, ensure_ascii=False, indent=2))
