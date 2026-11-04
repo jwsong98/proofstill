@@ -254,10 +254,13 @@ class Harness:
             source = self.source_digest(plan)
         else:
             criteria, source = self.green_ready(plan, state)
+        runs = [self.latest(state, 'green', check['id']) for check in plan['checks']] if stage == 'implementation' else []
+        green_receipts = {run['check']: run['evidence_hashes']['receipt'] for run in runs} if runs else None
         previous = state['reviews'].get(stage, {})
         launcher = {'launcher': self.codex, 'model': self.model, 'ignore_user_config': self.ignore_user_config}
         if (reuse and previous.get('passed') and previous.get('criteria_digest') == criteria
                 and previous.get('source_digest') == source
+                and previous.get('green_receipts') == green_receipts
                 and all(previous.get(key) == value for key, value in launcher.items())
                 and self.review_evidence_current(previous, state['developer_session'])):
             return dict(previous, reused=True)
@@ -268,14 +271,15 @@ class Harness:
         packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
                   'manifest': str(manifest), 'decisions': state.get('decisions', {})}
-        if stage == 'implementation':
-            runs = [self.latest(state, 'green', check['id']) for check in plan['checks']]
+        if runs:
             packet['current_green'] = [
                 {key: run[key] for key in ('check', 'receipt', 'log', 'evidence_hashes', 'traces')}
                 for run in runs
             ]
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
                   'folder': str(folder), **launcher}
+        if green_receipts is not None:
+            record['green_receipts'] = green_receipts
         history = state.setdefault('review_history', [])
         if previous and not any(item.get('folder') == previous.get('folder') for item in history):
             history.append(dict(previous, stage=stage))
@@ -313,10 +317,17 @@ class Harness:
 
     def review_current(self, plan, state, criteria, source):
         record = state.get('reviews', {}).get('implementation', {})
-        return bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
-                    and self.review_evidence_current(record, state['developer_session'])
-                    and all(self.run_current(plan, state, c, self.latest(state, 'green', c['id']), criteria, source)
-                            and self.latest(state, 'green', c['id'])['accepted'] for c in plan['checks']))
+        if not (criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
+                and self.review_evidence_current(record, state['developer_session'])):
+            return False
+        bound = record.get('green_receipts')
+        for check in plan['checks']:
+            run = self.latest(state, 'green', check['id'])
+            if not (self.run_current(plan, state, check, run, criteria, source) and run['accepted']):
+                return False
+            if bound is not None and bound.get(check['id']) != run['evidence_hashes']['receipt']:
+                return False
+        return True
 
     def status(self, feature):
         plan, state = self.load(feature)

@@ -56,8 +56,12 @@ class WorkflowTests(unittest.TestCase):
             fresh = json.loads(call('review', 'counter', '--force'))
             self.assertNotEqual(fresh['session'], first['session'])
 
+            call('test', 'counter', '--force')
+            after_new_evidence = json.loads(call('review', 'counter'))
+            self.assertNotEqual(after_new_evidence['session'], fresh['session'])
+
             (root / 'tests/check.py').write_text((root / 'tests/check.py').read_text() + '# changed check\n')
             call('test', 'counter')
             after_edit = json.loads(call('review', 'counter'))
             self.assertNotIn('reused', after_edit)
-            self.assertNotEqual(after_edit['session'], fresh['session'])
+            self.assertNotEqual(after_edit['session'], after_new_evidence['session'])
