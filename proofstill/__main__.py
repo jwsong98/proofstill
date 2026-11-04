@@ -21,6 +21,11 @@ def main():
     control.add_argument('--cancel', action='store_true')
     init = commands.add_parser('init', help='기능 정의와 기준 고정')
     init.add_argument('plan')
+    revise = commands.add_parser('revise', help='요구 ID를 유지하며 변경 기준과 이유를 새 revision으로 보존')
+    revise.add_argument('feature')
+    revise.add_argument('plan')
+    revise.add_argument('--reason', required=True)
+    revise.add_argument('--source', required=True)
     test = commands.add_parser('test', help='고정 명령으로 Red/Green 실행')
     test.add_argument('feature')
     test.add_argument('phase', choices=['red', 'green'], nargs='?', default='green')
@@ -99,6 +104,8 @@ def main():
             print(json.dumps(h.implement(args.feature, args.requirement, args.status, args.path, args.remaining, args.note), ensure_ascii=False))
         elif args.command == 'init':
             print(h.init(args.plan))
+        elif args.command == 'revise':
+            print(json.dumps(h.revise(args.feature, args.plan, args.reason, args.source), ensure_ascii=False))
         elif args.command == 'test':
             result = h.run(args.feature, args.phase, kind=args.kind, module=args.module, reuse=not args.force)
             print(json.dumps(result, ensure_ascii=False, indent=2))

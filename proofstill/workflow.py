@@ -97,9 +97,9 @@ class Harness:
         return digest(inventory(self.root, self.source_paths(plan)))
 
     def check_digests(self, plan, state, check):
+        from .revisions import check_basis
         criteria = digest({
-            'plan': state['plan_digest'],
-            'decisions': state.get('decisions', {}),
+            'basis': check_basis(plan, state, check),
             'files': inventory(self.root, [*check['files'], *plan['context_files']]),
         })
         paths = check['sources'] if 'sources' in check else self.source_paths(plan)
@@ -127,6 +127,11 @@ class Harness:
                  'review_sessions': [], 'next': '구현 및 필요한 검사 실행', 'closed': False}
         self.save(plan, state)
         return plan['id']
+
+    @exclusive
+    def revise(self, feature, path, reason, source):
+        from .revisions import revise
+        return revise(self, feature, path, reason, source)
 
     @staticmethod
     def latest(state, phase, check):
@@ -296,12 +301,17 @@ class Harness:
         packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
                   'manifest': str(manifest), 'decisions': state.get('decisions', {})}
+        from .revisions import review_delta, implementation_basis
+        delta = review_delta(self, plan, state, previous, read_json(manifest))
+        if delta:
+            packet['delta'] = delta
         if runs:
             packet['current_green'] = [
                 {key: run[key] for key in ('check', 'receipt', 'log', 'evidence_hashes', 'traces')}
                 for run in runs
             ]
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
+                  'requirement_inputs': {r['id']: implementation_basis(self, plan, state, r['id'], []) for r in plan['requirements']},
                   'folder': str(folder), **launcher}
         if green_receipts is not None:
             record['green_receipts'] = green_receipts
