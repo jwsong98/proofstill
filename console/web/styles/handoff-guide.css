@@ -1,0 +1,57 @@
+.handoff-start {
+  padding: 12px 0;
+  max-width: 34ch;
+}
+.handoff-start p {
+  color: var(--text-secondary);
+}
+.handoff-detail .handoff-decision {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.handoff-decision h3 {
+  margin: 0 0 2px;
+}
+.handoff-decision p {
+  margin: 0;
+}
+.handoff-decision small {
+  color: var(--text-secondary);
+}
+.handoff-full-detail > summary {
+  padding: 8px 0;
+  font-weight: 600;
+}
+.handoff-view .handoff-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 52%);
+}
+.handoff-view .handoff-table td:first-child {
+  min-width: 0;
+  max-width: none;
+}
+.handoff-view .handoff-table td:last-child {
+  width: 10em;
+  min-width: 0;
+  white-space: normal;
+}
+.handoff-detail .handoff-verdict {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 28px;
+}
+.handoff-statuses {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  font-size: 13px;
+}
+.handoff-statuses dt {
+  color: var(--text-secondary);
+}
+.handoff-statuses dd {
+  margin: 2px 0 0;
+}

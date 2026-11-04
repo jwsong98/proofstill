@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { HandoffRow, HandoffSnapshot, ImplementationProgress } from '../server/types.ts';
-import { implementationLabels, verificationLabels, nextAction, filterHandoffRows, verificationStatus } from '../shared/progress.ts';
-import { criteriaStatus } from '../shared/assurance.ts';
-import { CriteriaAssurance, HumanConfirmation, RequirementDecision, ReviewEvidenceView } from './RequirementAssurance.tsx';
+import { implementationLabels, verificationLabels, filterHandoffRows, verificationStatus } from '../shared/progress.ts';
+import { CriteriaAssurance, HumanConfirmation, RequirementDecision, RequirementContext, ReviewEvidenceView, decisionLabel } from './RequirementAssurance.tsx';
 import { VerificationChecks } from './VerificationChecks.tsx';
 import { api } from './api.ts';
 import { ErrorNotice, Loading } from './components.tsx';
+import './styles/handoff-guide.css';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { projectId: string; initialNodeId?: string | null; onGraphSelect: (id: string) => void }) {
@@ -39,14 +39,23 @@ export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { proje
     finally { if (alive.current) setSaving(false); }
   }
   return <div className="handoff-view">
-    <div className="handoff-toolbar"><span className="small">{scopedRows.length}개 항목 · 구현 기록과 검증 결과를 따로 확인해요.</span><div className="row"><button className="button" title="최근 구현 기록과 실제 검사 결과를 다시 읽어요." disabled={loading || saving} onClick={() => void refresh()}>{loading ? '조회 중' : '새로고침'}</button><a className="button" href={api.handoffUrl(projectId)} download>근거 포함 인계 파일 받기</a></div></div>
+    <div className="handoff-toolbar"><span className="small">{scopedRows.length}개 항목 · 목록에서 확인할 항목을 고르세요.</span><div className="row"><button className="button" title="최근 구현 기록과 실제 검사 결과를 다시 읽어요." disabled={loading || saving} onClick={() => void refresh()}>{loading ? '조회 중' : '새로고침'}</button><a className="button" href={api.handoffUrl(projectId)} download>근거 포함 인계 파일 받기</a></div></div>
     <ErrorNotice message={saveError || (error && data ? '최신 상태를 읽지 못했어요. 아래는 이전 조회 자료예요. 지금은 통과로 판단하지 마세요. ' + error : error)} />{data?.errors.map((e, i) => <div className="error-notice" role="alert" key={i}>{e.taskId}: {e.message} 이 범위는 현황에 포함되지 않았어요.</div>)}
     {!data && loading ? <Loading /> : <div className="handoff-workspace"><section className="handoff-list" aria-label="구현·검증 현황">
-      <div className="handoff-filters"><select aria-label="목록 범위" value={scope} disabled={saving} onChange={e => { setScope(e.target.value); setSelectedId(null); setEditing(false); setSaveError(null); }}><option value="current">현재 기능</option><option value="history">이전 작업</option><option value="all">전체 기록</option></select><input aria-label="요구 검색" placeholder="요구·기능 검색" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="현황 필터" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">전체</option><option value="remaining">남은 구현</option><option value="verification">검증 필요</option><option value="failed">실패 발견</option></select></div>
-      {!rows.length ? <div className="empty-page"><h2>아직 요구·기능이 없어요.</h2><p>관계 그래프에 요구·기능을 추가하거나, 프로젝트에서 하네스 작업을 등록하면 여기에 표시돼요.</p><p className="small">기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.</p></div> : <><div className="handoff-table-scroll"><table className="handoff-table"><thead><tr><th>요구·동작</th><th>구현</th><th>검사 상태</th><th>독립 리뷰</th><th>기준 적절성</th><th>다음 할 일</th></tr></thead><tbody>{visible.map(row => <tr key={row.id} className={selectedId === row.id ? 'selected' : ''}><td><button className="text-button" disabled={saving} onClick={() => { setSelectedId(row.id); setEditing(false); setSaveError(null); }}>{row.title}</button><small>{row.group}{row.source === 'harness' ? ` · ${row.requirementId}` : ''}</small></td><td>{implementationLabels[row.implementation.status]}{row.implementation.status === 'implemented' && row.implementationCurrent !== true && <small>현재 코드 재확인 필요</small>}</td><td><span className={row.verification.status === 'failed' ? 'danger-text' : ''}>{verificationLabels[row.verification.status]}</span><small>{row.verification.checks.filter(c => c.status === 'passed').length}/{row.verification.checks.length} 통과</small></td><td>{verificationLabels[row.verification.review.status]}</td><td>{verificationLabels[criteriaStatus(row)]}</td><td>{nextAction(row)}</td></tr>)}</tbody></table></div>{!visible.length && <p className="small">조건에 맞는 항목이 없어요.</p>}</>}
-    </section><aside className="handoff-detail" aria-label="요구별 구현·검증 상세">
-      {selected ? <><header><span className="small">{selected.group} · {selected.requirementId}</span><h2>{selected.title}</h2>{!selected.nodeId && selected.source === 'harness' && <button className="text-button" disabled={saving} onClick={() => { setSaving(true); void api.linkHarnessRequirement(projectId, selected.taskId, selected.requirementId).then(node => { if (alive.current) onGraphSelect(node.id); }).catch(e => { if (alive.current) setSaveError(errorText(e)); }).finally(() => { if (alive.current) setSaving(false); }); }}>관계 그래프에 연결하기</button>}{selected.nodeId && <button className="text-button" onClick={() => onGraphSelect(selected.nodeId!)}>관계 그래프에서 보기</button>}</header>
-        <RequirementDecision key={selected.id} row={selected} currentRead={!error} />
+      <div className="handoff-filters"><select aria-label="목록 범위" value={scope} disabled={saving} onChange={e => { setScope(e.target.value); setSelectedId(null); setEditing(false); setSaveError(null); }}><option value="current">현재 기능</option><option value="history">이전 작업</option><option value="all">전체 기록</option></select><input aria-label="요구 검색" placeholder="이름으로 찾기 (선택)" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="현황 필터" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">전체</option><option value="remaining">남은 구현</option><option value="verification">검증 필요</option><option value="failed">실패 발견</option></select></div>
+      {!rows.length ? <div className="empty-page"><h2>아직 요구·기능이 없어요.</h2><p>관계 그래프에 요구·기능을 추가하거나, 프로젝트에서 하네스 작업을 등록하면 여기에 표시돼요.</p><p className="small">기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.</p></div> : <><div className="handoff-table-scroll"><table className="handoff-table">
+        <thead><tr><th scope="col">확인할 항목</th><th scope="col">지금 판단</th></tr></thead>
+        <tbody>{visible.map(row => <tr key={row.id} className={selected?.id === row.id ? 'selected' : ''}>
+          <td><button className="text-button" aria-pressed={selected?.id === row.id} disabled={saving} onClick={() => { setSelectedId(row.id); setEditing(false); setSaveError(null); }}>{row.title}</button></td>
+          <td>{decisionLabel(row, !error)}</td>
+        </tr>)}</tbody>
+      </table></div>{!visible.length && <p className="small">조건에 맞는 항목이 없어요.</p>}</>}
+    </section><aside key={selected?.id ?? 'unselected'} className="handoff-detail" aria-label="요구별 구현·검증 상세">
+      {selected ? <><header><span className="small">{selected.group} · {selected.requirementId}</span><h2>{selected.title}</h2></header>
+        <RequirementDecision row={selected} currentRead={!error} />
+        <details className="handoff-full-detail"><summary>판정 근거</summary>
+        <RequirementContext row={selected} />
+        {!selected.nodeId && selected.source === 'harness' && <button className="text-button" disabled={saving} onClick={() => { setSaving(true); void api.linkHarnessRequirement(projectId, selected.taskId, selected.requirementId).then(node => { if (alive.current) onGraphSelect(node.id); }).catch(e => { if (alive.current) setSaveError(errorText(e)); }).finally(() => { if (alive.current) setSaving(false); }); }}>관계 그래프에 연결하기</button>}{selected.nodeId && <button className="text-button" onClick={() => onGraphSelect(selected.nodeId!)}>관계 그래프에서 보기</button>}
         <HumanConfirmation key={'human-'+selected.id} row={selected} />
         <details><summary>요구 조건</summary><p>{selected.description || selected.origin}</p></details>
         <section><div className="row between"><h3>구현 · {implementationLabels[selected.implementation.status]}</h3><button className="text-button" disabled={saving} onClick={() => setEditing(!editing)}>{editing ? '수정 취소' : '구현 기록 수정'}</button></div><p className="small">구현 상태는 근거를 붙인 기록이에요. 검사 통과·사용자 수용과 별개예요.</p>
@@ -59,7 +68,11 @@ export function HandoffView({ projectId, initialNodeId, onGraphSelect }: { proje
         <details><summary>원래 요구·근거</summary><pre>{selected.origin || '근거 미기록'}</pre>{selected.relatedNodeIds?.map(id => <button key={id} className="text-button" onClick={() => onGraphSelect(id)}>연결 항목 {id.slice(0, 8)} 보기</button>)}</details>
         {!!selected.mergedRecords?.length && <details><summary>통합 전 논의·작업 · {selected.mergedRecords.length}개</summary>{selected.mergedRecords.map(record => <details key={record.id}><summary>{record.title}</summary><p>{record.body}</p></details>)}</details>}
         <details><summary>검증 한계</summary>{selected.limitations.map((l, i) => <p key={i}>{l}</p>)}</details>
-      </> : <div className="empty-detail"><p>요구·동작을 선택하면 구현 근거와 실제 검사 결과를 볼 수 있어요.</p></div>}
+        </details>
+      </> : <div className="handoff-start">
+        <h2>확인할 항목을 골라 주세요</h2>
+        <p>목록에서 항목 이름을 누르면 지금 판단할 수 있는 내용, 그 근거, 내가 할 일이 차례로 나와요.</p>
+      </div>}
     </aside></div>}
   </div>;
 }

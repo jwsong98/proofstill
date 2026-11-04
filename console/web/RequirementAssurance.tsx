@@ -1,10 +1,56 @@
 import type { AssuredRow, ReviewEvidence } from '../shared/assurance.ts';
-import { criteriaReason, criteriaStatus, judgment } from '../shared/assurance.ts';
-import { verificationLabels } from '../shared/progress.ts';
+import { criteriaReason, criteriaStatus, judgmentState } from '../shared/assurance.ts';
+import { implementationLabels, verificationLabels } from '../shared/progress.ts';
 import { VerificationChecks } from './VerificationChecks.tsx';
 
-export function RequirementDecision({ row, currentRead = true }: { row: AssuredRow; currentRead?: boolean }) {
-  return <section aria-label="지금 판단할 내용"><h3>지금 판단할 내용</h3><p>{currentRead ? judgment(row) : '최신 조회에 실패해 아래는 이전 자료예요. 현재 상태의 수용 판단을 보류해 주세요.'}</p>
+export function decisionLabel(row: AssuredRow, currentRead: boolean) {
+  if (!currentRead) return '판단 보류';
+  switch (judgmentState(row)) {
+    case 'ready': return '확인 후 결정';
+    case 'decision': return '결정 필요';
+    case 'implementation': return row.implementation.status === 'unknown' ? '구현 확인 필요' : '먼저 구현';
+    default: return '판단 보류';
+  }
+}
+
+export function RequirementDecision({ row, currentRead }: { row: AssuredRow; currentRead: boolean }) {
+  const state = judgmentState(row);
+  const check = currentRead && row.implementationCurrent === true
+    ? row.verification.checks.find(c => c.status === 'failed')
+      ?? row.verification.checks.find(c => c.status === 'passed' && c.cases?.some(example => example.status === 'passed'))
+      ?? row.verification.checks.find(c => c.status === 'passed')
+    : undefined;
+  const example = check?.status === 'passed' ? check.cases?.find(item => item.status === 'passed') : undefined;
+  const evidence = !currentRead ? '최신 상태를 불러오지 못했어요.'
+    : state === 'currentness' ? row.implementationCurrent === false
+      ? '구현을 기록한 뒤 코드나 연결된 근거가 달라졌어요.'
+      : '구현 기록이 현재 코드와 일치하는지 확인할 근거가 없어요.'
+    : state === 'implementation' ? row.implementation.remaining || (row.implementation.status === 'unknown'
+      ? '이 항목의 구현 상태가 기록되지 않았어요.' : '구현 완료 기록이 아직 없어요.')
+    : example?.observed ?? (check ? `${check.label} · ${verificationLabels[check.status]}` : '현재 실행에서 확인한 근거가 아직 없어요.');
+  const human = row.humanChecks?.[0];
+  const action = !currentRead ? '새로고침을 눌러 최신 상태를 다시 불러오세요.'
+    : state === 'decision' ? row.pendingDecisions?.[0]?.question
+    : state === 'ready' ? human?.action
+    : state === 'currentness' ? '판정 근거를 열고 구현 기록을 현재 코드와 대조해 주세요.'
+    : state === 'implementation' ? '판정 근거에서 구현 기록과 남은 범위를 확인해 주세요.'
+    : state === 'gate' ? '판정 근거에서 작업 전체에 남은 확인을 먼저 살펴보세요.'
+    : '판정 근거에서 어떤 확인이 남았는지 먼저 살펴보세요.';
+  return <section className="handoff-decision" aria-label="지금 판단할 내용">
+    <div><h3>지금 판단</h3><p className="handoff-verdict">{decisionLabel(row, currentRead)}</p></div>
+    <div><h3>이렇게 판단한 이유</h3>{example && <small>{example.situation}</small>}<p>{evidence}</p></div>
+    <div><h3>내가 할 일</h3><p>{action}</p>{state === 'ready' && currentRead && human && <p className="small">기대 결과: {human.expected} 이 결과가 원하는 대로인지 결정해 주세요.</p>}</div>
+  </section>;
+}
+
+export function RequirementContext({ row }: { row: AssuredRow }) {
+  return <section aria-label="판단 기준과 미확인 범위"><h3>판단 기준과 미확인 범위</h3>
+    <dl className="handoff-statuses">
+      <div><dt>구현</dt><dd>{implementationLabels[row.implementation.status]}</dd></div>
+      <div><dt>검사 상태</dt><dd>{verificationLabels[row.verification.status]}</dd></div>
+      <div><dt>요구별 리뷰</dt><dd>{reviewLabel(row.verification.review.status)}</dd></div>
+      <div><dt>기준 적절성</dt><dd>{verificationLabels[criteriaStatus(row)]}</dd></div>
+    </dl>
     <h4>잘못 판단할 위험</h4><p>{row.risk || '이 요구의 위험 설명이 아직 연결되지 않았어요.'}</p><h4>이 기준이 필요한 이유</h4><p>{row.rationale || '필요성 설명이 아직 연결되지 않았어요. 검사 통과만으로 판단하지 않아요.'}</p>
     <p className="small">미확인 범위: {row.limitations[0] || '한계가 기록되지 않았어요. 모든 동작의 확인으로 확대하지 않아요.'}</p>
     <p className="small">구현 현재성: {row.implementationCurrent === true ? '현재 코드와 기록이 일치해요.' : row.implementationCurrent === false ? '기록 이후 변경됐거나 근거가 사라졌어요.' : '확인할 버전 근거가 없어요.'}</p>
