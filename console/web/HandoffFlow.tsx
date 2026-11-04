@@ -1,7 +1,7 @@
 import type { Graph, GraphNode, HandoffRow } from '../server/types.ts';
 import { implementationLabels, nextAction, verificationLabels } from '../shared/progress.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
-import { evidenceLabel, reviewConnections } from './reviewFlow.ts';
+import { evidenceLabel, reviewConnections, reviewTitle } from './reviewFlow.ts';
 import './styles/handoff-flow.css';
 
 const emptyLinks: ReturnType<typeof reviewConnections> = { incoming: [], outgoing: [], related: [], evidence: [] };
@@ -28,7 +28,7 @@ export function HandoffFlow({ row, graph, currentRead, onSelect }: {
   const linkedStatus = (node: GraphNode) => node.execution ? ({ passed: '통과', failed: '실패', interrupted: '중단', unverified: '미확인' } as const)[node.execution.status] : statusLabels[node.status];
   const label = (node: GraphNode) => evidenceLabel(node) ?? nodeLabels[node.kind];
   const linkList = (items: typeof links.outgoing) => <ul className="handoff-flow-links">{items.map(({ node, edge }) => <li key={edge.id}>
-    <button className="text-button" onClick={() => onSelect(node.id)}>{label(node)} · {node.title}</button>
+    <button className="text-button" onClick={() => onSelect(node.id)}>{label(node)} · {reviewTitle(node)}</button>
     <small>{[node.evidence ? '' : linkedStatus(node), edge.reason].filter(Boolean).join(' · ')}</small>
   </li>)}</ul>;
   const afterChecks = resultNodes.map(node => ({ node, outgoing: reviewConnections(graph, node.id).outgoing })).filter(result => result.outgoing.length);

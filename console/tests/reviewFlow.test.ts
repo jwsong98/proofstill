@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { evidenceLabel, flowPositions, reviewConnections } from '../web/reviewFlow.ts';
+import { evidenceLabel, flowPositions, judgmentTimeline, reviewConnections, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -31,4 +31,15 @@ test('결과에서 시작되는 후속 작업도 오른쪽으로 이어진다', 
   for (const { sourceId, targetId } of graph.edges) assert.ok(positions.get(sourceId)!.x < positions.get(targetId)!.x);
   graph.edges.push(edge('follow', 'work', 'precedes'));
   assert.equal(flowPositions(graph).size, 4);
+});
+
+test('판단 기록은 실제 발언 시각을 사용하고 보존 시각으로 대체할 때 출처를 표시한다', () => {
+  const user = node('user', 'evidence', { ...source('message', 'user'), content: '  먼저 확인한\n  판단 기준  ', source: { role: 'user', createdAt: 10 }, capturedAt: 90 });
+  const later = node('later', 'evidence', { ...source('message', 'user'), capturedAt: 30 });
+  const decision = { ...node('decision', 'decision'), createdAt: 20 };
+  const assistant = node('assistant', 'evidence', source('message', 'assistant'));
+  assert.equal(reviewTitle(user), '먼저 확인한 판단 기준');
+  assert.deepEqual(judgmentTimeline([later, assistant, decision, user]).map(entry => [entry.node.id, entry.at, entry.label]), [
+    ['user', 10, '발언'], ['decision', 20, '결정 기록'], ['later', 30, '보존 · 발언 시각 미확인'],
+  ]);
 });

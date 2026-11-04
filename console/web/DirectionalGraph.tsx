@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type NodeProps } from '@xyflow/react';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
-import { evidenceLabel, flowPositions, reviewConnections } from './reviewFlow.ts';
+import { evidenceLabel, flowPositions, reviewConnections, reviewTitle } from './reviewFlow.ts';
 import './styles/review-flow.css';
 
 type FlowNode = Node<{ record: GraphNode }, 'review'>;
@@ -11,7 +11,7 @@ function ReviewNode({ data: { record }, selected }: NodeProps<FlowNode>) {
   return <div className={'review-node' + (selected ? ' selected' : '')}>
     <Handle type="target" position={Position.Left} isConnectable={false} />
     <div className="review-node-meta"><span>{evidenceLabel(record) ?? nodeLabels[record.kind]}</span>{!record.evidence && <span className={record.status === 'failed' || record.execution?.status === 'failed' ? 'danger-text' : ''}>{status}</span>}</div>
-    <strong title={record.title}>{record.title}</strong>
+    <strong title={reviewTitle(record)}>{reviewTitle(record)}</strong>
     <Handle type="source" position={Position.Right} isConnectable={false} />
   </div>;
 }
@@ -37,7 +37,7 @@ export function DirectionalGraph({ graph, selectedId, onSelect, onlyIncomplete, 
   const positions = useMemo(() => flowPositions(displayed), [displayed]);
   const nodes = displayed.nodes.map((record): FlowNode => ({
     id: record.id, type: 'review', data: { record }, position: positions.get(record.id)!,
-    selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${record.title}`,
+    selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${reviewTitle(record)}`,
   }));
   const edges = displayed.edges.map(edge => {
     const directed = edge.kind === 'precedes';

@@ -51,3 +51,20 @@ export function flowPositions(graph: Graph) {
     return [node.id, { x: column * 256, y: row * 104 }];
   }));
 }
+
+export function reviewTitle(node: GraphNode, limit = 120): string {
+  if (node.evidence?.sourceKind !== 'message') return node.title;
+  const excerpt = node.evidence.content.replace(/\s+/g, ' ').trim();
+  if (!excerpt) return '내용이 비어 있는 대화';
+  return excerpt.length > limit ? excerpt.slice(0, limit - 1).trimEnd() + '…' : excerpt;
+}
+
+export function judgmentTimeline(nodes: GraphNode[]) {
+  return nodes.flatMap(node => {
+    if (node.kind === 'decision') return [{ node, at: node.createdAt, label: '결정 기록' }];
+    if (node.evidence?.sourceKind !== 'message' || node.evidence.source.role !== 'user') return [];
+    const at = node.evidence.source.createdAt;
+    if (typeof at === 'number' && Number.isFinite(at) && at > 0) return [{ node, at, label: '발언' }];
+    return [{ node, at: node.evidence.capturedAt, label: '보존 · 발언 시각 미확인' }];
+  }).sort((a, b) => a.at - b.at || a.node.id.localeCompare(b.node.id));
+}

@@ -3,6 +3,8 @@ import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type Node
 import '@xyflow/react/dist/style.css';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
+import { JudgmentTimeline } from './JudgmentTimeline.tsx';
+import { judgmentTimeline, reviewTitle } from './reviewFlow.ts';
 import { DirectionalGraph } from './DirectionalGraph.tsx';
 import { useGraphLayout } from './useGraphLayout.ts';
 
@@ -10,9 +12,9 @@ type DotData = { record: GraphNode };
 type Dot = Node<DotData, 'dot'>;
 function DotNode({ data, selected }: NodeProps<Dot>) {
   const record = data.record;
-  return <div className={`graph-dot-node kind-${record.kind} ${selected ? 'selected' : ''}`} aria-label={`${nodeLabels[record.kind]}: ${record.title}`}>
+  return <div className={`graph-dot-node kind-${record.kind} ${selected ? 'selected' : ''}`} aria-label={`${nodeLabels[record.kind]}: ${reviewTitle(record)}`}>
     <Handle type="target" position={Position.Left} isConnectable={false} /><span className="graph-dot" />
-    <div className="graph-node-label">{record.title}</div>
+    <div className="graph-node-label">{reviewTitle(record)}</div>
     {(record.kind === 'feature' || record.kind === 'task') && <small>{statusLabels[record.status]}</small>}
     <Handle type="source" position={Position.Right} isConnectable={false} />
   </div>;
@@ -23,13 +25,17 @@ type GraphCanvasProps = {
   onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 };
 export function GraphCanvas(props: GraphCanvasProps) {
-  const [free, setFree] = useState(false);
+  const [mode, setMode] = useState<'timeline' | 'flow' | 'free'>(() => {
+    const hasTimeline = judgmentTimeline(props.graph.nodes).length > 0;
+    return hasTimeline && !props.selectedId ? 'timeline' : 'flow';
+  });
   return <>
     <div className="graph-view-switch" role="group" aria-label="그래프 배치">
-      <button className="button" aria-pressed={!free} onClick={() => setFree(false)}>흐름 보기</button>
-      <button className="button" aria-pressed={free} onClick={() => setFree(true)}>자유 배치</button>
+      <button className="button" aria-pressed={mode === 'timeline'} onClick={() => setMode('timeline')}>판단 기록</button>
+      <button className="button" aria-pressed={mode === 'flow'} onClick={() => setMode('flow')}>흐름 보기</button>
+      <button className="button" aria-pressed={mode === 'free'} onClick={() => setMode('free')}>자유 배치</button>
     </div>
-    {free ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
+    {mode === 'timeline' ? <JudgmentTimeline {...props} /> : mode === 'free' ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
   </>;
 }
 function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: GraphCanvasProps) {
@@ -41,7 +47,7 @@ function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hidden
     .map((record, index): Dot => {
       const angle = index * 2.399963;
       const radius = Math.sqrt(index) * 100;
-      return { id: record.id, type: 'dot', ariaLabel: `${nodeLabels[record.kind]}: ${record.title}`, data: { record },
+      return { id: record.id, type: 'dot', ariaLabel: `${nodeLabels[record.kind]}: ${reviewTitle(record)}`, data: { record },
         position: { x: record.x ?? Math.cos(angle) * radius, y: record.y ?? Math.sin(angle) * radius },
         selected: record.id === selectedId, draggable: true };
     }), [graph.nodes, selectedId, hiddenKinds, onlyIncomplete]);

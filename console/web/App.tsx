@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import type { Graph, GraphContext, GraphNode, NodeInput, NodeKind, Project, Session } from '../server/types.ts';
 import { api, type RemoteThread, type SessionDetail } from './api.ts';
 import { ErrorNotice, Icon, Loading, Modal, nodeLabels, statusLabels, timeLabel } from './components.tsx';
+import { reviewTitle } from './reviewFlow.ts';
 import { GraphCanvas } from './GraphCanvas.tsx';
 import { HandoffView } from './HandoffView.tsx';
 import { SessionChat } from './SessionChat.tsx';
@@ -33,9 +34,9 @@ function SourcePanel({ node, onOpenOriginal, onSelect }: { node: GraphNode; onOp
   const start = Number(source.startLine) || 1;
   const messageSource = evidence.sourceKind === 'message' && typeof source.sessionId === 'string' && typeof source.messageId === 'string';
   const location = evidence.sourceKind === 'file' ? `${String(source.path ?? '')} · ${String(source.startLine)}-${String(source.endLine)}줄` : `${source.role ? String(source.role) + ' · ' : ''}${typeof source.createdAt === 'number' && source.createdAt > 0 ? new Date(source.createdAt).toLocaleString('ko-KR') : '원문 시각 미확인'}`;
-  const provenance = `${node.title} · ${location} · 읽기 전용 · 보존 시각 ${new Date(evidence.capturedAt).toLocaleString('ko-KR')}`;
+  const provenance = `${reviewTitle(node)} · ${location} · 읽기 전용 · 보존 시각 ${new Date(evidence.capturedAt).toLocaleString('ko-KR')}`;
   return <><header className="citation-toolbar" aria-label="인용 출처와 조작">
-    <span className="citation-source" title={provenance}>{node.title}<span className="small"> · {location}</span></span>
+    <span className="citation-source" title={provenance}>{reviewTitle(node)}<span className="small"> · {location}</span></span>
     <div className="citation-actions">
       {evidence.sourceKind === 'file' && (before || after) && <button className="text-button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '인용만' : '앞뒤 문맥'}</button>}
       {messageSource && <button className="text-button" onClick={() => onOpenOriginal(source.sessionId as string, source.messageId as string)}>원문 확인<Icon name="arrow-right" size={14} /></button>}
@@ -258,7 +259,7 @@ export default function App() {
 
 
         </> : <div className="empty-detail"><p>노드를 선택하면 개발 이유와 원문 근거를 읽을 수 있어요.</p></div>}
-      {selected && <section className="detail-section"><h3>연결된 항목</h3>{relevantEdges.map(edge => { const otherId = edge.sourceId === selected.id ? edge.targetId : edge.sourceId; const other = graph.nodes.find(node => node.id === otherId); return <div className="relation-row" key={edge.id}><button className="source-link" onClick={() => choose(otherId)}><span className="small">{edge.kind === 'related' ? '연관' : edge.sourceId === selected.id ? '후속 →' : '← 선행'}</span>{other?.title ?? otherId}{edge.reason && <span className="small">{edge.reason}</span>}</button><button className="icon-button" aria-label={`${other?.title ?? '항목'} 연결 삭제`} onClick={() => void perform(async () => { await api.deleteEdge(projectId, edge.id); await refreshGraph(); })}><Icon name="x" size={14} /></button></div>; })}{!relevantEdges.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}<button className="text-button" onClick={() => { setError(null); setModal({ kind: 'edge' }); }}>연결 추가하기</button></section>}
+      {selected && <section className="detail-section"><h3>연결된 항목</h3>{relevantEdges.map(edge => { const otherId = edge.sourceId === selected.id ? edge.targetId : edge.sourceId; const other = graph.nodes.find(node => node.id === otherId); return <div className="relation-row" key={edge.id}><button className="source-link" onClick={() => choose(otherId)}><span className="small">{edge.kind === 'related' ? '연관' : edge.sourceId === selected.id ? '후속 →' : '← 선행'}</span>{other ? reviewTitle(other) : otherId}{edge.reason && <span className="small">{edge.reason}</span>}</button><button className="icon-button" aria-label={`${other?.title ?? '항목'} 연결 삭제`} onClick={() => void perform(async () => { await api.deleteEdge(projectId, edge.id); await refreshGraph(); })}><Icon name="x" size={14} /></button></div>; })}{!relevantEdges.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}<button className="text-button" onClick={() => { setError(null); setModal({ kind: 'edge' }); }}>연결 추가하기</button></section>}
       </aside>}</div>}
     </main></div>
     {modal && <Modal title={modal.kind === 'project' ? '어떤 프로젝트를 등록할까요?' : modal.kind === 'file' ? '어떤 문서를 근거로 보존할까요?' : modal.kind === 'node' ? '어떤 내용을 기록할까요?' : modal.kind === 'edge' ? '어떤 관계로 연결할까요?' : modal.kind === 'remote' ? '어떤 Codex 세션을 가져올까요?' : '어떤 근거를 연결할까요?'} onClose={() => !busy && setModal(null)}><ErrorNotice message={error} />
