@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { evidenceLabel, flowPositions, judgmentTimeline, reviewConnections, reviewTitle } from '../web/reviewFlow.ts';
+import { evidenceLabel, flowPositions, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -33,13 +33,21 @@ test('결과에서 시작되는 후속 작업도 오른쪽으로 이어진다', 
   assert.equal(flowPositions(graph).size, 4);
 });
 
-test('판단 기록은 실제 발언 시각을 사용하고 보존 시각으로 대체할 때 출처를 표시한다', () => {
-  const user = node('user', 'evidence', { ...source('message', 'user'), content: '  먼저 확인한\n  판단 기준  ', source: { role: 'user', createdAt: 10 }, capturedAt: 90 });
-  const later = node('later', 'evidence', { ...source('message', 'user'), capturedAt: 30 });
-  const decision = { ...node('decision', 'decision'), createdAt: 20 };
-  const assistant = node('assistant', 'evidence', source('message', 'assistant'));
-  assert.equal(reviewTitle(user), '먼저 확인한 판단 기준');
-  assert.deepEqual(judgmentTimeline([later, assistant, decision, user]).map(entry => [entry.node.id, entry.at, entry.label]), [
-    ['user', 10, '발언'], ['decision', 20, '결정 기록'], ['later', 30, '보존 · 발언 시각 미확인'],
-  ]);
+test('보드 배치는 발언 시각과 날짜 경계를 따르면서 선후 연결의 열을 유지한다', () => {
+  const day = new Date(2026, 10, 4, 9).getTime();
+  const opinion = node('opinion', 'evidence', {
+    ...source('message', 'user'), content: '  먼저 확인한\n  판단 기준  ',
+    source: { role: 'user', createdAt: day }, capturedAt: day + 4 * 86_400_000,
+  });
+  const decision = { ...node('decision', 'decision'), createdAt: day + 3_600_000 };
+  const task = { ...node('task', 'task'), createdAt: day + 86_400_000 };
+  const later = node('later', 'evidence', { ...source('message', 'user'), capturedAt: day + 86_400_000 });
+  const positions = flowPositions({ nodes: [task, later, decision, opinion], edges: [edge('opinion', 'decision', 'precedes')] });
+  assert.equal(reviewTitle(opinion), '먼저 확인한 판단 기준');
+  assert.deepEqual(reviewTime(opinion), { at: day, label: '발언' });
+  assert.deepEqual(reviewTime(later), { at: later.evidence!.capturedAt, label: '보존' });
+  assert.ok(positions.get('opinion')!.x < positions.get('decision')!.x);
+  assert.equal(positions.get('opinion')!.y, positions.get('decision')!.y);
+  assert.ok(positions.get('decision')!.y < positions.get('task')!.y);
+  assert.equal(positions.get('task')!.y, positions.get('later')!.y);
 });

@@ -43,12 +43,22 @@ export function flowPositions(graph: Graph) {
     ranks.set(id, column);
     return column;
   }
-  const rows = new Map<number, number>();
-  return new Map(graph.nodes.map(node => {
+  const ordered = graph.nodes.map(node => ({ node, at: reviewTime(node).at }))
+    .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.node.id.localeCompare(b.node.id));
+  const lastRow = new Map<number, number>();
+  let row = 0, dayGap = 0, previousDay: string | undefined;
+  return new Map(ordered.map(({ node, at }) => {
+    const day = at == null ? 'unknown' : new Date(at).toDateString();
+    if (previousDay !== undefined && day !== previousDay) {
+      row++;
+      dayGap += 24;
+    }
+    previousDay = day;
     const column = rank(node.id);
-    const row = rows.get(column) ?? 0;
-    rows.set(column, row + 1);
-    return [node.id, { x: column * 256, y: row * 104 }];
+    // Share a row across columns while keeping older records above newer ones.
+    row = Math.max(row, (lastRow.get(column) ?? -1) + 1);
+    lastRow.set(column, row);
+    return [node.id, { x: column * 256, y: row * 120 + dayGap }];
   }));
 }
 
@@ -59,12 +69,14 @@ export function reviewTitle(node: GraphNode, limit = 120): string {
   return excerpt.length > limit ? excerpt.slice(0, limit - 1).trimEnd() + '…' : excerpt;
 }
 
-export function judgmentTimeline(nodes: GraphNode[]) {
-  return nodes.flatMap(node => {
-    if (node.kind === 'decision') return [{ node, at: node.createdAt, label: '결정 기록' }];
-    if (node.evidence?.sourceKind !== 'message' || node.evidence.source.role !== 'user') return [];
-    const at = node.evidence.source.createdAt;
-    if (typeof at === 'number' && Number.isFinite(at) && at > 0) return [{ node, at, label: '발언' }];
-    return [{ node, at: node.evidence.capturedAt, label: '보존 · 발언 시각 미확인' }];
-  }).sort((a, b) => a.at - b.at || a.node.id.localeCompare(b.node.id));
+export function reviewTime(node: GraphNode): { at: number | null; label: string } {
+  const valid = (at: unknown): at is number => typeof at === 'number' && at > 0 && Number.isFinite(new Date(at).getTime());
+  const evidence = node.evidence;
+  if (evidence?.sourceKind === 'message' && valid(evidence.source.createdAt)) {
+    return { at: evidence.source.createdAt, label: '발언' };
+  }
+  if (evidence) {
+    return { at: valid(evidence.capturedAt) ? evidence.capturedAt : null, label: '보존' };
+  }
+  return { at: valid(node.createdAt) ? node.createdAt : null, label: '기록' };
 }

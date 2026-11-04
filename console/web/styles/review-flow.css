@@ -4,7 +4,7 @@
   display: grid;
   gap: 4px;
   width: 192px;
-  min-height: 72px;
+  min-height: 96px;
   padding: 8px 12px;
   border: 1px solid var(--border-control);
   border-radius: var(--radius-md);
@@ -23,22 +23,13 @@
   line-height: 20px;
 }
 .review-node .react-flow__handle { opacity: 0; }
-
-.judgment-timeline { flex: 1; min-height: 0; overflow: auto; padding: 16px 24px; }
-.judgment-timeline > header { margin-bottom: 24px; }
-.judgment-timeline h2, .judgment-timeline h3 { margin: 0; }
-.judgment-timeline h2 { font-size: 20px; }
-.judgment-day { margin-bottom: 24px; }
-.judgment-day h3 { font-size: 13px; color: var(--text-secondary); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.judgment-day ol, .judgment-entry ul { list-style: none; padding: 0; margin: 0; }
-.judgment-entry { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 4px 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
-.judgment-entry > :not(.judgment-time) { grid-column: 2; }
-.judgment-time { grid-row: 1 / span 2; display: flex; flex-direction: column; color: var(--text-secondary); font-size: 12px; }
-.judgment-title { border: 0; background: none; text-align: left; padding: 0; font: inherit; font-weight: 650; cursor: pointer; overflow-wrap: anywhere; }
-.judgment-title:hover, .judgment-title[aria-pressed="true"] { color: var(--accent-text); }
-.judgment-body { margin: 0 0 4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; }
-.judgment-entry ul { display: grid; gap: 8px; }
-.judgment-entry ul li { display: grid; justify-items: start; border-left: 1px solid var(--border-control); padding-left: 12px; overflow-wrap: anywhere; }
-.judgment-entry .text-button { text-align: left; }
-.judgment-entry summary { cursor: pointer; color: var(--text-secondary); font-size: 12px; }
-.judgment-entry > p.small { margin: 0; }
+.review-node-time { color: var(--text-secondary); font-size: 11px; line-height: 16px; }
+.graph-day-divider {
+  position: absolute;
+  left: 0;
+  border-bottom: 1px solid var(--border-control);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  pointer-events: none;
+}

@@ -3,8 +3,7 @@ import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type Node
 import '@xyflow/react/dist/style.css';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
-import { JudgmentTimeline } from './JudgmentTimeline.tsx';
-import { judgmentTimeline, reviewTitle } from './reviewFlow.ts';
+import { reviewTitle } from './reviewFlow.ts';
 import { DirectionalGraph } from './DirectionalGraph.tsx';
 import { useGraphLayout } from './useGraphLayout.ts';
 
@@ -25,17 +24,13 @@ type GraphCanvasProps = {
   onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 };
 export function GraphCanvas(props: GraphCanvasProps) {
-  const [mode, setMode] = useState<'timeline' | 'flow' | 'free'>(() => {
-    const hasTimeline = judgmentTimeline(props.graph.nodes).length > 0;
-    return hasTimeline && !props.selectedId ? 'timeline' : 'flow';
-  });
+  const [free, setFree] = useState(false);
   return <>
     <div className="graph-view-switch" role="group" aria-label="그래프 배치">
-      <button className="button" aria-pressed={mode === 'timeline'} onClick={() => setMode('timeline')}>판단 기록</button>
-      <button className="button" aria-pressed={mode === 'flow'} onClick={() => setMode('flow')}>흐름 보기</button>
-      <button className="button" aria-pressed={mode === 'free'} onClick={() => setMode('free')}>자유 배치</button>
+      <button className="button" aria-pressed={!free} onClick={() => setFree(false)}>흐름 보기</button>
+      <button className="button" aria-pressed={free} onClick={() => setFree(true)}>자유 배치</button>
     </div>
-    {mode === 'timeline' ? <JudgmentTimeline {...props} /> : mode === 'free' ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
+    {free ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
   </>;
 }
 function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: GraphCanvasProps) {
