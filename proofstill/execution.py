@@ -82,7 +82,7 @@ class ExecutionControl:
             write_json(self.record, self.state)
 
     def update(self, **values):
-        if self.record:
+        if self.record and any(self.state.get(k) != v for k, v in values.items()):
             self.state.update(values)
             write_json(self.record, self.state)
 

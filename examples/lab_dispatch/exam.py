@@ -6,8 +6,13 @@ import signal
 import subprocess
 import tempfile
 import time
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from proofstill.usage import UsageTracker, aggregate_calls
+from proofstill.execution import ExecutionControl, stop_process
 
 MODELS = {'exam': 'gpt-6.1-sol', 'stakeholder': 'gpt-5.6-terra'}
 
@@ -39,8 +44,8 @@ def summarize(path):
 def execute(root, role, prompt, resume=None, phase='exam'):
     config = json.loads((root / 'config.json').read_text())
     state = json.loads((root / 'state.json').read_text())
-    if phase == 'exam' and time.time() >= state['deadline_epoch']:
-        raise RuntimeError('The 180-minute exam has ended')
+    if phase == 'exam' and ExecutionControl(root / 'control.json').reason():
+        raise RuntimeError('The exam has ended')
     target = root / 'calls' / (str(time.time_ns()) + '-' + role)
     target.mkdir(parents=True)
     (target / 'prompt.txt').write_text(prompt)
@@ -50,29 +55,50 @@ def execute(root, role, prompt, resume=None, phase='exam'):
             '-C', str(workspace), '--output-last-message', str(target / 'answer.txt')]
     argv += ['resume', resume, '-'] if resume else ['-']
     started = time.time()
+    tracker = UsageTracker(target / 'usage.json', thread_id=resume)
+    control = ExecutionControl(root / 'control.json') if phase == 'exam' else ExecutionControl()
     with (target / 'prompt.txt').open('rb') as stdin, (target / 'events.jsonl').open('wb') as stdout, (target / 'stderr.log').open('wb') as stderr:
         process = subprocess.Popen(argv, cwd=workspace, stdin=stdin, stdout=stdout, stderr=stderr,
-                                   start_new_session=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'})
+                                   start_new_session=True, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1', **control.environment()})
+        control.register(process, role)
         save(target / 'run.json', {'role': role, 'model': MODELS[role], 'phase': phase, 'started_at': stamp(),
                                   'started_epoch': started, 'pid': process.pid})
-        limit = started + 120 if phase == 'setup' else state['deadline_epoch']
+        limit = started + 120 if phase == 'setup' else float('inf')
         timed_out = False
-        while process.poll() is None:
-            if time.time() >= limit:
-                timed_out = True
-                os.killpg(process.pid, signal.SIGINT)
-                try: process.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    os.killpg(process.pid, signal.SIGTERM)
-                    try: process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
-                        process.wait()
-                break
-            time.sleep(.5)
+        offset = 0
+        try:
+            while process.poll() is None:
+                with (target / 'events.jsonl').open() as events:
+                    events.seek(offset)
+                    while True:
+                        pos = events.tell()
+                        line = events.readline()
+                        if not line.endswith('\n'):
+                            events.seek(pos)
+                            break
+                        try: tracker.observe(json.loads(line))
+                        except ValueError: pass
+                    offset = events.tell()
+                tracker.poll()
+                if time.time() >= limit or control.reason():
+                    timed_out = True
+                    break
+                time.sleep(.2)
+        finally:
+            stop_process(process)
+            for line in (target / 'events.jsonl').read_text().splitlines():
+                try: tracker.observe(json.loads(line))
+                except ValueError: pass
+            tracker.poll(force=True)
+            control.update(usage_observation=tracker.snapshot())
+            control.finish(control.reason() or ('wall' if timed_out else None), process.returncode)
+            save(target / 'run.json', {**json.loads((target / 'run.json').read_text()),
+                 'finished_at': stamp(), 'elapsed_seconds': round(time.time() - started, 3),
+                 'exit_code': process.returncode, 'timed_out': timed_out,
+                 'usage_observation': tracker.snapshot()})
     result = {**json.loads((target / 'run.json').read_text()), 'finished_at': stamp(),
               'elapsed_seconds': round(time.time() - started, 3), 'exit_code': process.returncode,
-              'timed_out': timed_out, **summarize(target / 'events.jsonl')}
+              'timed_out': timed_out, 'usage_observation': tracker.snapshot(), **summarize(target / 'events.jsonl')}
     result['answer'] = (target / 'answer.txt').read_text() if (target / 'answer.txt').exists() else result['last_message']
     save(target / 'run.json', result)
     if process.returncode != 0:
@@ -81,22 +107,22 @@ def execute(root, role, prompt, resume=None, phase='exam'):
 
 
 def metrics(root):
-    calls = [json.loads(p.read_text()) for p in sorted((root / 'calls').glob('*/run.json'))]
-    totals = {}
-    for call in calls:
-        key = call['phase'] + ':' + call['role']
-        group = totals.setdefault(key, {'input_tokens': 0, 'cached_input_tokens': 0, 'output_tokens': 0, 'completed_calls': 0, 'missing_usage_calls': 0})
-        if 'exit_code' not in call: continue
-        group['completed_calls'] += 1
-        if not call.get('usage'): group['missing_usage_calls'] += 1
-        for usage in call.get('usage', []):
-            for field in ['input_tokens', 'cached_input_tokens', 'output_tokens']:
-                group[field] += usage.get(field, 0)
+    calls = []
+    for path in sorted((root / 'calls').glob('*/run.json')):
+        call = json.loads(path.read_text())
+        observation = path.parent / 'usage.json'
+        if observation.exists():
+            call['usage_observation'] = json.loads(observation.read_text())
+        calls.append(call)
+    totals = aggregate_calls(calls)
     config = json.loads((root / 'config.json').read_text())
     # Harness keeps copies of event logs; count each independent thread once.
     review_threads = {}
     for path in Path(config['workspace']).glob('.proofstill/**/attempt-*.events.jsonl'):
         record = summarize(path)
+        observation = path.with_name(path.name.replace('.events.jsonl', '.usage.json'))
+        if observation.exists():
+            record['usage_observation'] = json.loads(observation.read_text())
         if record['thread_id']: review_threads[record['thread_id']] = {**record, 'source': str(path)}
     result = {'state': json.loads((root / 'state.json').read_text()), 'totals': totals,
               'harness_reviews': list(review_threads.values()), 'calls': calls,
@@ -132,15 +158,19 @@ def main():
         state = json.loads((root / 'state.json').read_text())
         if state.get('started_at'): raise RuntimeError('This exam has already started')
         now = time.time()
-        state.update(status='running', started_at=stamp(), started_epoch=now, deadline_epoch=now + 180 * 60)
+        config = json.loads((root / 'config.json').read_text())
+        duration = config.get('duration_minutes', 30)
+        save(root / 'control.json', {'started_epoch': now, 'deadline_epoch': now + duration * 60})
+        state.update(status='running', started_at=stamp(), started_epoch=now, deadline_epoch=now + duration * 60)
         save(root / 'state.json', state)
         try:
             result = execute(root, 'exam', (root / 'exam-prompt.txt').read_text())
             state.update(status='submitted', finished_at=stamp(), thread_id=result['thread_id'])
-        except Exception as error:
-            state.update(status='time_limit' if time.time() >= state['deadline_epoch'] else 'failed', finished_at=stamp(), error=str(error))
+        except BaseException as error:
+            state.update(status='time_limit' if ExecutionControl(root / 'control.json').reason() else 'failed', finished_at=stamp(), error=str(error))
             raise
         finally:
+            state['deadline_epoch'] = json.loads((root / 'control.json').read_text())['deadline_epoch']
             state['elapsed_seconds'] = round(time.time() - now, 3)
             save(root / 'state.json', state)
             metrics(root)
@@ -150,4 +180,7 @@ def main():
 
 
 if __name__ == '__main__':
+    def interrupt(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, interrupt)
     main()

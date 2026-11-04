@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from .contract import require, read_json
 from .execution import ExecutionControl, stop_process, write_json
+from .usage import UsageTracker
 
 
 
@@ -56,7 +57,7 @@ def launch(harness, packet, folder):
     prompt = review_prompt(packet)
     (folder / 'input.txt').write_text(prompt)
     workspace = Path(packet['project_root'])
-    argv = [harness.codex, 'exec', '--ephemeral', '--json', '--sandbox', 'workspace-write',
+    argv = [harness.codex, 'exec', '--json', '--sandbox', 'workspace-write',
             '--skip-git-repo-check', '--color', 'never', '--cd', str(workspace),
             '--output-schema', str(schema), '--output-last-message', str(answer), '-']
     if harness.model:
@@ -95,6 +96,7 @@ def execute_review(argv, workspace, folder, scratch, index, timeout, *, idle_tim
     events = folder / f'attempt-{index}.events.jsonl'
     control = ExecutionControl(control_path)
     env = dict(os.environ, TMPDIR=scratch, PYTHONDONTWRITEBYTECODE='1', **control.environment())
+    tracker = UsageTracker(folder / f'attempt-{index}.usage.json')
     started = last_progress = time.monotonic()
     commands = set()
     usage = None
@@ -126,6 +128,7 @@ def execute_review(argv, workspace, folder, scratch, index, timeout, *, idle_tim
                         continue
                     if not isinstance(event, dict):
                         continue
+                    tracker.observe(event)
                     event_type = event.get('type')
                     item = event.get('item', {})
                     if event_type in ('item.started', 'item.completed') and isinstance(item, dict):
@@ -139,6 +142,8 @@ def execute_review(argv, workspace, folder, scratch, index, timeout, *, idle_tim
                     if event_type == 'turn.completed':
                         usage = event.get('usage')
                         control.update(usage=usage)
+                tracker.poll()
+                control.update(usage_observation=tracker.snapshot())
                 if exit_code is not None:
                     break
                 now = time.monotonic()
@@ -157,8 +162,13 @@ def execute_review(argv, workspace, folder, scratch, index, timeout, *, idle_tim
             raise
         finally:
             stop_process(process)
+            tracker.poll(force=True)
+            control.update(usage_observation=tracker.snapshot())
             control.finish(reason, process.returncode)
-    return {'exit_code': exit_code, 'timeout': reason, 'seconds': round(time.monotonic() - started, 3), 'usage': usage}
+            write_json(folder / f'attempt-{index}.result.json', {
+                'exit_code': process.returncode, 'timeout': reason, 'seconds': round(time.monotonic() - started, 3),
+                'usage': tracker.usage, 'usage_observation': tracker.snapshot()})
+    return {'exit_code': exit_code, 'timeout': reason, 'seconds': round(time.monotonic() - started, 3), 'usage': tracker.usage, 'usage_observation': tracker.snapshot()}
 
 
 def validate_verdict(plan, answer):

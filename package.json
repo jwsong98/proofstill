@@ -61,6 +61,7 @@
     "proofstill/trace_check.py",
     "proofstill/trace_view.py",
     "proofstill/workflow.py",
+    "proofstill/usage.py",
     "templates/monorepo/.agents/skills/proofstill-api/SKILL.md",
     "templates/monorepo/.agents/skills/proofstill-db/SKILL.md",
     "templates/monorepo/.api-tracker/config.yaml",
