@@ -200,3 +200,12 @@ refresh/revoke 정책이 포함되지 않습니다. 기존 예제 API는 공개 
 프록시 → FastAPI 8000으로 연결됩니다. 생성 API 클라이언트도 같은 base URL을
 사용합니다. 교차 출처 Bearer·JSON 요청의 preflight와 인증 오류 헤더를 처리합니다.
 배포 주소·쿠키 사용을 바꾸는 방법과 코드 예시는 생성 프로젝트의 README에 있습니다.
+
+
+## 제품과 핵심 로직을 병행하기
+
+[실행 예제](examples/agile_product/README.md)는 공통 입출력 계약을 두고 제품 저장·조회와 금액 계산·엣지케이스를 별도 작업으로 진행한다. `project init/claim/packet`으로 작업 경계를 공유하고, `project question`의 실제 답변으로 영향받는 작업만 보강한다. 구현 에이전트는 현재 Codex 위임 수단을 사용하며 CLI가 모델을 자동 생성하지는 않는다. `project test --jobs 2`는 독립 검사를 병행한 뒤 의존 통합 검사를 실행한다.
+
+요구 변경은 `revise` 또는 `project sync --reason ... --source ...`로 이력을 남긴다. 변경되지 않은 검사와 구현 근거를 재사용하고 독립 검토에는 변경 범위를 제공한다. `project compare`는 같은 입력에서 기준/개선 구현의 실제 결과를 별도 검사기로 비교한다. `project snapshot`은 코드·검사·리뷰 근거를 고정하고 새 partial이 마지막 verified를 덮지 않는다. `project requirements`는 같은 정의와 실제 기록에서 현황을 생성한다.
+
+리뷰는 기본적으로 wall timeout만 적용하고 자동 재시도하지 않는다. 필요한 경우에만 `--review-idle-timeout`·`--review-retries`를 명시한다. `control <파일> --minutes 30`으로 만든 제어 파일을 `--run-control <파일>`로 전달하면 시작 기준 제한 변경과 `control <파일> --cancel`을 자식 검사·리뷰에도 적용한다. 사용량은 누적 차분과 관측 출처를 기록하고 중단 시 partial/unknown을 구분한다. 부분 사용량 보완을 위해 독립 리뷰의 로컬 Codex 기록을 유지한다.

@@ -1,0 +1,1 @@
+{"request":{"unit_cents":"nonnegative integer","quantity":"positive integer","discount_percent":"integer 0..100"},"result":{"total_cents":"nonnegative integer; nearest cent, exact half rounds up"},"boundary":"Product owns validation/storage/query. Logic owns quote(request). Integration owns this shared contract."}

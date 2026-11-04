@@ -1,0 +1,206 @@
+{
+  "id": "pricing",
+  "title": "주문 제품과 계산 로직 병행 예제",
+  "intent": "제품의 저장/조회와 금액 계산을 공통 계약으로 나누어 병행하고 경계 사례로 보강한다.",
+  "contracts": [
+    "contract.json"
+  ],
+  "work": [
+    {
+      "id": "product",
+      "kind": "product",
+      "owns": [
+        "product.py",
+        "tests/product.py"
+      ],
+      "depends_on": [],
+      "feature": {
+        "title": "유효 입력→계산 경계→저장→조회와 재시작 보존",
+        "sources": [
+          "product.py"
+        ],
+        "requirements": [
+          {
+            "id": "PRODUCT",
+            "text": "유효 입력→계산 경계→저장→조회와 재시작 보존",
+            "checks": [
+              "product"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "id": "product",
+            "kind": "unit",
+            "module": "product",
+            "argv": [
+              "python3",
+              "tests/product.py"
+            ],
+            "files": [
+              "tests/product.py"
+            ],
+            "green_pattern": "PRODUCT_OK"
+          }
+        ],
+        "collaboration": {
+          "human": "업무 조건과 최종 수용을 결정한다.",
+          "ai": "지정 경계에서 구현·검사하고 모호한 조건은 질문한다.",
+          "human_checks": [
+            {
+              "requirement": "PRODUCT",
+              "action": "연결된 검사 명령과 사례를 실행해 확인한다.",
+              "expected": "유효 입력→계산 경계→저장→조회와 재시작 보존"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "logic",
+      "kind": "logic",
+      "owns": [
+        "engine.py",
+        "tests/logic.py"
+      ],
+      "depends_on": [],
+      "feature": {
+        "title": "반올림 half-up, 무료, 경계와 큰 정수의 정확한 금액",
+        "sources": [
+          "engine.py"
+        ],
+        "requirements": [
+          {
+            "id": "LOGIC",
+            "text": "반올림 half-up, 무료, 경계와 큰 정수의 정확한 금액",
+            "checks": [
+              "logic"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "id": "logic",
+            "kind": "unit",
+            "module": "logic",
+            "argv": [
+              "python3",
+              "tests/logic.py"
+            ],
+            "files": [
+              "tests/logic.py",
+              "cases.json"
+            ],
+            "green_pattern": "LOGIC_OK"
+          }
+        ],
+        "collaboration": {
+          "human": "업무 조건과 최종 수용을 결정한다.",
+          "ai": "지정 경계에서 구현·검사하고 모호한 조건은 질문한다.",
+          "human_checks": [
+            {
+              "requirement": "LOGIC",
+              "action": "연결된 검사 명령과 사례를 실행해 확인한다.",
+              "expected": "반올림 half-up, 무료, 경계와 큰 정수의 정확한 금액"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "integration",
+      "kind": "integration",
+      "owns": [
+        "contract.json",
+        "cases.json",
+        "compare_validator.py",
+        "tests/integration.py"
+      ],
+      "depends_on": [
+        "product",
+        "logic"
+      ],
+      "feature": {
+        "title": "실제 계산을 저장과 재조회까지 연결한다",
+        "sources": [
+          "product.py",
+          "engine.py"
+        ],
+        "requirements": [
+          {
+            "id": "INTEGRATION",
+            "text": "실제 계산을 저장과 재조회까지 연결한다",
+            "checks": [
+              "integration"
+            ]
+          }
+        ],
+        "checks": [
+          {
+            "id": "integration",
+            "kind": "integration",
+            "module": "integration",
+            "argv": [
+              "python3",
+              "tests/integration.py"
+            ],
+            "files": [
+              "tests/integration.py",
+              "cases.json"
+            ],
+            "green_pattern": "INTEGRATION_OK"
+          }
+        ],
+        "collaboration": {
+          "human": "업무 조건과 최종 수용을 결정한다.",
+          "ai": "지정 경계에서 구현·검사하고 모호한 조건은 질문한다.",
+          "human_checks": [
+            {
+              "requirement": "INTEGRATION",
+              "action": "연결된 검사 명령과 사례를 실행해 확인한다.",
+              "expected": "실제 계산을 저장과 재조회까지 연결한다"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "rounding",
+      "cases": "cases.json",
+      "candidates": [
+        {
+          "id": "baseline",
+          "argv": [
+            "python3",
+            "engine.py",
+            "--baseline"
+          ],
+          "sources": [
+            "engine.py"
+          ]
+        },
+        {
+          "id": "candidate",
+          "argv": [
+            "python3",
+            "engine.py"
+          ],
+          "sources": [
+            "engine.py"
+          ]
+        }
+      ],
+      "validator": {
+        "argv": [
+          "python3",
+          "compare_validator.py"
+        ],
+        "sources": [
+          "compare_validator.py"
+        ]
+      }
+    }
+  ]
+}

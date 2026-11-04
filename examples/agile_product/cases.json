@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ordinary",
+    "input": {
+      "unit_cents": 100,
+      "quantity": 2,
+      "discount_percent": 10
+    },
+    "expected_cents": 180
+  },
+  {
+    "id": "half-cent",
+    "input": {
+      "unit_cents": 5,
+      "quantity": 1,
+      "discount_percent": 50
+    },
+    "expected_cents": 3
+  },
+  {
+    "id": "free",
+    "input": {
+      "unit_cents": 50,
+      "quantity": 1,
+      "discount_percent": 100
+    },
+    "expected_cents": 0
+  },
+  {
+    "id": "round-up",
+    "input": {
+      "unit_cents": 19,
+      "quantity": 1,
+      "discount_percent": 60
+    },
+    "expected_cents": 8
+  }
+]
