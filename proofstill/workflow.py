@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from .contract import HarnessError, digest, file_hash, inventory, read_json, require, validate_plan
+from .contract import HarnessError, digest, file_hash, inventory, read_json, require, validate_check_files, validate_plan
 from . import reviewer
 
 
@@ -71,7 +71,7 @@ class Harness:
         require(digest(plan) == state['plan_digest'], '보관된 기준이 변경되었습니다')
         origin = Path(state['origin'])
         if origin.exists():
-            current = validate_plan(self.root, read_json(origin))
+            current = validate_plan(self.root, read_json(origin), check_files=False)
             require(digest(current) == state['plan_digest'], '원래 기능 정의/명령이 변경되었습니다. 새 작업 ID로 기준을 재검토하세요')
         else:
             require(state.get('closed'), '원래 기능 정의가 사라졌습니다')
@@ -94,7 +94,8 @@ class Harness:
             'decisions': state.get('decisions', {}),
             'files': inventory(self.root, [*check['files'], *plan['context_files']]),
         })
-        source = digest(inventory(self.root, check.get('sources', plan['sources'])))
+        paths = check['sources'] if 'sources' in check else self.source_paths(plan)
+        source = digest(inventory(self.root, paths))
         return criteria, source
 
     def run_current(self, plan, state, check, run, criteria, source):
@@ -208,6 +209,7 @@ class Harness:
         save_json(folder / 'result.json', record)
         self.save(plan, state)
         try:
+            expectation = validate_check_files(self.root, check)
             result = self.execute(check['argv'], check['timeout'], environment={'PROOFSTILL_TRACE_DIR': str(trace_dir)})
             (folder / 'output.log').write_text('STDOUT\n' + result['stdout'] + '\nSTDERR\n' + result['stderr'])
             record.update({k: v for k, v in result.items() if k not in ['stdout', 'stderr']})
@@ -219,7 +221,6 @@ class Harness:
                 unchanged = self.check_digests(plan, state, check) == (criteria, source)
             except HarnessError:
                 unchanged = False
-            expectation = read_json(self.root / check['trace_expectation']) if check.get('trace_expectation') else None
             for path in sorted(trace_dir.glob('*.jsonl')):
                 verified = verify_trace(path, expectation)
                 item = {'path': str(path), 'sha256': file_hash(path), 'html': None,

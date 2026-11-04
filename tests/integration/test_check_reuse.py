@@ -66,3 +66,8 @@ class CheckReuseTests(unittest.TestCase):
             self.assertNotEqual(fifth[0]['receipt'], fourth[0]['receipt'])
             self.assertTrue(fifth[1]['reused'])
             self.assertTrue(all('reused' not in record for record in run('--force')))
+
+            browser.unlink()
+            statuses = snapshot(harness, 'counter')[0]['verification']['checks']
+            self.assertEqual([check['status'] for check in statuses], ['passed', 'stale'])
+            self.assertTrue(run('--module', 'counter')[0]['reused'])

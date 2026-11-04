@@ -41,7 +41,7 @@ async function main() {
   if(saved.status!==0)throw new Error(saved.stderr);
   const observed=[];
   for(const [id,command]of [['console-tests','npm --prefix console test'],['types','npm --prefix console run typecheck'],['build','npm --prefix console run build']]) {
-   const startedAt=Date.now();const wrapper=spawnSync('python3',['-m','proofstill','test','verification-explanations-v3','--module',id],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024});const finishedAt=Date.now();
+   const startedAt=Date.now();const wrapper=spawnSync('python3',['-m','proofstill','test','verification-explanations-v3','--module',id,'--force'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024});const finishedAt=Date.now();
    const state=JSON.parse(readFileSync(resolve(root,'.proofstill/evidence/verification-explanations-v3/state.json'),'utf8'));
    const run=state.runs.filter((r:{check:string;phase:string})=>r.check===id&&r.phase==='green').at(-1);
    if(!run||Date.parse(run.recorded_at)<startedAt)throw new Error(`No fresh result for ${id}: ${wrapper.stderr}`);

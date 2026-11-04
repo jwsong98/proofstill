@@ -44,7 +44,7 @@ try {
   const runs=[];
   for(const [checkId,command] of commands) {
     const startedAt=Date.now();
-    const wrapper=spawnSync('python3',['-m','proofstill','--root',root,'test','current-catalog-v1','--module',checkId],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024});
+    const wrapper=spawnSync('python3',['-m','proofstill','--root',root,'test','current-catalog-v1','--module',checkId,'--force'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024});
     const finishedAt=Date.now();
     const state=JSON.parse(readFileSync(resolve(root,'.proofstill/evidence/current-catalog-v1/state.json'),'utf8'));
     const run=state.runs.filter((r:{check:string;phase:string})=>r.check===checkId&&r.phase==='green').at(-1);

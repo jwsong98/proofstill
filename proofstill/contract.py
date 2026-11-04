@@ -52,7 +52,21 @@ def inventory(root, paths):
     return result
 
 
-def validate_plan(root, plan):
+def validate_check_files(root, check):
+    for name in check['files']:
+        require(project_path(root, name).exists(), f'검토할 테스트 파일 없음: {name}')
+    if not check.get('trace_expectation'):
+        return None
+    expected = check['trace_expectation']
+    require(project_path(root, expected).is_file(), f'기대 흐름 파일 없음: {expected}')
+    expectation = read_json(project_path(root, expected))
+    require(isinstance(expectation, dict), '기대 흐름은 JSON 객체여야 합니다')
+    from .assurance import validate_cases
+    validate_cases(check, expectation)
+    return expectation
+
+
+def validate_plan(root, plan, *, check_files=True):
     require(isinstance(plan, dict), '기능 정의는 객체여야 합니다')
     require(re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}', str(plan.get('id', ''))), '잘못된 기능 ID')
     for key in ['title', 'intent', 'context']:
@@ -82,12 +96,11 @@ def validate_plan(root, plan):
                 project_path(root, path)
         if 'trace_expectation' in check:
             expected = check['trace_expectation']
-            require(project_path(root, expected).is_file(), f'기대 흐름 파일 없음: {expected}')
-            require(isinstance(read_json(project_path(root, expected)), dict), '기대 흐름은 JSON 객체여야 합니다')
+            project_path(root, expected)
             if expected not in check['files']:
                 check['files'].append(expected)
         for name in check['files']:
-            require(project_path(root, name).exists(), f'검토할 테스트 파일 없음: {name}')
+            project_path(root, name)
         if 'surface' in check:
             require(check['surface'] in ['code', 'browser'], 'surface는 code/browser여야 합니다')
         for field in ['label', 'purpose', 'rationale', 'expected', 'scope']:
@@ -123,5 +136,8 @@ def validate_plan(root, plan):
     from .collaboration import validate_collaboration
     validate_collaboration(plan)
     from .assurance import validate_assurance
-    validate_assurance(root, plan)
+    validate_assurance(plan)
+    if check_files:
+        for check in plan['checks']:
+            validate_check_files(root, check)
     return plan

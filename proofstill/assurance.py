@@ -4,7 +4,7 @@ from .contract import HarnessError, file_hash, read_json, require
 from .trace_check import verify_trace
 
 
-def validate_assurance(root, plan):
+def validate_assurance(plan):
     required = plan.get('required_reviews', [])
     require(isinstance(required, list) and all(stage in ['criteria'] for stage in required), 'required_reviews에는 criteria만 추가할 수 있습니다')
     check_ids = {c['id'] for c in plan['checks']}
@@ -17,21 +17,23 @@ def validate_assurance(root, plan):
     for check in plan['checks']:
         cases = check.get('cases', [])
         require(isinstance(cases, list), 'cases는 배열이어야 합니다')
-        if not cases:
-            continue
-        require(bool(check.get('trace_expectation')), '대표 사례에는 실제 흐름 검증 기준이 필요합니다')
-        expectation = read_json(root / check['trace_expectation'])
-        operations = expectation.get('operations', [])
-        seen = set()
-        for case in cases:
-            require(isinstance(case, dict), '대표 사례는 객체여야 합니다')
-            for field in ['operation', 'situation', 'expected']:
-                require(isinstance(case.get(field), str) and case[field].strip(), f'대표 사례의 {field}가 필요합니다')
-            operation = case['operation']
-            require(operation in operations and operation not in seen, '대표 사례의 실제 operation 연결이 누락/중복됐습니다')
-            seen.add(operation)
-            index = operations.index(operation)
-            require(any(a.get('step') == index and a.get('field') == 'output' for a in expectation.get('assertions', [])), '대표 사례의 실제 출력에 대한 기대값 검사가 필요합니다')
+        if cases:
+            require(bool(check.get('trace_expectation')), '대표 사례에는 실제 흐름 검증 기준이 필요합니다')
+            for case in cases:
+                require(isinstance(case, dict), '대표 사례는 객체여야 합니다')
+                for field in ['operation', 'situation', 'expected']:
+                    require(isinstance(case.get(field), str) and case[field].strip(), f'대표 사례의 {field}가 필요합니다')
+
+
+def validate_cases(check, expectation):
+    operations = expectation.get('operations', [])
+    seen = set()
+    for case in check.get('cases', []):
+        operation = case['operation']
+        require(operation in operations and operation not in seen, '대표 사례의 실제 operation 연결이 누락/중복됐습니다')
+        seen.add(operation)
+        index = operations.index(operation)
+        require(any(a.get('step') == index and a.get('field') == 'output' for a in expectation.get('assertions', [])), '대표 사례의 실제 출력에 대한 기대값 검사가 필요합니다')
 
 
 def review_summary(h, plan, state, stage, criteria, source):
