@@ -61,6 +61,7 @@
     "proofstill/project.py",
     "proofstill/project_cli.py",
     "proofstill/state.py",
+    "proofstill/submission.py",
     "proofstill/trace.py",
     "proofstill/trace_check.py",
     "proofstill/trace_view.py",
