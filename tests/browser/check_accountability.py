@@ -128,6 +128,7 @@ def main():
                         const detail = page.getByRole('complementary', {name:'요구별 구현·검증 상세', exact:true});
                         await detail.getByText('판정 근거', {exact:true}).click();
                         await detail.getByRole('heading', {name:'자동 검사 · 재검증 필요', exact:true}).waitFor();
+                        await detail.getByText('지금은 결정할 필요가 없어요. AI가 확인을 마치고 새 결과가 나오면 다시 확인하세요.', {exact:true}).waitFor();
                         insist(!(await detail.innerText()).includes('실제 초기값 1을 다시 읽었어요.'), '변경된 근거의 관찰을 현재 결과로 표시했어요');
                         return {passed:true, summary:'실행 로그를 바꾸고 새로고침하자 재검증 필요로 바뀌고 이전 관찰이 사라졌어요.'};''')
                     finally:

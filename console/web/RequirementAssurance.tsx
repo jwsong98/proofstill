@@ -32,10 +32,8 @@ export function RequirementDecision({ row, currentRead }: { row: AssuredRow; cur
   const action = !currentRead ? '새로고침을 눌러 최신 상태를 다시 불러오세요.'
     : state === 'decision' ? row.pendingDecisions?.[0]?.question
     : state === 'ready' ? human?.action
-    : state === 'currentness' ? '판정 근거를 열고 구현 기록을 현재 코드와 대조해 주세요.'
-    : state === 'implementation' ? '판정 근거에서 구현 기록과 남은 범위를 확인해 주세요.'
-    : state === 'gate' ? '판정 근거에서 작업 전체에 남은 확인을 먼저 살펴보세요.'
-    : '판정 근거에서 어떤 확인이 남았는지 먼저 살펴보세요.';
+    : state === 'action' ? '지금은 결정할 필요가 없어요. AI가 확인 방법을 정리하면 다시 확인하세요.'
+    : '지금은 결정할 필요가 없어요. AI가 확인을 마치고 새 결과가 나오면 다시 확인하세요.';
   return <section className="handoff-decision" aria-label="지금 판단할 내용">
     <div><h3>지금 판단</h3><p className="handoff-verdict">{decisionLabel(row, currentRead)}</p></div>
     <div><h3>이렇게 판단한 이유</h3>{example && <small>{example.situation}</small>}<p>{evidence}</p></div>
