@@ -68,7 +68,7 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
           }
         }
         if (sub === 'files' && method === 'GET') { json(response, 200, await service.files(id)); return; }
-        if (sub === 'graph' && !subId && method === 'GET') { json(response, 200, store.listGraph(id)); return; }
+        if (sub === 'graph' && !subId && method === 'GET') { json(response, 200, store.listGraph(id, url.searchParams.get('history') === '1')); return; }
         if (sub === 'graph' && subId === 'analyze' && method === 'POST') { json(response, 201, await service.analyzeGraph(id, await body(request))); return; }
         if (sub === 'features' && subId && path[5] === 'checks') {
           if (method === 'GET') { json(response, 200, store.featureAcceptance(id, subId)); return; }

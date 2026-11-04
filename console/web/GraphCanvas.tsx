@@ -7,20 +7,21 @@ import { reviewTitle } from './reviewFlow.ts';
 import { DirectionalGraph } from './DirectionalGraph.tsx';
 import { useGraphLayout } from './useGraphLayout.ts';
 
-type DotData = { record: GraphNode };
+type DotData = { record: GraphNode; historical: boolean };
 type Dot = Node<DotData, 'dot'>;
 function DotNode({ data, selected }: NodeProps<Dot>) {
   const record = data.record;
   return <div className={`graph-dot-node kind-${record.kind} ${selected ? 'selected' : ''}`} aria-label={`${nodeLabels[record.kind]}: ${reviewTitle(record)}`}>
     <Handle type="target" position={Position.Left} isConnectable={false} /><span className="graph-dot" />
     <div className="graph-node-label">{reviewTitle(record)}</div>
+    {data.historical && <small>이전 기록</small>}
     {(record.kind === 'feature' || record.kind === 'task') && <small>{statusLabels[record.status]}</small>}
     <Handle type="source" position={Position.Right} isConnectable={false} />
   </div>;
 }
 const nodeTypes = { dot: DotNode };
 type GraphCanvasProps = {
-  graph: Graph; selectedId: string | null; onSelect: (id: string) => void; onMove: (id: string, x: number, y: number) => void;
+  graph: Graph; currentNodeIds: Set<string>; selectedId: string | null; onSelect: (id: string) => void; onMove: (id: string, x: number, y: number) => void;
   onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 };
 export function GraphCanvas(props: GraphCanvasProps) {
@@ -33,7 +34,7 @@ export function GraphCanvas(props: GraphCanvasProps) {
     {free ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
   </>;
 }
-function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: GraphCanvasProps) {
+function FreeGraph({ graph, currentNodeIds, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: GraphCanvasProps) {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const flow = useRef<ReactFlowInstance<Dot> | null>(null);
   const fitPending = useRef(true);
@@ -42,10 +43,10 @@ function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hidden
     .map((record, index): Dot => {
       const angle = index * 2.399963;
       const radius = Math.sqrt(index) * 100;
-      return { id: record.id, type: 'dot', ariaLabel: `${nodeLabels[record.kind]}: ${reviewTitle(record)}`, data: { record },
+      return { id: record.id, type: 'dot', ariaLabel: `${nodeLabels[record.kind]}: ${reviewTitle(record)}`, data: { record, historical: !currentNodeIds.has(record.id) },
         position: { x: record.x ?? Math.cos(angle) * radius, y: record.y ?? Math.sin(angle) * radius },
         selected: record.id === selectedId, draggable: true };
-    }), [graph.nodes, selectedId, hiddenKinds, onlyIncomplete]);
+    }), [graph.nodes, currentNodeIds, selectedId, hiddenKinds, onlyIncomplete]);
   useEffect(() => setPreviewId(null), [hiddenKinds, onlyIncomplete]);
   const ids = useMemo(() => new Set(flowNodes.map(node => node.id)), [flowNodes]);
   const preview = graph.nodes.find(node => node.id === previewId && node.kind === 'task' && ids.has(node.id));

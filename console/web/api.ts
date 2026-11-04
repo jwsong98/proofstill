@@ -34,6 +34,7 @@ export const api = {
   projects: () => request<Project[]>('/projects'),
   createProject: (input: { name: string; rootPath: string }) => request<Project>('/projects', { method: 'POST', body: input }),
   codexStatus: () => request<{ connected: boolean; account?: unknown; error?: string }>('/codex/status'),
+  boardHistory: (id: string) => request<Graph>(`${project(id)}/graph?history=1`),
   graph: (id: string, signal?: AbortSignal) => request<Graph>(`${project(id)}/graph`, { signal }),
   files: (id: string) => request<{ items: string[]; truncated: boolean }>(`${project(id)}/files`),
   createNode: (id: string, body: NodeInput) => request<GraphNode>(`${project(id)}/nodes`, { method: 'POST', body }),

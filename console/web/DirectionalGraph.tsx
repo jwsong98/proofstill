@@ -11,7 +11,7 @@ const nodeTime = new Intl.DateTimeFormat('ko-KR', {
   year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
 });
 
-type FlowNode = Node<{ record: GraphNode; connected: boolean; muted: boolean }, 'review'>;
+type FlowNode = Node<{ record: GraphNode; historical: boolean; connected: boolean; muted: boolean }, 'review'>;
 const sides = [Position.Left, Position.Right, Position.Top, Position.Bottom];
 
 function edgeSides(source: { x: number; y: number }, target: { x: number; y: number }) {
@@ -19,12 +19,12 @@ function edgeSides(source: { x: number; y: number }, target: { x: number; y: num
   if (source.x > target.x) return [Position.Left, Position.Right];
   return source.y < target.y ? [Position.Bottom, Position.Top] : [Position.Top, Position.Bottom];
 }
-function ReviewNode({ data: { record, connected, muted }, selected }: NodeProps<FlowNode>) {
+function ReviewNode({ data: { record, historical, connected, muted }, selected }: NodeProps<FlowNode>) {
   const status = record.execution ? { passed: '통과', failed: '실패', interrupted: '중단', unverified: '미확인' }[record.execution.status] : statusLabels[record.status];
   const { at, label } = reviewTime(record);
   return <div className={`review-node kind-${record.kind}${selected ? ' selected' : ''}${connected ? ' connected' : ''}${muted ? ' muted' : ''}`}>
     {sides.map(position => <Handle key={position} id={position} type="target" position={position} isConnectable={false} />)}
-    <div className="review-node-meta"><span className="review-node-kind">{evidenceLabel(record) ?? nodeLabels[record.kind]}</span>{!record.evidence && <span className={record.status === 'failed' || record.execution?.status === 'failed' ? 'danger-text' : ''}>{status}</span>}</div>
+    <div className="review-node-meta"><span className="review-node-kind">{evidenceLabel(record) ?? nodeLabels[record.kind]}</span>{!record.evidence && <span className={record.status === 'failed' || record.execution?.status === 'failed' ? 'danger-text' : ''}>{historical ? '이전 기록' : status}</span>}</div>
     <strong title={reviewTitle(record)}>{reviewTitle(record)}</strong>
     <div className="review-node-time">{at == null ? '시각 미확인' : <time dateTime={new Date(at).toISOString()}>{label} · {nodeTime.format(at)}</time>}</div>
     {sides.map(position => <Handle key={position} id={position} type="source" position={position} isConnectable={false} />)}
@@ -33,8 +33,8 @@ function ReviewNode({ data: { record, connected, muted }, selected }: NodeProps<
 const nodeTypes = { review: ReviewNode };
 const fitViewOptions = { padding: .16, maxZoom: 1, minZoom: .2 };
 
-export function DirectionalGraph({ graph, selectedId, onSelect, onlyIncomplete, hiddenKinds, onShowAll }: {
-  graph: Graph; selectedId: string | null; onSelect: (id: string) => void; onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
+export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, onlyIncomplete, hiddenKinds, onShowAll }: {
+  graph: Graph; currentNodeIds: Set<string>; selectedId: string | null; onSelect: (id: string) => void; onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const visible = useMemo(() => {
@@ -57,7 +57,7 @@ export function DirectionalGraph({ graph, selectedId, onSelect, onlyIncomplete, 
   }
   const nodes = displayed.nodes.map((record): FlowNode => ({
     id: record.id, type: 'review', position: positions.get(record.id)!,
-    data: { record, connected: connected.has(record.id), muted: !!center && record.id !== selectedId && !connected.has(record.id) },
+    data: { record, historical: !currentNodeIds.has(record.id), connected: connected.has(record.id), muted: !!center && record.id !== selectedId && !connected.has(record.id) },
     selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${reviewTitle(record)}`,
   }));
   const edges = displayed.edges.map(edge => {
