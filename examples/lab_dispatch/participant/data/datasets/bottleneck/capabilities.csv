@@ -1,0 +1,6 @@
+machine_id,family,duration_factor
+M-N1,A,1
+M-N1,B,1
+M-N2,A,1.25
+M-N2,B,1.25
+M-N2,C,1.25

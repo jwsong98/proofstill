@@ -1,0 +1,2 @@
+reservation_id,job_id,machine_id,staff_id,setup_start,process_start,process_end
+FIX-B001,B001,M-N1,T-N,2026-11-09T08:00+09:00,2026-11-09T08:25+09:00,2026-11-09T09:35+09:00

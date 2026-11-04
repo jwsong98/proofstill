@@ -17,8 +17,8 @@ def time(value):
     return result
 
 
-def read_data():
-    folder = ROOT / 'participant/data/provided'
+def read_data(folder=None):
+    folder = folder or ROOT / 'participant/data/provided'
     data = {}
     for path in sorted(folder.glob('*.csv')):
         with path.open(encoding='utf-8', newline='') as f:
@@ -212,8 +212,19 @@ def main():
     invalid_partial = copy.deepcopy(partial)
     invalid_partial['allocations'].append(plan['allocations'][0])
     assert 'COVERAGE' in violations(data, invalid_partial)
+    compact = read_data(ROOT / 'participant/data/datasets/bottleneck')
+    compact_plan = json.loads((ROOT / 'facilitator/bottleneck-witness.json').read_text())
+    assert not violations(compact, compact_plan), violations(compact, compact_plan)
+    # Earlier-due NORMAL first on the free device prevents the C-only RUSH deadline.
+    greedy = copy.deepcopy(compact_plan)
+    a, c, d = greedy['allocations'][1:]
+    a.update(machine_id='M-N2', setup_start='2026-11-09T08:25+09:00', process_start='2026-11-09T08:50+09:00', process_end='2026-11-09T09:28+09:00')
+    c.update(setup_start='2026-11-09T09:28+09:00', process_start='2026-11-09T10:13+09:00', process_end='2026-11-09T10:51+09:00')
+    d.update(setup_start='2026-11-09T11:01+09:00', process_start='2026-11-09T11:16+09:00', process_end='2026-11-09T11:54+09:00')
+    assert violations(compact, greedy) == ['RUSH_DUE'], violations(compact, greedy)
     print(json.dumps({'result': 'PASS', 'jobs': len(data['jobs']), 'ready': len(plan['allocations']),
-        'overnight_jobs': overnight, 'negative_controls': len(controls) + 1, 'partial_period': 'PASS', 'controls': controls}, ensure_ascii=False, indent=2))
+        'overnight_jobs': overnight, 'negative_controls': len(controls) + 2, 'partial_period': 'PASS',
+        'bottleneck': 'feasible; earlier-due greedy rejected', 'controls': controls}, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':

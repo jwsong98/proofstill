@@ -17,9 +17,9 @@ def stamp(day, minutes):
     return (datetime(2026, 11, 9, tzinfo=TZ) + timedelta(days=day, minutes=minutes)).isoformat(timespec='minutes')
 
 
-def write(name, fields, rows):
-    with (DATA / name).open('w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fields)
+def write(name, fields, rows, folder=DATA):
+    with (folder / name).open('w', encoding='utf-8', newline='') as f:
+        writer = csv.DictWriter(f, fields, lineterminator='\n')
         writer.writeheader()
         writer.writerows(rows)
 
@@ -83,7 +83,47 @@ def generate():
         service_date_from='2026-11-09', service_date_to='2026-11-12', timezone='Asia/Seoul'), indent=2) + '\n')
     private = ROOT / 'facilitator/witness.json'
     private.write_text(json.dumps(dict(setup_buffer_minutes=0, allocations=allocations), indent=2) + '\n')
+    bottleneck(tables)
     print(json.dumps({name: len(rows) for name, rows in tables.items()}))
+
+
+def bottleneck(base):
+    """An urgent C-only job competes with an earlier-due flexible A job."""
+    folder = ROOT / 'participant/data/datasets/bottleneck'
+    folder.mkdir(parents=True, exist_ok=True)
+    tables = {name: [] for name in base}
+    tables['sites'] = [base['sites'][0]]
+    tables['machines'] = base['machines'][:2]
+    tables['capabilities'] = [r for r in base['capabilities'] if r['machine_id'].startswith('M-N')]
+    tables['changeovers'] = base['changeovers']
+    tables['staff'] = [base['staff'][0]]
+    tables['machine_windows'] = [dict(window_id='W-' + m['machine_id'], machine_id=m['machine_id'],
+        start_at=stamp(0, 480), end_at=stamp(0, 720)) for m in tables['machines']]
+    tables['staff_windows'] = [dict(window_id='SW-N', staff_id='T-N', site_id='SITE-N', families='A|B|C',
+        start_at=stamp(0, 480), end_at=stamp(0, 720))]
+    for jid, family, minutes, due, priority, predecessor in [
+        ('B001', 'A', 70, 575, 'RUSH', ''),
+        ('B002', 'A', 30, 555, 'NORMAL', ''),
+        ('B003', 'C', 30, 563, 'RUSH', ''),
+        ('B004', 'B', 30, 630, 'NORMAL', 'B003'),
+    ]:
+        tables['jobs'].append(dict(job_id=jid, requester_id='U-N-1', site_id='SITE-N',
+            service_date='2026-11-09', family=family, nominal_minutes=minutes, release_at=stamp(0, 480),
+            due_at=stamp(0, due), priority=priority, status='READY', predecessor_id=predecessor))
+    allocations = []
+    for jid, machine, start, process, end in [
+        ('B001', 'M-N1', 480, 505, 575), ('B002', 'M-N1', 575, 580, 610),
+        ('B003', 'M-N2', 505, 525, 563), ('B004', 'M-N2', 580, 595, 633),
+    ]:
+        allocations.append(dict(job_id=jid, machine_id=machine, staff_id='T-N', setup_start=stamp(0, start),
+            process_start=stamp(0, process), process_end=stamp(0, end), fixed=jid == 'B001'))
+    tables['fixed_runs'] = [dict(reservation_id='FIX-B001', **{k: v for k, v in allocations[0].items() if k != 'fixed'})]
+    for name, rows in tables.items():
+        write(name + '.csv', list(base[name][0]), rows, folder)
+    (folder / 'manifest.json').write_text(json.dumps(dict(dataset_id='bottleneck', revision='1',
+        service_date_from='2026-11-09', service_date_to='2026-11-09', timezone='Asia/Seoul'), indent=2) + '\n')
+    (ROOT / 'facilitator/bottleneck-witness.json').write_text(json.dumps(
+        dict(setup_buffer_minutes=0, allocations=allocations), indent=2) + '\n')
 
 
 if __name__ == '__main__':

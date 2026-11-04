@@ -1,0 +1,41 @@
+{
+  "setup_buffer_minutes": 0,
+  "allocations": [
+    {
+      "job_id": "B001",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T08:00+09:00",
+      "process_start": "2026-11-09T08:25+09:00",
+      "process_end": "2026-11-09T09:35+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "B002",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T09:35+09:00",
+      "process_start": "2026-11-09T09:40+09:00",
+      "process_end": "2026-11-09T10:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "B003",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T08:25+09:00",
+      "process_start": "2026-11-09T08:45+09:00",
+      "process_end": "2026-11-09T09:23+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "B004",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T09:40+09:00",
+      "process_start": "2026-11-09T09:55+09:00",
+      "process_end": "2026-11-09T10:33+09:00",
+      "fixed": false
+    }
+  ]
+}

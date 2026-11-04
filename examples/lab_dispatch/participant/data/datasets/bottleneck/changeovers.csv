@@ -1,0 +1,10 @@
+from_family,to_family,minutes
+A,A,0
+A,B,25
+A,C,40
+B,A,20
+B,B,0
+B,C,15
+C,A,35
+C,B,10
+C,C,0
