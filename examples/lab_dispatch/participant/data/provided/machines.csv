@@ -1,0 +1,5 @@
+machine_id,site_id,name,initial_family
+M-N1,SITE-N,N 시험기 1,B
+M-N2,SITE-N,N 시험기 2,B
+M-S1,SITE-S,S 시험기 1,B
+M-S2,SITE-S,S 시험기 2,B

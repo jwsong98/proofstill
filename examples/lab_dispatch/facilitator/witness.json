@@ -1,0 +1,797 @@
+{
+  "setup_buffer_minutes": 0,
+  "allocations": [
+    {
+      "job_id": "J0001",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T08:00+09:00",
+      "process_start": "2026-11-09T08:25+09:00",
+      "process_end": "2026-11-09T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0002",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T10:00+09:00",
+      "process_start": "2026-11-09T10:30+09:00",
+      "process_end": "2026-11-09T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0003",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T12:00+09:00",
+      "process_start": "2026-11-09T12:25+09:00",
+      "process_end": "2026-11-09T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0004",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T14:00+09:00",
+      "process_start": "2026-11-09T14:30+09:00",
+      "process_end": "2026-11-09T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0005",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T21:00+09:00",
+      "process_start": "2026-11-09T21:25+09:00",
+      "process_end": "2026-11-09T22:02+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0006",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T00:00+09:00",
+      "process_start": "2026-11-10T00:30+09:00",
+      "process_end": "2026-11-10T01:14+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0007",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T08:00+09:00",
+      "process_start": "2026-11-10T08:25+09:00",
+      "process_end": "2026-11-10T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0008",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T10:00+09:00",
+      "process_start": "2026-11-10T10:30+09:00",
+      "process_end": "2026-11-10T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0009",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T12:00+09:00",
+      "process_start": "2026-11-10T12:25+09:00",
+      "process_end": "2026-11-10T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0010",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T14:00+09:00",
+      "process_start": "2026-11-10T14:30+09:00",
+      "process_end": "2026-11-10T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0012",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T00:00+09:00",
+      "process_start": "2026-11-11T00:05+09:00",
+      "process_end": "2026-11-11T00:49+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0013",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T08:00+09:00",
+      "process_start": "2026-11-11T08:25+09:00",
+      "process_end": "2026-11-11T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0014",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T10:00+09:00",
+      "process_start": "2026-11-11T10:30+09:00",
+      "process_end": "2026-11-11T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0015",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T12:00+09:00",
+      "process_start": "2026-11-11T12:25+09:00",
+      "process_end": "2026-11-11T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0016",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T14:00+09:00",
+      "process_start": "2026-11-11T14:30+09:00",
+      "process_end": "2026-11-11T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0018",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T00:00+09:00",
+      "process_start": "2026-11-12T00:05+09:00",
+      "process_end": "2026-11-12T00:49+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0019",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T08:00+09:00",
+      "process_start": "2026-11-12T08:25+09:00",
+      "process_end": "2026-11-12T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0020",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T10:00+09:00",
+      "process_start": "2026-11-12T10:30+09:00",
+      "process_end": "2026-11-12T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0021",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T12:00+09:00",
+      "process_start": "2026-11-12T12:25+09:00",
+      "process_end": "2026-11-12T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0022",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T14:00+09:00",
+      "process_start": "2026-11-12T14:30+09:00",
+      "process_end": "2026-11-12T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0023",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T21:00+09:00",
+      "process_start": "2026-11-12T21:25+09:00",
+      "process_end": "2026-11-12T22:02+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0024",
+      "machine_id": "M-N1",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-13T00:00+09:00",
+      "process_start": "2026-11-13T00:30+09:00",
+      "process_end": "2026-11-13T01:14+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0025",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T09:00+09:00",
+      "process_start": "2026-11-09T09:25+09:00",
+      "process_end": "2026-11-09T10:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0026",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T11:00+09:00",
+      "process_start": "2026-11-09T11:45+09:00",
+      "process_end": "2026-11-09T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0027",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T13:00+09:00",
+      "process_start": "2026-11-09T13:15+09:00",
+      "process_end": "2026-11-09T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0028",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T15:00+09:00",
+      "process_start": "2026-11-09T15:25+09:00",
+      "process_end": "2026-11-09T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0029",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-09T22:00+09:00",
+      "process_start": "2026-11-09T22:30+09:00",
+      "process_end": "2026-11-09T23:17+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0030",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T01:00+09:00",
+      "process_start": "2026-11-10T01:20+09:00",
+      "process_end": "2026-11-10T02:15+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0031",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T09:00+09:00",
+      "process_start": "2026-11-10T09:40+09:00",
+      "process_end": "2026-11-10T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0032",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T11:00+09:00",
+      "process_start": "2026-11-10T11:45+09:00",
+      "process_end": "2026-11-10T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0033",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T13:00+09:00",
+      "process_start": "2026-11-10T13:15+09:00",
+      "process_end": "2026-11-10T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0034",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-10T15:00+09:00",
+      "process_start": "2026-11-10T15:25+09:00",
+      "process_end": "2026-11-10T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0036",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T01:00+09:00",
+      "process_start": "2026-11-11T01:45+09:00",
+      "process_end": "2026-11-11T02:40+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0037",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T09:00+09:00",
+      "process_start": "2026-11-11T09:40+09:00",
+      "process_end": "2026-11-11T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0038",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T11:00+09:00",
+      "process_start": "2026-11-11T11:45+09:00",
+      "process_end": "2026-11-11T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0039",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T13:00+09:00",
+      "process_start": "2026-11-11T13:15+09:00",
+      "process_end": "2026-11-11T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0040",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-11T15:00+09:00",
+      "process_start": "2026-11-11T15:25+09:00",
+      "process_end": "2026-11-11T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0042",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T01:00+09:00",
+      "process_start": "2026-11-12T01:45+09:00",
+      "process_end": "2026-11-12T02:40+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0043",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T09:00+09:00",
+      "process_start": "2026-11-12T09:40+09:00",
+      "process_end": "2026-11-12T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0044",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T11:00+09:00",
+      "process_start": "2026-11-12T11:45+09:00",
+      "process_end": "2026-11-12T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0045",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T13:00+09:00",
+      "process_start": "2026-11-12T13:15+09:00",
+      "process_end": "2026-11-12T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0046",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T15:00+09:00",
+      "process_start": "2026-11-12T15:25+09:00",
+      "process_end": "2026-11-12T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0047",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-12T22:00+09:00",
+      "process_start": "2026-11-12T22:30+09:00",
+      "process_end": "2026-11-12T23:17+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0048",
+      "machine_id": "M-N2",
+      "staff_id": "T-N",
+      "setup_start": "2026-11-13T01:00+09:00",
+      "process_start": "2026-11-13T01:20+09:00",
+      "process_end": "2026-11-13T02:15+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0049",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T08:00+09:00",
+      "process_start": "2026-11-09T08:25+09:00",
+      "process_end": "2026-11-09T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0050",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T10:00+09:00",
+      "process_start": "2026-11-09T10:30+09:00",
+      "process_end": "2026-11-09T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0051",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T12:00+09:00",
+      "process_start": "2026-11-09T12:25+09:00",
+      "process_end": "2026-11-09T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0052",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T14:00+09:00",
+      "process_start": "2026-11-09T14:30+09:00",
+      "process_end": "2026-11-09T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0053",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T21:00+09:00",
+      "process_start": "2026-11-09T21:25+09:00",
+      "process_end": "2026-11-09T22:02+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0054",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T00:00+09:00",
+      "process_start": "2026-11-10T00:30+09:00",
+      "process_end": "2026-11-10T01:14+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0055",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T08:00+09:00",
+      "process_start": "2026-11-10T08:25+09:00",
+      "process_end": "2026-11-10T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0056",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T10:00+09:00",
+      "process_start": "2026-11-10T10:30+09:00",
+      "process_end": "2026-11-10T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0057",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T12:00+09:00",
+      "process_start": "2026-11-10T12:25+09:00",
+      "process_end": "2026-11-10T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0058",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T14:00+09:00",
+      "process_start": "2026-11-10T14:30+09:00",
+      "process_end": "2026-11-10T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0060",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T00:00+09:00",
+      "process_start": "2026-11-11T00:05+09:00",
+      "process_end": "2026-11-11T00:49+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0061",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T08:00+09:00",
+      "process_start": "2026-11-11T08:25+09:00",
+      "process_end": "2026-11-11T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0062",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T10:00+09:00",
+      "process_start": "2026-11-11T10:30+09:00",
+      "process_end": "2026-11-11T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0063",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T12:00+09:00",
+      "process_start": "2026-11-11T12:25+09:00",
+      "process_end": "2026-11-11T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0064",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T14:00+09:00",
+      "process_start": "2026-11-11T14:30+09:00",
+      "process_end": "2026-11-11T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0066",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T00:00+09:00",
+      "process_start": "2026-11-12T00:05+09:00",
+      "process_end": "2026-11-12T00:49+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0067",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T08:00+09:00",
+      "process_start": "2026-11-12T08:25+09:00",
+      "process_end": "2026-11-12T08:55+09:00",
+      "fixed": true
+    },
+    {
+      "job_id": "J0068",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T10:00+09:00",
+      "process_start": "2026-11-12T10:30+09:00",
+      "process_end": "2026-11-12T11:07+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0069",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T12:00+09:00",
+      "process_start": "2026-11-12T12:25+09:00",
+      "process_end": "2026-11-12T13:09+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0070",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T14:00+09:00",
+      "process_start": "2026-11-12T14:30+09:00",
+      "process_end": "2026-11-12T15:00+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0071",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T21:00+09:00",
+      "process_start": "2026-11-12T21:25+09:00",
+      "process_end": "2026-11-12T22:02+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0072",
+      "machine_id": "M-S1",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-13T00:00+09:00",
+      "process_start": "2026-11-13T00:30+09:00",
+      "process_end": "2026-11-13T01:14+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0073",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T09:00+09:00",
+      "process_start": "2026-11-09T09:25+09:00",
+      "process_end": "2026-11-09T10:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0074",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T11:00+09:00",
+      "process_start": "2026-11-09T11:45+09:00",
+      "process_end": "2026-11-09T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0075",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T13:00+09:00",
+      "process_start": "2026-11-09T13:15+09:00",
+      "process_end": "2026-11-09T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0076",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T15:00+09:00",
+      "process_start": "2026-11-09T15:25+09:00",
+      "process_end": "2026-11-09T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0077",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-09T22:00+09:00",
+      "process_start": "2026-11-09T22:30+09:00",
+      "process_end": "2026-11-09T23:17+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0078",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T01:00+09:00",
+      "process_start": "2026-11-10T01:20+09:00",
+      "process_end": "2026-11-10T02:15+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0079",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T09:00+09:00",
+      "process_start": "2026-11-10T09:40+09:00",
+      "process_end": "2026-11-10T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0080",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T11:00+09:00",
+      "process_start": "2026-11-10T11:45+09:00",
+      "process_end": "2026-11-10T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0081",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T13:00+09:00",
+      "process_start": "2026-11-10T13:15+09:00",
+      "process_end": "2026-11-10T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0082",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-10T15:00+09:00",
+      "process_start": "2026-11-10T15:25+09:00",
+      "process_end": "2026-11-10T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0084",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T01:00+09:00",
+      "process_start": "2026-11-11T01:45+09:00",
+      "process_end": "2026-11-11T02:40+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0085",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T09:00+09:00",
+      "process_start": "2026-11-11T09:40+09:00",
+      "process_end": "2026-11-11T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0086",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T11:00+09:00",
+      "process_start": "2026-11-11T11:45+09:00",
+      "process_end": "2026-11-11T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0087",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T13:00+09:00",
+      "process_start": "2026-11-11T13:15+09:00",
+      "process_end": "2026-11-11T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0088",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-11T15:00+09:00",
+      "process_start": "2026-11-11T15:25+09:00",
+      "process_end": "2026-11-11T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0090",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T01:00+09:00",
+      "process_start": "2026-11-12T01:45+09:00",
+      "process_end": "2026-11-12T02:40+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0091",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T09:00+09:00",
+      "process_start": "2026-11-12T09:40+09:00",
+      "process_end": "2026-11-12T10:18+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0092",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T11:00+09:00",
+      "process_start": "2026-11-12T11:45+09:00",
+      "process_end": "2026-11-12T12:32+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0093",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T13:00+09:00",
+      "process_start": "2026-11-12T13:15+09:00",
+      "process_end": "2026-11-12T14:10+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0094",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T15:00+09:00",
+      "process_start": "2026-11-12T15:25+09:00",
+      "process_end": "2026-11-12T16:03+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0095",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-12T22:00+09:00",
+      "process_start": "2026-11-12T22:30+09:00",
+      "process_end": "2026-11-12T23:17+09:00",
+      "fixed": false
+    },
+    {
+      "job_id": "J0096",
+      "machine_id": "M-S2",
+      "staff_id": "T-S",
+      "setup_start": "2026-11-13T01:00+09:00",
+      "process_start": "2026-11-13T01:20+09:00",
+      "process_end": "2026-11-13T02:15+09:00",
+      "fixed": false
+    }
+  ]
+}
