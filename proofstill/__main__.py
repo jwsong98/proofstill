@@ -19,6 +19,7 @@ def main():
     test.add_argument('phase', choices=['red', 'green'], nargs='?', default='green')
     test.add_argument('--kind', choices=['unit', 'integration'])
     test.add_argument('--module')
+    test.add_argument('--force', action='store_true', help='현재 Green 결과도 다시 실행')
     review = commands.add_parser('review', help='새 세션으로 독립 검토')
     review.add_argument('feature')
     review.add_argument('stage', choices=['criteria', 'implementation'], nargs='?', default='implementation')
@@ -87,7 +88,7 @@ def main():
         elif args.command == 'init':
             print(h.init(args.plan))
         elif args.command == 'test':
-            result = h.run(args.feature, args.phase, kind=args.kind, module=args.module)
+            result = h.run(args.feature, args.phase, kind=args.kind, module=args.module, reuse=not args.force)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if all(r['accepted'] for r in result) else 1
         elif args.command == 'review':

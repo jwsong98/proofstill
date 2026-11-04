@@ -16,9 +16,11 @@ def render(h, plan, state, status):
     except HarnessError:
         current_criteria = None
     criteria_valid = current_criteria is not None
-    def current_run(run, phase='green'):
-        return bool(criteria_valid and h.evidence_current(run) and run['criteria_digest'] == current_criteria
-                    and (phase == 'red' or run['source_digest'] == current_source))
+    checks_by_id = {check['id']: check for check in plan['checks']}
+
+    def current_run(run):
+        return bool(run and h.run_current(plan, state, checks_by_id[run['check']], run, current_criteria, current_source))
+
     lines = [f"# {plan['title']} — 기능 개발 보고", '',
              f"- 자동 검사·독립 리뷰: **{'검증 완료' if status['complete'] else '미완료'}**",
              f"- 인계 준비: {'필수 정보·기술 근거 있음' if status['handoff_ready'] else '보완 필요'}", '- 사용자 수용: 미확인',
@@ -44,7 +46,7 @@ def render(h, plan, state, status):
         for phase in ['red', 'green']:
             run = h.latest(state, phase, check['id'])
             if run:
-                valid = current_run(run, phase)
+                valid = current_run(run)
                 label = '현재 버전에서 무효' if not valid else ('기대 결과 확인' if run['accepted'] else '실패/미검증')
                 lines.append(f"- {phase.title()}: {label} · 종료 코드 `{run['exit_code']}` · {link('출력', run['log'])} · {link('실행 영수증', run['receipt'])}")
             else:

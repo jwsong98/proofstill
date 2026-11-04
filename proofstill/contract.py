@@ -76,6 +76,10 @@ def validate_plan(root, plan):
         argv = check.get('argv')
         require(isinstance(argv, list) and argv and all(isinstance(x, str) and x for x in argv), '명령은 비어 있지 않은 argv 배열이어야 합니다')
         require(isinstance(check.get('files'), list) and check['files'], '테스트/fixture 파일을 지정하세요')
+        if 'sources' in check:
+            require(isinstance(check['sources'], list) and check['sources'], '검사 소스는 비어 있지 않은 배열이어야 합니다')
+            for path in check['sources']:
+                project_path(root, path)
         if 'trace_expectation' in check:
             expected = check['trace_expectation']
             require(project_path(root, expected).is_file(), f'기대 흐름 파일 없음: {expected}')

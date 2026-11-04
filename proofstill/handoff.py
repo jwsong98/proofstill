@@ -35,7 +35,7 @@ def snapshot(h, feature):
     checks = {}
     for check in plan['checks']:
         run = h.latest(state, 'green', check['id'])
-        current = bool(run and criteria and h.evidence_current(run) and run['criteria_digest'] == criteria and run['source_digest'] == source)
+        current = h.run_current(plan, state, check, run, criteria, source)
         label = 'not_run' if not run else 'unverified' if run.get('pending') else 'stale' if not current else 'interrupted' if run.get('timed_out') else 'passed' if run['accepted'] else 'unverified' if run.get('pending') or run['exit_code'] is None else 'failed'
         log = ''
         output_truncated = False

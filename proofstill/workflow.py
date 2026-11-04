@@ -67,7 +67,7 @@ class Harness:
         paths = [p for c in plan['checks'] for p in c['files']] + plan['context_files']
         return {'plan': plan, 'files': inventory(self.root, paths)}
 
-    def criteria_digest(self, plan, state):
+    def validate_frozen_plan(self, plan, state):
         require(digest(plan) == state['plan_digest'], '보관된 기준이 변경되었습니다')
         origin = Path(state['origin'])
         if origin.exists():
@@ -75,11 +75,34 @@ class Harness:
             require(digest(current) == state['plan_digest'], '원래 기능 정의/명령이 변경되었습니다. 새 작업 ID로 기준을 재검토하세요')
         else:
             require(state.get('closed'), '원래 기능 정의가 사라졌습니다')
+
+    def criteria_digest(self, plan, state):
+        self.validate_frozen_plan(plan, state)
         basis = self.basis(plan)
         return digest({'basis': basis, 'decisions': state['decisions']}) if state.get('decisions') else digest(basis)
 
+    @staticmethod
+    def source_paths(plan):
+        return list(dict.fromkeys([*plan['sources'], *(p for c in plan['checks'] for p in c.get('sources', []))]))
+
     def source_digest(self, plan):
-        return digest(inventory(self.root, plan['sources']))
+        return digest(inventory(self.root, self.source_paths(plan)))
+
+    def check_digests(self, plan, state, check):
+        criteria = digest({
+            'plan': state['plan_digest'],
+            'decisions': state.get('decisions', {}),
+            'files': inventory(self.root, [*check['files'], *plan['context_files']]),
+        })
+        source = digest(inventory(self.root, check.get('sources', plan['sources'])))
+        return criteria, source
+
+    def run_current(self, plan, state, check, run, criteria, source):
+        if not criteria or not self.evidence_current(run):
+            return False
+        if run.get('fingerprint_scope') == 'check':
+            criteria, source = self.check_digests(plan, state, check)
+        return run['criteria_digest'] == criteria and (run['phase'] == 'red' or run['source_digest'] == source)
 
     def init(self, path):
         origin = Path(path).resolve()
@@ -107,10 +130,8 @@ class Harness:
         source = self.source_digest(plan)
         for check in plan['checks']:
             run = self.latest(state, 'green', check['id'])
-            require(self.evidence_current(run) and run['accepted'] and run['criteria_digest'] == criteria and run['source_digest'] == source,
+            require(self.run_current(plan, state, check, run, criteria, source) and run['accepted'],
                     f"현재 버전의 Green이 필요합니다: {check['id']}")
-            for trace in run.get('traces', []):
-                require(file_hash(Path(trace['path'])) == trace['sha256'], '흐름 기록이 사라졌거나 변경되었습니다')
         return criteria, source
 
     def execute(self, argv, timeout, input_text=None, cwd=None, environment=None):
@@ -136,7 +157,7 @@ class Harness:
             raise
 
     @exclusive
-    def run(self, feature, phase='green', kind=None, module=None):
+    def run(self, feature, phase='green', kind=None, module=None, *, reuse=False):
         require(phase in ['red', 'green'], 'phase는 red/green이어야 합니다')
         plan, state = self.load(feature)
         from .collaboration import require_decisions_resolved
@@ -147,7 +168,15 @@ class Harness:
         if phase == 'red':
             require(not any(c['regression'] for c in selected), '기존 회귀 검사는 Green만 실행하세요')
             require(all(c.get('red_pattern') for c in selected), 'Red 실행에는 의도한 실패 패턴이 필요합니다')
-        results = [self._run_check(plan, state, check, phase, criteria) for check in selected]
+        results = []
+        for check in selected:
+            previous = self.latest(state, phase, check['id'])
+            if reuse and phase == 'green' and previous and previous['accepted']:
+                source = self.source_digest(plan) if previous.get('fingerprint_scope') != 'check' else None
+                if self.run_current(plan, state, check, previous, criteria, source):
+                    results.append(dict(previous, reused=True))
+                    continue
+            results.append(self._run_check(plan, state, check, phase))
         state['next'] = f"{phase}: " + ('통과' if all(r['accepted'] for r in results) else '실패/미검증 — 근거 확인 후 수정')
         self.save(plan, state)
         return results
@@ -159,18 +188,19 @@ class Harness:
                         for key in ['log', 'receipt']) and
                     all(file_hash(Path(t['path'])) == t['sha256'] for t in run.get('traces', [])))
 
-    def _run_check(self, plan, state, check, phase, criteria):
+    def _run_check(self, plan, state, check, phase):
         from .trace_check import verify_trace
         from .trace_view import write_trace_view
         folder = self.folder(plan['id']) / 'runs' / uuid.uuid4().hex[:12]
         folder.mkdir(parents=True)
         trace_dir = folder / 'traces'
         trace_dir.mkdir()
-        source = self.source_digest(plan)
+        self.validate_frozen_plan(plan, state)
+        criteria, source = self.check_digests(plan, state, check)
         record = {'check': check['id'], 'phase': phase, 'argv': check['argv'], 'module': check['module'],
                   'kind': check['kind'], 'cwd': str(self.root), 'accepted': False, 'pending': True,
                   'exit_code': None, 'timed_out': False, 'traces': [], 'criteria_digest': criteria,
-                  'source_digest': source, 'log': str(folder / 'output.log'), 'receipt': str(folder / 'result.json'),
+                  'source_digest': source, 'fingerprint_scope': 'check', 'log': str(folder / 'output.log'), 'receipt': str(folder / 'result.json'),
                   'recorded_at': datetime.now(timezone.utc).isoformat()}
         (folder / 'output.log').write_text('실행 시작. 결과는 아직 확인되지 않았습니다.\n')
         state['runs'].append(record)
@@ -185,7 +215,8 @@ class Harness:
             expected_exit = result['exit_code'] == 0 if phase == 'green' else result['exit_code'] is not None and result['exit_code'] > 0
             accepted = expected_exit and not result['timed_out'] and bool(re.search(check[phase + '_pattern'], output))
             try:
-                unchanged = self.criteria_digest(plan, state) == criteria and self.source_digest(plan) == source
+                self.validate_frozen_plan(plan, state)
+                unchanged = self.check_digests(plan, state, check) == (criteria, source)
             except HarnessError:
                 unchanged = False
             expectation = read_json(self.root / check['trace_expectation']) if check.get('trace_expectation') else None
@@ -225,7 +256,7 @@ class Harness:
         folder = self.folder(feature) / 'reviews' / (stage + '-' + uuid.uuid4().hex[:12])
         folder.mkdir(parents=True)
         manifest = folder / 'manifest.json'
-        save_json(manifest, inventory(self.root, plan['sources'] + [p for c in plan['checks'] for p in c['files']] + plan['context_files']))
+        save_json(manifest, inventory(self.root, self.source_paths(plan) + [p for c in plan['checks'] for p in c['files']] + plan['context_files']))
         packet = {'stage': stage, 'project_root': str(self.root), 'plan': plan,
                   'criteria_digest': criteria, 'source_digest': source,
                   'manifest': str(manifest), 'decisions': state.get('decisions', {})}
@@ -270,7 +301,7 @@ class Harness:
         record = state.get('reviews', {}).get('implementation', {})
         return bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
                     and self.review_evidence_current(record, state['developer_session'])
-                    and all(self.evidence_current(self.latest(state, 'green', c['id']))
+                    and all(self.run_current(plan, state, c, self.latest(state, 'green', c['id']), criteria, source)
                             and self.latest(state, 'green', c['id'])['accepted'] for c in plan['checks']))
 
     def status(self, feature):
