@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "jobs": 96,
+  "ready": 88,
+  "overnight_jobs": 16,
+  "negative_controls": 19,
+  "partial_period": "PASS",
+  "bottleneck": "feasible; earlier-due greedy rejected",
+  "controls": [
+    "missing assignment",
+    "duplicate assignment",
+    "unknown site",
+    "cyclic predecessor",
+    "wrong service day",
+    "rush impossible",
+    "hold still allocated",
+    "new buffer conflicts with fixed",
+    "fixed moved",
+    "duration shortened",
+    "before release",
+    "maintenance window",
+    "staff qualification",
+    "wrong directional setup",
+    "predecessor handoff",
+    "shared staff overlap",
+    "same machine overlap"
+  ]
+}
