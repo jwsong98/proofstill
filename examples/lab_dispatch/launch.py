@@ -2,6 +2,8 @@
 import argparse
 import json
 import shutil
+import sqlite3
+import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
@@ -11,31 +13,32 @@ ROOT = Path(__file__).resolve().parent
 STATE_FILE = '.lab-session.json'
 
 
+START = """# LINKLAB 프로젝트
+
+작업폴더는 workspace입니다. README.md, inbox/, data/에 의뢰서·운영 문서·CSV가 있습니다.
+
+Proofstill 콘솔에서 **LINKLAB** 프로젝트 하나를 사용합니다. 같은 프로젝트의 Codex 세션에서 **김도윤 선임 · 업무 문의**를 열어 직접 질문하세요. 답변은 같은 프로젝트의 근거로 보존할 수 있습니다.
+
+개발 대화도 LINKLAB 안에서 시작합니다. 담당자에게 확인한 실제 답변을 요구사항과 연결하세요. facilitator는 담당자의 비공개 설정 보관 폴더이며 개발 조사 대상이 아닙니다.
+"""
+
+
 def prepare(destination):
     destination = destination.expanduser().resolve()
     # mkdir is deliberately exclusive: never overwrite a participant's run.
     destination.mkdir(parents=True, exist_ok=False)
-    shutil.copytree(ROOT / 'participant', destination / 'participant')
+    shutil.copytree(ROOT / 'participant', destination / 'workspace')
     private = destination / 'facilitator'
     private.mkdir()
     for name in ['AGENTS.md', 'policies.json']:
         shutil.copy2(ROOT / 'facilitator' / name, private / name)
-    state = {'destination': str(destination), 'captured': {}, 'participant_project': None,
-             'facilitator_project': None, 'stakeholder_session': None, 'greeting_sent': False,
+    role_file = private / 'AGENTS.md'
+    role_file.write_text(role_file.read_text().replace('../participant', '../workspace'), encoding='utf-8')
+    state = {'destination': str(destination), 'captured': {}, 'project': None,
+             'setup_project': None, 'stakeholder_session': None, 'greeting_sent': False,
              'greeting_request_id': str(uuid.uuid4())}
     save(destination, state)
-    (destination / 'START.md').write_text('''# LINKLAB 실험 시작
-
-1. participant/README.md를 읽고 participant/inbox와 data의 자료를 살펴보세요.
-2. Proofstill 콘솔의 “LINKLAB · 참가자” 프로젝트에는 제공 문서 원문만 가져와 있습니다. 아직 요구 해석이나 구현을 대신 진행하지 않았습니다.
-3. “LINKLAB · 담당자” 프로젝트 → Codex 세션 → “김도윤 선임 · 업무 문의”에서 직접 질문하세요.
-4. 담당자 답변을 참가자 프로젝트의 요구 근거로 남기세요. 프로젝트가 분리되어 있으므로 답변을 직접 옮길 때 담당자·메시지 시각·원문을 함께 기록합니다. 자동 동기화되지 않습니다.
-5. 정책이 정리되면 참가자 프로젝트에서 구현을 시작하고, 하네스 검사·현황·인계 기능을 사용합니다. 이 연습의 결과를 실제 시험 규정이나 정답으로 해석하지 마세요.
-
-연습 중 facilitator 폴더는 열지 마세요. 참가자 작업폴더는 participant만 지정합니다. 폴더 분리는 스포일러 방지이며 OS 보안 격리는 아닙니다.
-
-다시 시작하려면 새 이름의 디렉터리로 launch.py를 실행합니다. 기존 실험은 덮어쓰지 않습니다.
-''', encoding='utf-8')
+    (destination / 'START.md').write_text(START, encoding='utf-8')
     return state
 
 
@@ -53,7 +56,7 @@ def api(base, path, payload=None):
         return json.load(response)
 
 
-def connect(destination, base):
+def connect(destination, base, database):
     state = json.loads((destination / STATE_FILE).read_text())
     if state['destination'] != str(destination):
         raise ValueError('Session state belongs to a different directory')
@@ -62,14 +65,13 @@ def connect(destination, base):
     api(base, 'health')
     state['console_url'] = base
     save(destination, state)
-    for role, title in [('participant', 'LINKLAB · 참가자'), ('facilitator', 'LINKLAB · 담당자')]:
-        key = role + '_project'
-        if state[key] is None:
-            state[key] = api(base, 'projects', {'name': title, 'rootPath': str(destination / role)})
+    for key, folder, title in [('project', 'workspace', 'LINKLAB'), ('setup_project', 'facilitator', 'LINKLAB 내부 초기화 기록')]:
+        if state.get(key) is None and not (key == 'setup_project' and state.get('stakeholder_session')):
+            state[key] = api(base, 'projects', {'name': title, 'rootPath': str(destination / folder)})
             save(destination, state)
-    pid = state['participant_project']['id']
+    pid = state['project']['id']
     # Never import private policy or a witness into the participant graph.
-    public = destination / 'participant'
+    public = destination / 'workspace'
     sources = [public / 'README.md', public / 'EXPORT_SCHEMA.md', public / 'data/README.md', *sorted((public / 'inbox').iterdir())]
     for source in sources:
         relative = source.relative_to(public).as_posix()
@@ -78,16 +80,45 @@ def connect(destination, base):
             state['captured'][relative] = node['id']
             save(destination, state)
     if state['stakeholder_session'] is None:
-        fid = state['facilitator_project']['id']
+        fid = state['setup_project']['id']
         state['stakeholder_session'] = api(base, f'projects/{fid}/sessions', {
             'title': '김도윤 선임 · 업무 문의', 'role': 'stakeholder', 'nodeIds': []})
         save(destination, state)
     if not state['greeting_sent']:
         sid = state['stakeholder_session']['id']
         api(base, f'sessions/{sid}/messages', {
-            'content': '이 프로젝트의 AGENTS.md에 정의한 가상 업무 담당자로 대화를 시작하세요. AGENTS.md와 policies.json, ../participant의 공개 문서를 읽고 업무 설정을 파악하세요. 정책 원문이나 해설을 출력하지 말고 지금은 지정된 첫 인사만 하세요. 코드 구현, 파일 수정, 요구 그래프 생성은 하지 마세요. 이후 사용자가 직접 질문합니다.',
+            'content': '이 프로젝트의 AGENTS.md에 정의한 가상 업무 담당자로 대화를 시작하세요. AGENTS.md와 policies.json, ../workspace의 공개 문서를 읽고 업무 설정을 파악하세요. 정책 원문이나 해설을 출력하지 말고 지금은 지정된 첫 인사만 하세요. 코드 구현, 파일 수정, 요구 그래프 생성은 하지 마세요. 이후 사용자가 직접 질문합니다.',
             'clientMessageId': state['greeting_request_id']})
         state['greeting_sent'] = True
+        save(destination, state)
+    # Bootstrap tool output may contain private policies; keep it out of the project graph.
+    setup = state.get('setup_project')
+    if setup:
+        sid = state['stakeholder_session']['id']
+        deadline = time.monotonic() + 60
+        while True:
+            detail = api(base, f'sessions/{sid}')
+            if detail['activeTurnId'] is None:
+                break
+            if time.monotonic() >= deadline:
+                raise TimeoutError('Stakeholder initialization is still running; resume after it completes')
+            time.sleep(0.5)
+        if not any(m['role'] == 'assistant' for m in detail['messages']):
+            raise RuntimeError('Stakeholder has not replied; inspect the session before resuming')
+        with sqlite3.connect(f'file:{database}?mode=rw', uri=True) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            db.execute('BEGIN IMMEDIATE')
+            for project in [state['project'], setup]:
+                row = db.execute('SELECT root_path FROM projects WHERE id=?', (project['id'],)).fetchone()
+                if row != (project['rootPath'],):
+                    raise ValueError('Console database does not match the registered projects')
+            if db.execute('SELECT count(*) FROM session_context WHERE session_id=?', (sid,)).fetchone()[0]:
+                raise ValueError('Setup session has project-specific context; cannot move automatically')
+            db.execute('UPDATE sessions SET project_id=? WHERE id=? AND project_id=?', (pid, sid, setup['id']))
+            db.execute('UPDATE projects SET archived=1 WHERE id=?', (setup['id'],))
+            if db.execute('PRAGMA foreign_key_check').fetchall():
+                raise ValueError('Project consolidation broke a reference')
+        state['stakeholder_session']['projectId'] = pid
         save(destination, state)
     return state
 
@@ -96,6 +127,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--console-url', help='Register in an existing loopback Proofstill console')
+    parser.add_argument('--console-db', type=Path, default=Path.home() / '.local/share/proofstill/console/console.sqlite')
     parser.add_argument('--resume', action='store_true', help='Resume console registration without copying or overwriting files')
     args = parser.parse_args()
     destination = args.destination.expanduser().resolve()
@@ -104,8 +136,8 @@ def main():
     else:
         state = prepare(destination)
     if args.console_url:
-        state = connect(destination, args.console_url)
-    print(json.dumps({'participant': str(destination / 'participant'), 'start': str(destination / 'START.md'),
+        state = connect(destination, args.console_url, args.console_db.expanduser().resolve())
+    print(json.dumps({'workspace': str(destination / 'workspace'), 'start': str(destination / 'START.md'),
         'console': state.get('console_url'), 'stakeholder_session_id': (state.get('stakeholder_session') or {}).get('id'),
         'greeting': 'requested; inspect session for completion' if state['greeting_sent'] else 'not started'}, ensure_ascii=False, indent=2))
 
