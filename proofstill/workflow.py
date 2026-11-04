@@ -87,7 +87,7 @@ class Harness:
     def criteria_digest(self, plan, state):
         self.validate_frozen_plan(plan, state)
         basis = self.basis(plan)
-        return digest({'basis': basis, 'decisions': state['decisions']}) if state.get('decisions') else digest(basis)
+        return digest({'basis': basis, 'decisions': state.get('decisions', {}), 'dependencies': state.get('project_dependencies', {})}) if state.get('decisions') or state.get('project_dependencies') else digest(basis)
 
     @staticmethod
     def source_paths(plan):
@@ -113,9 +113,9 @@ class Harness:
             criteria, source = self.check_digests(plan, state, check)
         return run['criteria_digest'] == criteria and (run['phase'] == 'red' or run['source_digest'] == source)
 
-    def init(self, path):
+    def init(self, path, *, check_files=True):
         origin = Path(path).resolve()
-        plan = validate_plan(self.root, read_json(origin))
+        plan = validate_plan(self.root, read_json(origin), check_files=check_files)
         folder = self.folder(plan['id'])
         require(not folder.exists(), '이미 있는 작업 ID입니다. 기존 작업을 재개하거나 새 ID를 사용하세요')
         folder.mkdir(parents=True)
@@ -132,6 +132,13 @@ class Harness:
     def revise(self, feature, path, reason, source):
         from .revisions import revise
         return revise(self, feature, path, reason, source)
+
+    @exclusive
+    def bind_dependencies(self, feature, dependencies):
+        plan, state = self.load(feature)
+        if state.get('project_dependencies', {}) != dependencies:
+            state['project_dependencies'] = dependencies
+            self.save(plan, state)
 
     @staticmethod
     def latest(state, phase, check):

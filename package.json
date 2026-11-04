@@ -57,6 +57,8 @@
     "proofstill/report.py",
     "proofstill/reviewer.py",
     "proofstill/revisions.py",
+    "proofstill/project.py",
+    "proofstill/project_cli.py",
     "proofstill/state.py",
     "proofstill/trace.py",
     "proofstill/trace_check.py",

@@ -15,6 +15,8 @@ def main():
     parser.add_argument('--model', help='독립 리뷰에서 사용할 모델. 생략하면 Codex 설정을 유지')
     parser.add_argument('--ignore-user-config', action='store_true', help='이번 리뷰만 Codex 기본 설정으로 실행. auth는 유지')
     commands = parser.add_subparsers(dest='command', required=True)
+    from . import project_cli
+    project_cli.configure(commands)
     control = commands.add_parser('control', help='공유 실행 제한 변경/취소')
     control.add_argument('path')
     control.add_argument('--minutes', type=float, help='최초 시작으로부터 제한 분')
@@ -68,7 +70,9 @@ def main():
                 model=args.model, ignore_user_config=args.ignore_user_config,
                 review_idle_timeout=args.review_idle_timeout, review_retries=args.review_retries, run_control=args.run_control)
     try:
-        if args.command == 'control':
+        if args.command == 'project':
+            return project_cli.run(h, args)
+        elif args.command == 'control':
             from .execution import configure
             print(json.dumps(configure(args.path, minutes=args.minutes, cancel=args.cancel)))
         elif args.command == 'trace':

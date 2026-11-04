@@ -12,7 +12,7 @@ def check_basis(plan, state, check):
             'intent': plan['intent'], 'context': plan['context'], 'limitations': plan['limitations'],
             'human': collaboration.get('human'), 'ai': collaboration.get('ai'),
             'human_checks': [c for c in collaboration.get('human_checks', []) if c['requirement'] in ids],
-            'decisions': state.get('decisions', {})}
+            'decisions': state.get('decisions', {}), 'dependencies': state.get('project_dependencies', {})}
 
 
 def implementation_basis(h, plan, state, requirement, paths):
