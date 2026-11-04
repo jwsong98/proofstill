@@ -1,0 +1,25 @@
+.graph-view-switch { display: flex; gap: 8px; padding: 8px 16px; }
+.graph-view-switch [aria-pressed="true"] { border-color: var(--accent-text); color: var(--accent-text); }
+.review-node {
+  display: grid;
+  gap: 4px;
+  width: 192px;
+  min-height: 72px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+.review-node.selected { border-color: var(--accent-text); }
+.review-node-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: 12px; }
+.review-node strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 20px;
+}
+.review-node .react-flow__handle { opacity: 0; }

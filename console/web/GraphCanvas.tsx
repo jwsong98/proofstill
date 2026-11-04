@@ -3,6 +3,7 @@ import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type Node
 import '@xyflow/react/dist/style.css';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
+import { DirectionalGraph } from './DirectionalGraph.tsx';
 import { useGraphLayout } from './useGraphLayout.ts';
 
 type DotData = { record: GraphNode };
@@ -17,10 +18,21 @@ function DotNode({ data, selected }: NodeProps<Dot>) {
   </div>;
 }
 const nodeTypes = { dot: DotNode };
-export function GraphCanvas({ graph, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: {
+type GraphCanvasProps = {
   graph: Graph; selectedId: string | null; onSelect: (id: string) => void; onMove: (id: string, x: number, y: number) => void;
   onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
-}) {
+};
+export function GraphCanvas(props: GraphCanvasProps) {
+  const [free, setFree] = useState(false);
+  return <>
+    <div className="graph-view-switch" role="group" aria-label="그래프 배치">
+      <button className="button" aria-pressed={!free} onClick={() => setFree(false)}>흐름 보기</button>
+      <button className="button" aria-pressed={free} onClick={() => setFree(true)}>자유 배치</button>
+    </div>
+    {free ? <FreeGraph {...props} /> : <DirectionalGraph {...props} />}
+  </>;
+}
+function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hiddenKinds, onShowAll }: GraphCanvasProps) {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const flow = useRef<ReactFlowInstance<Dot> | null>(null);
   const fitPending = useRef(true);
