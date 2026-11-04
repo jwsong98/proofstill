@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { evidenceLabel, flowPositions, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
+import { evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -23,17 +23,20 @@ test('원문과 발언을 구분하고 연관 기록에서 선후를 추정하�
   assert.deepEqual(links.outgoing.map(link => link.node.id), ['t']);
 });
 
-test('결과에서 시작되는 후속 작업도 오른쪽으로 이어진다', () => {
-  const graph = { nodes: [node('follow', 'task'), node('result', 'result'), node('work', 'task'), node('req', 'requirement')], edges: [
-    edge('req', 'work', 'precedes'), edge('work', 'result', 'precedes'), edge('result', 'follow', 'precedes'),
-  ] };
-  const positions = flowPositions(graph);
-  for (const { sourceId, targetId } of graph.edges) assert.ok(positions.get(sourceId)!.x < positions.get(targetId)!.x);
-  graph.edges.push(edge('follow', 'work', 'precedes'));
-  assert.equal(flowPositions(graph).size, 4);
+test('같은 시각의 여러 종류 노드를 가로와 세로로 나눠 겹치지 않게 배치한다', () => {
+  const kinds = ['decision', 'task', 'requirement'] as const;
+  const nodes = Array.from({ length: 24 }, (_, index) => ({
+    ...node(String(index), kinds[index % kinds.length]), createdAt: 1_700_000_000_000,
+  }));
+  const { positions, days } = layoutReviewBoard(nodes);
+  const points = [...positions.values()];
+  assert.equal(days.length, 1);
+  assert.equal(new Set(points.map(({ x, y }) => `${x},${y}`)).size, nodes.length);
+  assert.ok(new Set(points.map(({ x }) => x)).size > 1);
+  assert.ok(new Set(points.map(({ y }) => y)).size <= 4);
 });
 
-test('보드 배치는 발언 시각과 날짜 경계를 따르면서 선후 연결의 열을 유지한다', () => {
+test('보드 배치는 발언 시각과 날짜 경계를 따르고 같은 날은 시간순으로 가로 배치한다', () => {
   const day = new Date(2026, 10, 4, 9).getTime();
   const opinion = node('opinion', 'evidence', {
     ...source('message', 'user'), content: '  먼저 확인한\n  판단 기준  ',
@@ -42,7 +45,7 @@ test('보드 배치는 발언 시각과 날짜 경계를 따르면서 선후 연
   const decision = { ...node('decision', 'decision'), createdAt: day + 3_600_000 };
   const task = { ...node('task', 'task'), createdAt: day + 86_400_000 };
   const later = node('later', 'evidence', { ...source('message', 'user'), capturedAt: day + 86_400_000 });
-  const positions = flowPositions({ nodes: [task, later, decision, opinion], edges: [edge('opinion', 'decision', 'precedes')] });
+  const { positions } = layoutReviewBoard([task, later, decision, opinion]);
   assert.equal(reviewTitle(opinion), '먼저 확인한 판단 기준');
   assert.deepEqual(reviewTime(opinion), { at: day, label: '발언' });
   assert.deepEqual(reviewTime(later), { at: later.evidence!.capturedAt, label: '보존' });

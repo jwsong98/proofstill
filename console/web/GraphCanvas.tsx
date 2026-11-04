@@ -49,11 +49,17 @@ function FreeGraph({ graph, selectedId, onSelect, onMove, onlyIncomplete, hidden
   useEffect(() => setPreviewId(null), [hiddenKinds, onlyIncomplete]);
   const ids = useMemo(() => new Set(flowNodes.map(node => node.id)), [flowNodes]);
   const preview = graph.nodes.find(node => node.id === previewId && node.kind === 'task' && ids.has(node.id));
-  const edges = useMemo(() => graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)).map(edge => ({ id: edge.id, source: edge.sourceId, target: edge.targetId,
-    type: 'straight', markerEnd: edge.kind === 'precedes' ? { type: MarkerType.ArrowClosed, color: 'var(--text-secondary)', width: 16, height: 16 } : undefined,
-    style: { stroke: edge.kind === 'precedes' ? 'var(--text-secondary)' : 'var(--border-strong)', strokeWidth: edge.kind === 'precedes' ? 1.5 : 1 },
-    ariaLabel: edge.kind === 'precedes' ? '선행 작업에서 후속 작업으로' : '의미적 연관',
-  })), [graph.edges, ids]);
+  const edges = useMemo(() => graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)).map(edge => {
+    const active = edge.sourceId === selectedId || edge.targetId === selectedId;
+    const directed = edge.kind === 'precedes';
+    const color = active ? 'var(--graph-edge-highlight)' : directed ? 'var(--text-secondary)' : 'var(--border-strong)';
+    return { id: edge.id, source: edge.sourceId, target: edge.targetId, type: 'straight',
+      className: active ? 'review-edge-highlight' : undefined,
+      zIndex: active ? 2 : 0,
+      markerEnd: directed ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } : undefined,
+      style: { stroke: color, strokeWidth: active ? 2.8 : 1.5, opacity: selectedId && ids.has(selectedId) && !active ? .18 : 1, strokeDasharray: directed ? undefined : '5 4' },
+      ariaLabel: directed ? '선행 작업에서 후속 작업으로' : '의미적 연관' };
+  }), [graph.edges, ids, selectedId]);
   const topology = JSON.stringify([flowNodes.map(node => node.id).sort(), edges.map(edge => [edge.source, edge.target]).sort()]);
   useEffect(() => { fitPending.current = true; }, [topology]);
   const { nodes, onNodesChange, rearrange } = useGraphLayout(flowNodes, edges, () => {

@@ -33,3 +33,22 @@
   line-height: 16px;
   pointer-events: none;
 }
+
+.graph-canvas { --graph-edge-highlight: var(--info-text); }
+.graph-canvas .kind-evidence { --graph-kind-color: var(--text-secondary); }
+.graph-canvas .kind-requirement { --graph-kind-color: var(--info-text); }
+.graph-canvas .kind-decision { --graph-kind-color: light-dark(#7545a2, #c4a6ef); }
+.graph-canvas .kind-feature { --graph-kind-color: var(--success-text); }
+.graph-canvas .kind-task { --graph-kind-color: var(--warning-text); }
+.graph-canvas .kind-issue { --graph-kind-color: var(--danger-text); }
+.review-node {
+  border-color: color-mix(in srgb, var(--graph-kind-color, var(--text-secondary)) 55%, var(--border));
+  background: color-mix(in srgb, var(--graph-kind-color, var(--text-secondary)) 9%, var(--surface));
+}
+.review-node .review-node-kind { color: var(--graph-kind-color, var(--text-secondary)); font-weight: 650; }
+.review-node.connected { border-color: var(--graph-edge-highlight); }
+.review-node.selected { border-color: var(--graph-edge-highlight); outline: 2px solid var(--graph-edge-highlight); }
+.review-node.muted { opacity: .48; }
+.graph-day-divider { padding-bottom: 4px; }
+.graph-time-column { position: absolute; top: 25px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.graph-dot-node .graph-dot { background: var(--graph-kind-color, var(--border-control)); }

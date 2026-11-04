@@ -20,46 +20,38 @@ export function reviewConnections(graph: Graph, id: string) {
 
 type Link = { node: GraphNode; edge: GraphEdge };
 
-const stage: Record<GraphNode['kind'], number> = { evidence: 0, requirement: 1, issue: 1, decision: 2, feature: 3, task: 3, result: 4 };
+export const boardNodeWidth = 192;
+const columnStep = 232;
+const rowStep = 116;
 
-export function flowPositions(graph: Graph) {
-  const nodes = new Map(graph.nodes.map(node => [node.id, node]));
-  const predecessors = new Map<string, string[]>();
-  for (const edge of graph.edges) {
-    if (edge.kind !== 'precedes' || !nodes.has(edge.sourceId) || !nodes.has(edge.targetId)) continue;
-    const sources = predecessors.get(edge.targetId) ?? [];
-    sources.push(edge.sourceId);
-    predecessors.set(edge.targetId, sources);
+export function layoutReviewBoard(nodes: GraphNode[]) {
+  const ordered = nodes.map(node => ({ id: node.id, at: reviewTime(node).at }))
+    .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.id.localeCompare(b.id));
+  const groups = new Map<string, typeof ordered>();
+  for (const entry of ordered) {
+    const day = entry.at == null ? 'unknown' : new Date(entry.at).toDateString();
+    const group = groups.get(day) ?? [];
+    group.push(entry);
+    groups.set(day, group);
   }
-  const ranks = new Map<string, number>(), visiting = new Set<string>();
-  function rank(id: string): number {
-    if (ranks.has(id)) return ranks.get(id)!;
-    const base = stage[nodes.get(id)!.kind];
-    // A cycle can't be laid out entirely forward. Keep its return arrow visible.
-    if (visiting.has(id)) return -1;
-    visiting.add(id);
-    const column = (predecessors.get(id) ?? []).reduce((next, source) => Math.max(next, rank(source) + 1), base);
-    visiting.delete(id);
-    ranks.set(id, column);
-    return column;
-  }
-  const ordered = graph.nodes.map(node => ({ node, at: reviewTime(node).at }))
-    .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.node.id.localeCompare(b.node.id));
-  const lastRow = new Map<number, number>();
-  let row = 0, dayGap = 0, previousDay: string | undefined;
-  return new Map(ordered.map(({ node, at }) => {
-    const day = at == null ? 'unknown' : new Date(at).toDateString();
-    if (previousDay !== undefined && day !== previousDay) {
-      row++;
-      dayGap += 24;
+
+  const positions = new Map<string, { x: number; y: number }>();
+  const days = [];
+  let y = 0;
+  for (const entries of groups.values()) {
+    // Balance busy dates across both axes, even when many records share a timestamp.
+    const rows = Math.ceil(Math.sqrt(entries.length / 2));
+    const columns: { x: number; first: number | null; last: number | null }[] = [];
+    for (let start = 0; start < entries.length; start += rows) {
+      const x = columns.length * columnStep;
+      const column = entries.slice(start, start + rows);
+      columns.push({ x, first: column[0].at, last: column[column.length - 1].at });
+      column.forEach((entry, row) => positions.set(entry.id, { x, y: y + 48 + row * rowStep }));
     }
-    previousDay = day;
-    const column = rank(node.id);
-    // Share a row across columns while keeping older records above newer ones.
-    row = Math.max(row, (lastRow.get(column) ?? -1) + 1);
-    lastRow.set(column, row);
-    return [node.id, { x: column * 256, y: row * 120 + dayGap }];
-  }));
+    days.push({ y, at: entries[0].at, columns, width: columns[columns.length - 1].x + boardNodeWidth });
+    y += 56 + rows * rowStep;
+  }
+  return { positions, days };
 }
 
 export function reviewTitle(node: GraphNode, limit = 120): string {
