@@ -6,6 +6,8 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from urllib.error import URLError
+from urllib.request import urlopen
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,11 +51,28 @@ def source_expectations():
     }
 
 
+def verify_live_target(url, project_id):
+    try:
+        with urlopen(url.rstrip('/') + '/api/projects', timeout=4) as response:
+            projects = json.load(response)
+    except (OSError, URLError, ValueError) as error:
+        raise SystemExit(f'브라우저 실행 환경 오류: {url}에서 Proofstill 프로젝트를 조회할 수 없습니다. {error}') from error
+    matches = [project for project in projects
+               if project['rootPath'] == str(ROOT) and (project_id is None or project['id'] == project_id)]
+    if len(matches) != 1:
+        raise SystemExit(f'브라우저 실행 환경 오류: {url}에 {ROOT}의 프로젝트가 하나로 확인되어야 합니다. --live-project를 지정할 수 있습니다.')
+    return matches[0]
+
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--fixture-only', action='store_true', help='개발 중 격리 UI만 확인. 최종 검사는 이 옵션을 사용하지 않음')
+    parser.add_argument('--live-url', default='http://127.0.0.1:7777', help='확인할 실제 Proofstill 서버 주소')
+    parser.add_argument('--live-project', help='서버에서 현재 작업 경로와 일치해야 하는 프로젝트 ID')
     parser.add_argument('--output', default='output/playwright/accountability-web')
     args = parser.parse_args()
+    live_target = None if args.fixture_only else verify_live_target(args.live_url, args.live_project)
     output = (ROOT / args.output).resolve(); output.mkdir(parents=True, exist_ok=True)
     wrapper = Path.home() / '.codex/skills/playwright/scripts/playwright_cli.sh'
     if not wrapper.is_file(): raise SystemExit('Playwright CLI wrapper is required; browser checks NOT executed')
@@ -89,10 +108,8 @@ def main():
                     target = output / 'actual-live-handoff.html'
                     expected = source_expectations()
                     result = run(f'''const live = await page.context().newPage();
-                    await live.goto('http://127.0.0.1:7777');
-                    const projects = await (await live.request.get(new URL('/api/projects', live.url()).href)).json();
-                    const project = projects.find(p => p.id === '965e6be6-dd96-4910-abe0-c23bba1a28f8' && p.rootPath === {json.dumps(str(ROOT))});
-                    insist(project, '실제 7777 기존 프로젝트가 아님');
+                    await live.goto({json.dumps(args.live_url)});
+                    const project = {json.dumps(live_target, ensure_ascii=False)};
                     await live.getByRole('combobox', {{name:'프로젝트', exact:true}}).selectOption(project.id);
                     await live.getByRole('heading', {{name:'확인할 항목을 골라 주세요'}}).waitFor();
                     const columns = await live.getByRole('columnheader').allInnerTexts();
@@ -134,6 +151,10 @@ def main():
                       }}
                     }}
                     await downloadHandoff(live, {json.dumps(str(target))});
+                    const portable = await live.context().newPage();
+                    await portable.goto({json.dumps(target.as_uri())});
+                    for (const row of rows) await exportedStatusMatches(portable, row);
+                    await portable.close();
                     await live.close();
                     return {{passed:true, summary:'실제 7777 프로젝트에서 대표 요구를 선택하고 실행 로그를 펼쳐 인계 파일을 다운로드했어요.'}};''')
                     assert '구현 기록과 현재 검증을 구분해요' in target.read_text(), '실제 인계 파일에 선택한 요구가 없음'

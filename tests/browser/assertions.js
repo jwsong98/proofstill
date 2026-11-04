@@ -79,3 +79,26 @@ function sourceMatches(row, original) {
     }
   }
 }
+
+async function exportedStatusMatches(portable, row) {
+  const headers = await portable.getByRole('columnheader').allInnerTexts();
+  insist(headers.slice(1, 5).join('|') === '구현|자동 검사|요구별 리뷰|기준 적절성', '인계 파일의 네 상태 열 누락');
+  const link = portable.getByRole('link', {name:row.title, exact:true});
+  const cells = await portable.getByRole('row').filter({has:link}).getByRole('cell').allInnerTexts();
+  insist(cells[1] === implementationLabels[row.implementation.status]
+    && cells[2] === labels[row.verification.status]
+    && reviewLabels(row.verification.review.status).includes(cells[3])
+    && cells[4] === labels[row.verification.criteriaReview?.status ?? 'not_run'], '인계 파일 상태 오연결');
+  const article = portable.getByRole('article').filter({has:portable.getByRole('heading', {name:row.title, exact:true})});
+  const decision = await article.getByRole('region', {name:'지금 판단할 내용'}).innerText();
+  const currentness = row.implementationCurrent === true ? '현재 코드와 기록이 일치해요.'
+    : row.implementationCurrent === false ? '기록 이후 변경됐거나 근거가 사라졌어요.' : '확인할 버전 근거가 없어요.';
+  insist(decision.includes(currentness), '인계 파일 구현 현재성 오연결');
+  if (row.implementationCurrent !== true || row.verification.status !== 'passed'
+      || row.verification.review.status !== 'passed' || row.verification.criteriaReview?.status !== 'passed') {
+    insist(!decision.includes('등록한 범위의 기술 근거가 있어요.'), '인계 파일의 미확인 근거를 통과로 표시');
+  }
+  for (const name of ['독립 구현 검토', '독립 기준 검토']) {
+    insist(await article.getByRole('group', {name, exact:true}).count() === 1, '인계 파일의 별도 리뷰 누락: '+name);
+  }
+}
