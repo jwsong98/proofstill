@@ -42,6 +42,7 @@ def review_prompt(packet):
         '전달된 모든 requirement ID에 대해 근거를 붙여 정확히 한 번씩 판정하세요. '
         'checks의 id에는 requirement ID만 넣고 실행 명령/check ID는 해당 요구의 evidence에 기록하세요. '
         'findings에는 미해결 결함만 쓰고, verdict=pass이면 findings는 빈 배열이어야 합니다. '
+        '결함 없이 미검증만 남으면 verdict=blocked와 해당 checks의 unverified를 사용하세요. '
         '검사 결과와 확인 사실은 checks의 evidence에, 검증 한계는 limitations에 기록하세요. '
         'PASS는 지정 기준의 확인 범위에 한정하며 모든 버그의 부재를 뜻하지 않습니다.\n'
         + skill.read_text() + '\nPACKET_JSON\n' + json.dumps(packet, ensure_ascii=False)
@@ -184,3 +185,13 @@ def validate_verdict(plan, answer):
         require(isinstance(item.get('evidence'), str) and item['evidence'].strip(), '리뷰 근거가 비어 있습니다')
         require(item.get('status') == 'pass', '실패/미검증 요구사항이 남았습니다')
     require(answer.get('verdict') == 'pass' and not answer['findings'], '독립 리뷰가 통과하지 않았습니다')
+
+
+def outcome(answer):
+    if not isinstance(answer, dict) or not isinstance(answer.get('checks'), list):
+        return 'execution_error'
+    if answer.get('findings') or any(c.get('status') == 'fail' for c in answer['checks'] if isinstance(c, dict)):
+        return 'defect'
+    if answer.get('verdict') == 'blocked' or any(c.get('status') == 'unverified' for c in answer['checks'] if isinstance(c, dict)):
+        return 'unverified'
+    return 'verified' if answer.get('verdict') == 'pass' else 'invalid_verdict'

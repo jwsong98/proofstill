@@ -288,7 +288,7 @@ class Harness:
         green_receipts = {run['check']: run['evidence_hashes']['receipt'] for run in runs} if runs else None
         previous = state['reviews'].get(stage, {})
         launcher = {'launcher': self.codex, 'model': self.model, 'ignore_user_config': self.ignore_user_config}
-        if (reuse and previous.get('passed') and previous.get('criteria_digest') == criteria
+        if (reuse and (previous.get('passed') or previous.get('outcome') == 'unverified') and previous.get('criteria_digest') == criteria
                 and previous.get('source_digest') == source
                 and previous.get('green_receipts') == green_receipts
                 and all(previous.get(key) == value for key, value in launcher.items())
@@ -324,7 +324,7 @@ class Harness:
         self.save(plan, state)
         try:
             session, answer = reviewer.launch(self, packet, folder)
-            record.update(session=session, answer=answer)
+            record.update(session=session, answer=answer, outcome=reviewer.outcome(answer))
             require(session != state['developer_session'] and session not in state['review_sessions'], '개발/이전 검토 세션을 재사용할 수 없습니다')
             state['review_sessions'].append(session)
             reviewer.validate_verdict(plan, answer)
@@ -335,6 +335,7 @@ class Harness:
             state['next'] = '구현 및 필요한 검사 실행' if stage == 'criteria' else '보고 생성 및 사용자 전달'
         except HarnessError as error:
             record['error'] = str(error)
+            record.setdefault('outcome', 'execution_error')
             state['next'] = f'{stage} 검토 실패/미검증: {error}'
             raise
         finally:

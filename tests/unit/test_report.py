@@ -78,7 +78,7 @@ class ReportTests(unittest.TestCase):
         capture = json.loads((self.root / 'review_packet.json').read_text())
         argv = capture['argv']
         self.assertIn('exec', argv)
-        self.assertIn('--ephemeral', argv)
+        self.assertNotIn('--ephemeral', argv)  # Keep local partial usage when a review is interrupted.
         schema = json.loads(Path(argv[argv.index('--output-schema') + 1]).read_text())
         self.assertEqual(schema['properties']['checks']['items']['properties']['id']['enum'], ['R1'])
         self.assertEqual(argv[argv.index('--sandbox') + 1], 'workspace-write')

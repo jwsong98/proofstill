@@ -111,7 +111,9 @@ def main():
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if all(r['accepted'] for r in result) else 1
         elif args.command == 'review':
-            print(json.dumps(h.review(args.feature, args.stage, reuse=not args.force), ensure_ascii=False, indent=2))
+            result = h.review(args.feature, args.stage, reuse=not args.force)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0 if result['passed'] else 1
         elif args.command == 'status':
             result = h.status(args.feature)
             print(json.dumps(result, ensure_ascii=False, indent=2))

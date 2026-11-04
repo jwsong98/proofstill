@@ -119,3 +119,26 @@ class AssuranceTests(unittest.TestCase):
         content=self.h.report('counter').read_text()
         self.assertIn('기준 적절성 독립 검토 · 필수: 현재 버전에서 무효',content)
         self.assertNotIn('기준 적절성 독립 검토 · 필수: 통과',content)
+
+    def test_unverified_is_not_a_defect_and_unchanged_review_can_be_reused(self):
+        self.init()
+        (self.root / 'src/counter.py').write_text('VALUE = 1\n')
+        self.h.run('counter')
+        (self.root / 'review_behavior.json').write_text(json.dumps({'verdict': 'fail', 'unverified': True}))
+        with self.assertRaises(HarnessError):
+            self.h.review('counter')
+        row = snapshot(self.h, 'counter')[0]
+        self.assertEqual(row['verification']['review']['status'], 'unverified')
+        self.assertEqual(row['verification']['review']['outcome'], 'unverified')
+        result = self.h.review('counter', reuse=True)
+        self.assertTrue(result['reused'])
+        self.assertFalse(result['passed'])
+        self.assertFalse(self.h.status('counter')['complete'])
+
+    def test_launcher_error_is_not_a_product_defect(self):
+        self.init()
+        (self.root / 'review_behavior.json').write_text(json.dumps({'process_fail': True}))
+        with self.assertRaises(HarnessError):
+            self.h.review('counter', 'criteria')
+        row = snapshot(self.h, 'counter')[0]
+        self.assertEqual(row['verification']['criteriaReview']['outcome'], 'execution_error')

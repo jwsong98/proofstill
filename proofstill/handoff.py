@@ -81,7 +81,7 @@ def snapshot(h, feature):
             issues.append('구현 기록의 현재 버전 근거가 없거나 변경됐습니다. 코드를 확인하고 다시 기록하세요.')
         linked = [checks[c] for c in req['checks']]
         review = review_checks.get(req['id'])
-        review_status = 'not_run' if not record else 'stale' if not review_current else 'passed' if review and review['status'] == 'pass' and record.get('passed') else 'failed' if (review and review['status'] == 'fail') or (record or {}).get('answer', {}).get('verdict') == 'fail' else 'unverified'
+        review_status = requirement_review(implementation_review, req['id'])['status']
         rows.append({'id': f'harness:{feature}:{req["id"]}', 'source': 'harness', 'taskId': feature, 'requirementId': req['id'],
                      'risk': req.get('risk', ''), 'rationale': req.get('rationale', ''),
                      'title': req.get('title', req['text']), 'description': req['text'], 'group': req.get('group', plan['title']), 'origin': plan['intent'] + '\n\n' + plan['context'], 'implementation': implementation,

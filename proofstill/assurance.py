@@ -43,7 +43,9 @@ def review_summary(h, plan, state, stage, criteria, source):
     current = bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
                    and h.review_evidence_current(record, state['developer_session']))
     answer = record.get('answer', {})
-    status = 'stale' if not current else 'passed' if record.get('passed') else 'failed' if answer.get('verdict') == 'fail' else 'unverified'
+    from .reviewer import outcome
+    classification = record.get('outcome') or outcome(answer)
+    status = 'stale' if not current else 'passed' if record.get('passed') else 'failed' if classification == 'defect' else 'unverified'
     history = []
     for previous in state.get('review_history', []):
         if previous.get('stage') != stage or previous.get('folder') == record.get('folder'):
@@ -59,7 +61,7 @@ def review_summary(h, plan, state, stage, criteria, source):
                             and c.get('status') in ['pass', 'fail', 'unverified']
                             and isinstance(c.get('evidence'), str) and c['evidence'].strip() for c in checks)
                     and {c['id'] for c in checks} == expected)
-    return {'status': status, 'checksValid': valid_checks, 'evidence': record.get('error', ''), 'findings': answer.get('findings', []),
+    return {'status': status, 'outcome': classification, 'checksValid': valid_checks, 'evidence': record.get('error', ''), 'findings': answer.get('findings', []),
             'limitations': answer.get('limitations', []), 'history': history, 'session': record.get('session'),
             'checks': answer.get('checks', [])}
 
