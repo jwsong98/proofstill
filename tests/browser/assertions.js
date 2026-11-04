@@ -48,8 +48,34 @@ async function explanationMatches(row, detail) {
   const expected = (row.verification.criteriaChecks ?? []).flatMap(check => check.cases ?? []);
   insist(cases.length === expected.length, row.requirementId+' 대표 상황 일부 누락 또는 혼입');
   for (const [index, item] of expected.entries()) {
-    for (const text of [item.situation, item.expected, item.observed]) {
+    for (const text of [item.situation, item.expected, item.observed].filter(Boolean)) {
       insist(cases[index].includes(text), row.requirementId+' 대표 상황·기대 결과·관찰 오연결');
+    }
+  }
+}
+
+function sourceMatches(row, original) {
+  for (const field of ['risk', 'rationale']) {
+    insist(row[field] === original[field], row.requirementId+' 고정 원문 '+field+' 불일치');
+  }
+  for (const field of ['human', 'ai']) {
+    insist(row.responsibility[field] === original.responsibility[field], row.requirementId+' 원문 담당 범위 불일치');
+  }
+  insist(row.humanChecks.length === original.humanChecks.length, row.requirementId+' 원문 사람 행동 개수 불일치');
+  for (const [index, expected] of original.humanChecks.entries()) {
+    for (const field of ['requirement', 'action', 'expected']) {
+      insist(row.humanChecks[index][field] === expected[field], row.requirementId+' 원문 사람 행동 오연결');
+    }
+  }
+  const checks = row.verification.criteriaChecks;
+  insist(checks.length === original.verification.criteriaChecks.length, row.requirementId+' 원문 기준 검사 개수 불일치');
+  for (const [index, expected] of original.verification.criteriaChecks.entries()) {
+    const actual = checks[index];
+    insist(actual.id === expected.id && actual.cases.length === expected.cases.length, row.requirementId+' 원문 기준 검사 오연결');
+    for (const [index, example] of expected.cases.entries()) {
+      for (const [field, value] of Object.entries(example)) {
+        insist(actual.cases[index][field] === value, row.requirementId+' 원문/Trace 대표 상황 오연결: '+field);
+      }
     }
   }
 }

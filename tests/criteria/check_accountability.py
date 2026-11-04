@@ -23,13 +23,23 @@ def mapping_gap():
     temporary, root, path = fixture()
     with temporary:
         plan = json.loads(path.read_text())
-        plan['requirements'][0]['checks'] = []
-        try:
-            validate_plan(root, plan)
-        except HarnessError as error:
-            assert '검사' in str(error)
-            return {'rejected': True, 'summary': f'검사 연결을 뺀 요구를 등록하려 했고 “{error}”로 거부됐어요.'}
-        raise AssertionError('요구에 검사 연결이 없어도 승인됨')
+        plan.pop('collaboration')
+        first = plan['requirements'][0]
+        second = dict(plan['checks'][0], id='other-check')
+        plan['checks'].append(second)
+        plan['requirements'].append({'id': 'R2', 'text': '별도 요구', 'checks': [second['id']]})
+        first['criteria_checks'] = ['counter-unit']
+        validate_plan(root, json.loads(json.dumps(plan)))
+        for field, value in [('checks', []), ('criteria_checks', [second['id']])]:
+            wrong = json.loads(json.dumps(plan))
+            wrong['requirements'][0][field] = value
+            try:
+                validate_plan(root, wrong)
+            except HarnessError as error:
+                assert '검사' in str(error)
+            else:
+                raise AssertionError(f'누락되거나 다른 요구의 검사 연결이 승인됨: {field}')
+        return {'rejected': True, 'summary': '올바른 검사 연결은 통과했어요. 검사를 빼거나 다른 요구의 기준 검사를 붙이자 두 경우 모두 거부됐어요.'}
 
 
 def wrong_expected():

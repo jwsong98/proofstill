@@ -11,7 +11,42 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from proofstill.trace import Flow
+from proofstill.trace_check import verify_trace
+from proofstill.workflow import Harness
 from prepare_accountability import prepare
+
+
+def source_expectations():
+    harness = Harness(ROOT)
+    plan, state = harness.load('accountability-web-v1')
+    checks = {check['id']: check for check in plan['checks']}
+    adversarial = checks['adversarial']
+    run = harness.latest(state, 'green', 'adversarial')
+    assert run and run['accepted'] and harness.run_current(
+        plan, state, adversarial, run, harness.criteria_digest(plan, state), harness.source_digest(plan)
+    ), '먼저 현재 기준 부정 검사를 실행하세요'
+    expectation = json.loads((ROOT / adversarial['trace_expectation']).read_text())
+    observations = {}
+    for trace in run['traces']:
+        verified = verify_trace(Path(trace['path']), expectation)
+        assert verified['valid'], verified['issues']
+        for step in verified['steps']:
+            observations[step['operation']] = step['output']['summary']
+    collaboration = plan['collaboration']
+    return {
+        requirement['id']: {
+            'risk': requirement['risk'], 'rationale': requirement['rationale'],
+            'limitations': plan['limitations'],
+            'humanChecks': [item for item in collaboration['human_checks'] if item['requirement'] == requirement['id']],
+            'responsibility': {key: collaboration[key] for key in ('human', 'ai')},
+            'verification': {'criteriaChecks': [
+                {'id': key, 'cases': [
+                    dict(case, **({'observed': observations[case['operation']]} if key == 'adversarial' else {}))
+                    for case in checks[key].get('cases', [])
+                ]} for key in requirement['criteria_checks']
+            ]},
+        } for requirement in plan['requirements']
+    }
 
 
 def main():
@@ -52,6 +87,7 @@ def main():
             with Flow('웹에서 근거와 기준의 상태를 실제로 읽고 재조회') as flow:
                 def current_project():
                     target = output / 'actual-live-handoff.html'
+                    expected = source_expectations()
                     result = run(f'''const live = await page.context().newPage();
                     await live.goto('http://127.0.0.1:7777');
                     const projects = await (await live.request.get(new URL('/api/projects', live.url()).href)).json();
@@ -78,6 +114,7 @@ def main():
                     const origin = graph.nodes.find(n => n.evidence?.sourceKind === 'file' && n.evidence.source.path === 'requirements.md'
                       && n.evidence.content.includes('근거 U23') && n.evidence.content.includes('NO.'));
                     insist(origin, '현재 요구의 실제 사용자 원문 연결 누락');
+                    const originals = {json.dumps(expected, ensure_ascii=False)};
                     for (const row of rows) {{
                       const node = graph.nodes.find(n => n.id === row.nodeId);
                       insist(node?.body.includes(row.taskId) && node.body.includes(row.requirementId)
@@ -86,7 +123,10 @@ def main():
                       await detail.getByRole('heading', {{name:row.title, exact:true}}).waitFor();
                       await detail.getByText('판정 근거', {{exact:true}}).click();
                       await detailMatches(row, detail);
-                      await explanationMatches(row, detail);
+                      const original = originals[row.requirementId];
+                      insist(original, '고정된 요구 원문 매핑 누락');
+                      sourceMatches(row, original);
+                      await explanationMatches({{...original, requirementId: row.requirementId}}, detail);
                       if (row.requirementId === 'Q1-W') {{
                         await detail.getByText('실행 근거 보기', {{exact:true}}).first().click();
                         insist(await detail.locator('pre').filter({{hasText:'CRITERIA_COUNTEREXAMPLES_OK'}}).first().isVisible(), '실제 실행 로그 펼침 실패');
