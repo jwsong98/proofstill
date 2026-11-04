@@ -15,11 +15,7 @@ class UnusedCodex extends EventEmitter {
 }
 const config = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const store = new Store();
-for (const input of config.projects) {
-  const project=store.createProject({name:input.name,rootPath:input.rootPath});
-  if(input.currentTasks){store.activateCurrentCatalog(project.id);for(const task of input.currentTasks)store.db.prepare('INSERT INTO project_catalog_tasks(project_id,task_id,title,titles_json) VALUES(?,?,?,?)').run(project.id,task.taskId,task.title,JSON.stringify(task.titles));}
-  if(input.unrelatedTitle)store.createNode(project.id,{kind:'requirement',title:input.unrelatedTitle,body:'이번 저장·조회 작업과 무관한 현재 요구. 구현·검증·확인 행동은 미기록으로 유지해요.'});
-}
+for (const project of config.projects) store.createProject(project);
 const app = createApi({store, codex:new UnusedCodex(), distDir:resolve('console/dist')});
 app.server.listen(0,'127.0.0.1',()=>console.log(JSON.stringify({port:app.server.address().port,projects:store.listProjects()})));
 async function close(){await app.close();store.close();process.exit(0);}

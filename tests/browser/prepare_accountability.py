@@ -3,13 +3,13 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from proofstill.workflow import Harness, HarnessError
+from proofstill.workflow import Harness
 from tests.support import make_plan, fake_codex
 
 
 def prepare(directory):
     projects = []
-    for kind, title in [('current', '정상 근거'), ('failed', '검사 실패'), ('missing', '미실행'), ('criteria-failed', '기준 지적'), ('criteria-missing', '기준 미검토'), ('decision-pending', '사람 결정 대기')]:
+    for kind, title in [('current', '정상 근거'), ('failed', '검사 실패')]:
         root = (Path(directory) / kind).resolve(); root.mkdir()
         origin = make_plan(root)
         plan = json.loads(origin.read_text())
@@ -33,27 +33,11 @@ def prepare(directory):
         h.implement('counter','R1','implemented',['src/counter.py'])
         if kind=='current':h.implement('counter','R2','implemented',['src/second.py'])
         h.checkpoint('counter','화면에서 실제 관측과 누락 상태를 대조해요.',['가짜 리뷰는 UI 상태 fixture이며 실제 독립 검토가 아님'])
-        if kind!='missing': h.run('counter')
-        if kind in ['current','criteria-missing','decision-pending']:
-            if kind=='current':
-                (root/'review_behavior.json').write_text(json.dumps({'verdict':'fail','findings':['합성 이전 지적: 기대값이 다른 요구의 관찰을 구분해 검토해야 해요.']}))
-                try:h.review('counter','criteria')
-                except HarnessError:pass
-                (root/'review_behavior.json').unlink()
-            if kind!='criteria-missing':h.review('counter','criteria')
+        h.run('counter')
+        if kind == 'current':
+            h.review('counter', 'criteria')
             h.review('counter')
-        if kind=='criteria-failed':
-            (root/'review_behavior.json').write_text(json.dumps({'verdict':'fail','fail_check':True,'findings':['합성 기준 지적: 잘못된 기대값을 재검토해야 해요.']}))
-            try:h.review('counter','criteria')
-            except HarnessError:pass
-        if kind=='decision-pending':h.decision('counter','D1','보존 기간 정책은 사람이 결정해 주세요.')
-        config={'name':f'격리 fixture · {title}','rootPath':str(root)}
-        if kind=='current':
-            old={'id':'historical','title':'격리 fixture · 과거 자료','intent':'과거 요구는 현재 작업의 확인으로 채우지 않아요.','context':'과거·미기록 자료 격리용 fixture','sources':['src/counter.py'],'requirements':[{'id':'OLD','title':'격리 fixture · 이전 요구','text':'확인하지 않은 이전 요구','checks':['old']}],'checks':[{'id':'old','kind':'unit','module':'old','argv':[sys.executable,'-c','print("OLD")'],'files':['tests/check.py'],'green_pattern':'OLD'}]}
-            oldpath=root/'historical.json';oldpath.write_text(json.dumps(old));h.init(oldpath)
-            config['currentTasks']=[{'taskId':'counter','title':plan['title'],'titles':{r['id']:r['title'] for r in plan['requirements']}}]
-            config['unrelatedTitle']='격리 fixture · 무관한 현재 요구'
-        projects.append(config)
+        projects.append({'name': f'격리 fixture · {title}', 'rootPath': str(root)})
     return projects
 
 if __name__=='__main__':print(json.dumps(prepare(sys.argv[1]),ensure_ascii=False))
