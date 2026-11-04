@@ -1,7 +1,13 @@
 import json
+import os
+import signal
+import subprocess
 import tempfile
+import time
 from pathlib import Path
 from .contract import require, read_json
+
+IDLE_TIMEOUT = 30
 
 VERDICT_SCHEMA = {
     'type': 'object', 'additionalProperties': False,
@@ -53,14 +59,21 @@ def launch(harness, packet, folder):
         argv[2:2] = ['--model', harness.model]
     if harness.ignore_user_config:
         argv.insert(2, '--ignore-user-config')
-    with tempfile.TemporaryDirectory(prefix='proofstill-review-') as scratch:
-        result = harness.execute(argv, harness.review_timeout, input_text=prompt, cwd=workspace,
-                                 environment={'TMPDIR': scratch})
-    (folder / 'events.jsonl').write_text(result['stdout'])
-    (folder / 'stderr.log').write_text(result['stderr'])
-    require(result['exit_code'] == 0 and not result['timed_out'], '독립 리뷰 실행 실패/시간 초과')
+    attempts = []
+    for index in range(1, 3):
+        if answer.exists():
+            answer.replace(folder / 'interrupted-answer.json')
+        with tempfile.TemporaryDirectory(prefix='proofstill-review-') as scratch:
+            result = execute_review(argv, workspace, folder, scratch, index, harness.review_timeout)
+        attempts.append(result)
+        if result['timeout'] is None:
+            break
+    (folder / 'attempts.json').write_text(json.dumps(attempts, indent=2))
+    for name in ('events.jsonl', 'stderr.log'):
+        (folder / name).write_bytes((folder / f'attempt-{index}.{name}').read_bytes())
+    require(result['exit_code'] == 0 and result['timeout'] is None, '독립 리뷰 실행 실패/시간 초과')
     sessions = []
-    for line in result['stdout'].splitlines():
+    for line in (folder / 'events.jsonl').read_text(errors='replace').splitlines():
         try:
             event = json.loads(line)
         except ValueError:
@@ -69,6 +82,70 @@ def launch(harness, packet, folder):
             sessions.append(event['thread_id'])
     require(len(sessions) == 1, '독립 세션 ID를 확인할 수 없습니다')
     return sessions[0], read_json(answer)
+
+
+def execute_review(argv, workspace, folder, scratch, index, timeout):
+    """Watch complete Codex events while keeping stdout and stderr on disk."""
+    events = folder / f'attempt-{index}.events.jsonl'
+    env = dict(os.environ, TMPDIR=scratch, PYTHONDONTWRITEBYTECODE='1')
+    started = last_progress = time.monotonic()
+    commands = set()
+    usage = None
+    reason = None
+    exit_code = None
+    with (folder / 'input.txt').open('rb') as prompt, events.open('wb') as stdout, \
+            events.open('rb') as stream, (folder / f'attempt-{index}.stderr.log').open('wb') as stderr:
+        try:
+            process = subprocess.Popen(argv, cwd=workspace, stdin=prompt, stdout=stdout,
+                                       stderr=stderr, env=env, start_new_session=True)
+        except OSError as error:
+            stderr.write(str(error).encode())
+            return {'exit_code': None, 'timeout': None, 'seconds': round(time.monotonic() - started, 3), 'usage': None}
+        try:
+            while True:
+                exit_code = process.poll()
+                while True:
+                    offset = stream.tell()
+                    line = stream.readline()
+                    if not line.endswith(b'\n'):
+                        stream.seek(offset)
+                        break
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(event, dict):
+                        continue
+                    event_type = event.get('type')
+                    item = event.get('item', {})
+                    if event_type in ('item.started', 'item.completed') and isinstance(item, dict):
+                        if item.get('type') == 'command_execution' and isinstance(item.get('id'), str):
+                            if event_type == 'item.started':
+                                commands.add(item['id'])
+                            else:
+                                commands.discard(item['id'])
+                    if event_type in ('thread.started', 'turn.started', 'item.started', 'item.completed', 'turn.completed'):
+                        last_progress = time.monotonic()
+                    if event_type == 'turn.completed':
+                        usage = event.get('usage')
+                if exit_code is not None:
+                    break
+                now = time.monotonic()
+                if now - started >= timeout:
+                    reason = 'wall'
+                    break
+                if not commands and now - last_progress >= IDLE_TIMEOUT:
+                    reason = 'idle'
+                    break
+                time.sleep(0.05)
+        finally:
+            if process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()
+    return {'exit_code': exit_code, 'timeout': reason, 'seconds': round(time.monotonic() - started, 3), 'usage': usage}
 
 
 def validate_verdict(plan, answer):
