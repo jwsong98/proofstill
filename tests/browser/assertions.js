@@ -27,3 +27,29 @@ async function downloadHandoff(page, path) {
   insist(download.suggestedFilename().endsWith('.html'), '인계 다운로드 파일 형식 오류');
   await download.saveAs(path);
 }
+
+async function explanationMatches(row, detail) {
+  const context = await detail.getByRole('region', {name:'판단 기준과 미확인 범위'}).innerText();
+  for (const text of [row.risk, row.rationale, row.limitations[0]].filter(Boolean)) {
+    insist(context.includes(text), row.requirementId+' 판단 기준 또는 한계 누락');
+  }
+  const human = detail.getByRole('region', {name:'사람이 지금 확인할 행동'});
+  const actionText = await human.innerText();
+  for (const item of row.humanChecks ?? []) {
+    insist(actionText.includes(item.action) && actionText.includes(item.expected), row.requirementId+' 사람 행동 또는 기대 결과 오연결');
+  }
+  await human.getByText('사람과 AI가 맡은 범위', {exact:true}).click();
+  const roles = await human.innerText();
+  for (const text of [row.responsibility?.human, row.responsibility?.ai].filter(Boolean)) {
+    insist(roles.includes(text), row.requirementId+' 담당 범위 누락');
+  }
+  const criteria = detail.getByRole('region', {name:'검증 기준의 적절성'});
+  const cases = await criteria.locator('.check-example').allInnerTexts();
+  const expected = (row.verification.criteriaChecks ?? []).flatMap(check => check.cases ?? []);
+  insist(cases.length === expected.length, row.requirementId+' 대표 상황 일부 누락 또는 혼입');
+  for (const [index, item] of expected.entries()) {
+    for (const text of [item.situation, item.expected, item.observed]) {
+      insist(cases[index].includes(text), row.requirementId+' 대표 상황·기대 결과·관찰 오연결');
+    }
+  }
+}

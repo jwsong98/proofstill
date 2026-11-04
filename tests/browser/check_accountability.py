@@ -74,12 +74,25 @@ def main():
                     const source = await (await live.request.get(new URL('/api/projects/' + project.id + '/handoff', live.url()).href)).json();
                     const rows = source.rows.filter(r => r.taskId === 'accountability-web-v1' && !r.historical);
                     insist(rows.length === 6, '현재 여섯 실제 요구 누락');
-                    await detail.getByText('판정 근거', {{exact:true}}).click();
-                    await detailMatches(rows.find(row => row.requirementId === 'Q1-W'), detail);
-                    insist(await detail.getByRole('heading', {{name:'사람이 지금 확인할 행동', exact:true}}).isVisible(), '사람 확인 행동 영역 누락');
-                    await detail.getByText('실행 근거 보기', {{exact:true}}).first().click();
-                    insist(await detail.locator('pre').filter({{hasText:'CRITERIA_COUNTEREXAMPLES_OK'}}).first().isVisible(), '실제 실행 로그 펼침 실패');
-                    await live.screenshot({{path:{json.dumps(str(output/'actual-project.png'))}}});
+                    const graph = await (await live.request.get(new URL('/api/projects/' + project.id + '/graph', live.url()).href)).json();
+                    const origin = graph.nodes.find(n => n.evidence?.sourceKind === 'file' && n.evidence.source.path === 'requirements.md'
+                      && n.evidence.content.includes('근거 U23') && n.evidence.content.includes('NO.'));
+                    insist(origin, '현재 요구의 실제 사용자 원문 연결 누락');
+                    for (const row of rows) {{
+                      const node = graph.nodes.find(n => n.id === row.nodeId);
+                      insist(node?.body.includes(row.taskId) && node.body.includes(row.requirementId)
+                        && row.relatedNodeIds?.includes(origin.id) && row.relatedNodeIds.includes('ps-feature-handoff'), '현재 작업 또는 원문 연결 오류: '+row.requirementId);
+                      await live.getByRole('button', {{name:row.title, exact:true}}).click();
+                      await detail.getByRole('heading', {{name:row.title, exact:true}}).waitFor();
+                      await detail.getByText('판정 근거', {{exact:true}}).click();
+                      await detailMatches(row, detail);
+                      await explanationMatches(row, detail);
+                      if (row.requirementId === 'Q1-W') {{
+                        await detail.getByText('실행 근거 보기', {{exact:true}}).first().click();
+                        insist(await detail.locator('pre').filter({{hasText:'CRITERIA_COUNTEREXAMPLES_OK'}}).first().isVisible(), '실제 실행 로그 펼침 실패');
+                        await live.screenshot({{path:{json.dumps(str(output/'actual-project.png'))}}});
+                      }}
+                    }}
                     await downloadHandoff(live, {json.dumps(str(target))});
                     await live.close();
                     return {{passed:true, summary:'실제 7777 프로젝트에서 대표 요구를 선택하고 실행 로그를 펼쳐 인계 파일을 다운로드했어요.'}};''')
@@ -98,20 +111,52 @@ def main():
                     insist(!await switched.locator('.handoff-statuses').isVisible(), '이전 요구의 상세 펼침이 남음');
                     insist(text.includes(second) && !text.includes(first), '요구를 바꾼 뒤 실제 관찰이 섞였어요');
                     insist(text.includes('두 번째 요구의 대조값 관찰을 보고'), '두 번째 요구 확인 행동 누락');
+                    await switched.getByText('판정 근거', {{exact:true}}).click();
+                    const criteria = switched.getByRole('group', {{name:'독립 기준 검토', exact:true}});
+                    await criteria.getByRole('heading', {{name:'독립 기준 검토 · 확인', exact:true}}).waitFor();
+                    await criteria.getByText('검토 근거와 이전 지적 펼치기', {{exact:true}}).click();
+                    insist((await criteria.innerText()).includes('합성 이전 지적:'), '재검토 후 이전 기준 지적이 사라짐');
                     await downloadHandoff(page, {json.dumps(str(target))});
+                    const search = page.getByRole('textbox', {{name:'요구 검색', exact:true}});
+                    await search.fill('');
+                    const old = page.getByRole('button', {{name:'격리 fixture · 이전 요구', exact:true}});
+                    insist(await old.count() === 0, '현재 목록에 과거 요구가 섞임');
+                    const unrelated = await selectRequirement(page, '격리 fixture · 무관한 현재 요구');
+                    await unrelated.getByText('판정 근거', {{exact:true}}).click();
+                    insist(await unrelated.locator('.check-example').count() === 0
+                      && !(await unrelated.innerText()).includes(first), '무관 요구에 현재 관찰을 채움');
+                    await search.fill('');
+                    await page.getByRole('combobox', {{name:'목록 범위', exact:true}}).selectOption('history');
+                    await old.click();
+                    const historical = page.getByRole('complementary', {{name:'요구별 구현·검증 상세'}});
+                    await historical.getByText('판정 근거', {{exact:true}}).click();
+                    insist(await historical.locator('.check-example').count() === 0
+                      && !(await historical.innerText()).includes(first), '과거 자료에 현재 관찰을 채움');
+                    await page.getByRole('combobox', {{name:'목록 범위', exact:true}}).selectOption('current');
                     return {{passed:true, summary:'요구를 바꿔 선택하자 관찰과 사람 확인 행동이 바뀌었고 인계 HTML을 다운로드했어요.'}};''')
                     html = target.read_text()
                     assert all(title in html for title in ('격리 fixture · 정상 근거', '격리 fixture · 다른 대표 상황')), '다운로드한 인계에 요구가 누락됐어요'
                     return result
 
                 def failed_check():
-                    result = run(choose('격리 fixture · 검사 실패')+'''
-                    await detail.getByText('판정 근거', {exact:true}).click();
-                    insist(await detail.getByRole('heading', {name:'자동 검사 · 실패', exact:true}).isVisible(), '실패한 검사 상태 누락');
-                    const decision = await detail.locator('section[aria-label="지금 판단할 내용"]').innerText();
-                    insist(!decision.includes('확인 후 결정'), '실패한 검사에 수용 안내를 표시했어요');
-                    return {passed:true, summary:'실패한 요구를 선택했을 때 검사 실패를 표시하고 수용 안내를 보류했어요.'};''')
-                    return result
+                    cases = [
+                        ('검사 실패', '자동 검사 · 실패'),
+                        ('미실행', '자동 검사 · 미실행'),
+                        ('기준 지적', '합성 기준 지적: 잘못된 기대값을 재검토해야 해요.'),
+                        ('기준 미검토', '독립 기준 검토 · 미실행'),
+                        ('사람 결정 대기', '보존 기간 정책은 사람이 결정해 주세요.'),
+                    ]
+                    cases = [{'id': project('격리 fixture · '+name)['id'], 'title': '격리 fixture · '+name, 'expected': expected}
+                             for name, expected in cases]
+                    return run(f'''for (const test of {json.dumps(cases, ensure_ascii=False)}) {{
+                      await page.getByRole('combobox', {{name:'프로젝트', exact:true}}).selectOption(test.id);
+                      const detail = await selectRequirement(page, test.title);
+                      await detail.getByText('판정 근거', {{exact:true}}).click();
+                      await detail.getByText(test.expected, {{exact:true}}).first().waitFor();
+                      const decision = await detail.getByRole('region', {{name:'지금 판단할 내용'}}).innerText();
+                      insist(!decision.includes('확인 후 결정'), test.title+'에 수용 안내를 표시했어요');
+                    }}
+                    return {{passed:true, summary:'실패·미실행·기준 지적·기준 미검토·사람 결정 대기를 실제 화면에서 확인하고 판단을 보류했어요.'}};''')
 
                 def changed_evidence():
                     name = '격리 fixture · 정상 근거'
@@ -124,7 +169,7 @@ def main():
                     original = log.read_bytes()
                     try:
                         log.write_text('변경된 실행 근거')
-                        return run('''await page.getByRole('button', {name:'새로고침', exact:true}).click();
+                        result = run('''await page.getByRole('button', {name:'새로고침', exact:true}).click();
                         const detail = page.getByRole('complementary', {name:'요구별 구현·검증 상세', exact:true});
                         await detail.getByText('판정 근거', {exact:true}).click();
                         await detail.getByRole('heading', {name:'자동 검사 · 재검증 필요', exact:true}).waitFor();
@@ -133,6 +178,20 @@ def main():
                         return {passed:true, summary:'실행 로그를 바꾸고 새로고침하자 재검증 필요로 바뀌고 이전 관찰이 사라졌어요.'};''')
                     finally:
                         log.write_bytes(original)
+                    expected = root / 'expect.json'
+                    original = expected.read_bytes()
+                    changed = json.loads(original)
+                    changed['assertions'][0]['equals'] = 2
+                    try:
+                        expected.write_text(json.dumps(changed))
+                        run('''await page.getByRole('button', {name:'새로고침', exact:true}).click();
+                        const criteria = page.getByRole('region', {name:'검증 기준의 적절성'});
+                        await criteria.getByRole('heading', {name:'독립 기준 검토 · 재검증 필요', exact:true}).waitFor();
+                        return true;''')
+                    finally:
+                        expected.write_bytes(original)
+                    result['summary'] += ' 기준 변경 뒤에는 이전 기준 검토도 재검증 필요로 표시됐어요.'
+                    return result
 
                 def query_failure():
                     return run('''const refresh = page.getByRole('button', {name:'새로고침', exact:true});
