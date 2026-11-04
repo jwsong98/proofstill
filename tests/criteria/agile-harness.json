@@ -1,0 +1,168 @@
+{
+  "id": "agile-harness-v1",
+  "title": "계약 기반 병행 개발과 검증·제출 안정성",
+  "intent": "사용자: 오케이 진행해. 추가로 이 하네스는 구조화와 추상화를 이용해 전체 제품을 빠르게 빌드하고, 이와 동시에 주요 로직에 대한 엣지케이스 또는 로직 자체에 대한 구현을 동시에 진행할 수 있게 해야 함. 궁금한 점을 가지고 에이전트랑 이야기하면서 보강하고 제출 안정성을 얻고 비교 케이스도 생기게 한다.",
+  "context": "사용자는 직전 분석의 실행 제어/토큰 계측/중복 기록/검토 범위/판정 구분 개선을 승인했다. 기존 Python CLI와 로컬 증거 구조를 확장한다. 새 스택/외부서비스/추가 자동 모델 호출을 도입하지 않는다. 기존 dirty console 파일과 LINKLAB 원본·에이전트 정의·실험 결과를 보존한다. 모델 추론은 6.1-sol 또는 5.6-terra만. 현재 검토는 하네스 런타임/CLI/예제 범위이며 실제 웹 콘솔 신규 화면이나 별도 생산성 비교 실험은 범위 밖이다.",
+  "sources": [
+    "proofstill",
+    "bin/proofstill",
+    "examples/lab_dispatch/exam.py",
+    "examples/agile_product",
+    "package.json",
+    ".agents/skills/proofstill-develop/SKILL.md",
+    ".agents/skills/proofstill-verify/SKILL.md",
+    "README.md"
+  ],
+  "requirements": [
+    {
+      "id": "AH-01",
+      "text": "리뷰 무출력 추론을 기본 중단하지 않고 제한 변경/취소를 자식에 전파한다. 명시 없는 자동 재시도는 하지 않는다.",
+      "checks": [
+        "unit"
+      ]
+    },
+    {
+      "id": "AH-02",
+      "text": "세션 누적 사용량을 차분 집계하고 완료/중단/미관측을 구분한다. 기존 실험 원본은 보존한다.",
+      "checks": [
+        "unit"
+      ]
+    },
+    {
+      "id": "AH-03",
+      "text": "같은 요구 ID로 기준 revision과 실제 답변 근거를 보존하고 영향 없는 검사/구현 기록을 재사용한다. 독립 리뷰에는 변경과 교차 영향을 제공한다.",
+      "checks": [
+        "integration"
+      ]
+    },
+    {
+      "id": "AH-04",
+      "text": "제품 결함·미검증·실행기 오류를 구분하고 미검증을 통과시키지 않으며 같은 미검증 리뷰를 불필요하게 반복하지 않는다.",
+      "checks": [
+        "unit"
+      ]
+    },
+    {
+      "id": "AH-05",
+      "text": "공통 입출력 계약으로 제품 흐름과 로직/엣지케이스 작업을 분리한다. 소유 경계/의존성/작업 패킷을 제공하고 독립 검사는 병행한 뒤 통합한다. 질문은 해당 작업만 보류하고 답변 변경은 의존 통합 근거에도 반영한다.",
+      "checks": [
+        "integration"
+      ]
+    },
+    {
+      "id": "AH-06",
+      "text": "동일 입력의 기준/개선 구현을 별도 검사기로 비교한다. invalid와 실행 오류를 구분하고 소스 변경은 비교 완료 근거로 쓰지 않는다.",
+      "checks": [
+        "integration"
+      ]
+    },
+    {
+      "id": "AH-07",
+      "text": "소스/필수물/답변/검증 근거를 고정한 제출 스냅샷을 만들고 새 partial이 마지막 verified를 덮지 않는다. 미검증/진행 중/변경된 결과를 verified로 표시하지 않는다.",
+      "checks": [
+        "integration"
+      ]
+    },
+    {
+      "id": "AH-08",
+      "text": "하나의 프로젝트 정의에서 작업 패킷과 요구 현황을 파생하고 실제 예제로 제품/계산/저장/조회/비교/부분 제출을 재현한다. 에이전트 호출은 기존 Codex 위임 수단을 사용하며 CLI가 자동 모델을 생성했다고 주장하지 않는다.",
+      "checks": [
+        "integration"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "unit",
+      "kind": "unit",
+      "module": "harness",
+      "argv": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/unit",
+        "-q"
+      ],
+      "files": [
+        "tests/unit",
+        "tests/support.py"
+      ],
+      "green_pattern": "Ran [0-9]+ tests[\\s\\S]*OK",
+      "timeout": 120
+    },
+    {
+      "id": "integration",
+      "kind": "integration",
+      "module": "harness",
+      "argv": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/integration",
+        "-q"
+      ],
+      "files": [
+        "tests/integration",
+        "tests/support.py"
+      ],
+      "green_pattern": "Ran [0-9]+ tests[\\s\\S]*OK",
+      "timeout": 120
+    }
+  ],
+  "artifacts": [],
+  "collaboration": {
+    "human": "의도·범위·실제 답변과 최종 수용을 결정한다. 사용자가 분석 개선안 실행을 승인하고 병행 개발을 추가 요청했다.",
+    "ai": "기존 스택 안에서 구현 방법을 선택하고 로컬 검사·독립 검토·커밋한다. 외부 배포/전송이나 사람의 수용을 대신하지 않는다.",
+    "human_checks": [
+      {
+        "requirement": "AH-01",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "리뷰 무출력 추론을 기본 중단하지 않고 제한 변경/취소를 자식에 전파한다. 명시 없는 자동 재시도는 하지 않는다."
+      },
+      {
+        "requirement": "AH-02",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "세션 누적 사용량을 차분 집계하고 완료/중단/미관측을 구분한다. 기존 실험 원본은 보존한다."
+      },
+      {
+        "requirement": "AH-03",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "같은 요구 ID로 기준 revision과 실제 답변 근거를 보존하고 영향 없는 검사/구현 기록을 재사용한다. 독립 리뷰에는 변경과 교차 영향을 제공한다."
+      },
+      {
+        "requirement": "AH-04",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "제품 결함·미검증·실행기 오류를 구분하고 미검증을 통과시키지 않으며 같은 미검증 리뷰를 불필요하게 반복하지 않는다."
+      },
+      {
+        "requirement": "AH-05",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "공통 입출력 계약으로 제품 흐름과 로직/엣지케이스 작업을 분리한다. 소유 경계/의존성/작업 패킷을 제공하고 독립 검사는 병행한 뒤 통합한다. 질문은 해당 작업만 보류하고 답변 변경은 의존 통합 근거에도 반영한다."
+      },
+      {
+        "requirement": "AH-06",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "동일 입력의 기준/개선 구현을 별도 검사기로 비교한다. invalid와 실행 오류를 구분하고 소스 변경은 비교 완료 근거로 쓰지 않는다."
+      },
+      {
+        "requirement": "AH-07",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "소스/필수물/답변/검증 근거를 고정한 제출 스냅샷을 만들고 새 partial이 마지막 verified를 덮지 않는다. 미검증/진행 중/변경된 결과를 verified로 표시하지 않는다."
+      },
+      {
+        "requirement": "AH-08",
+        "action": "연결된 CLI·검사 사례와 실제 영수증을 대조한다.",
+        "expected": "하나의 프로젝트 정의에서 작업 패킷과 요구 현황을 파생하고 실제 예제로 제품/계산/저장/조회/비교/부분 제출을 재현한다. 에이전트 호출은 기존 Codex 위임 수단을 사용하며 CLI가 자동 모델을 생성했다고 주장하지 않는다."
+      }
+    ]
+  },
+  "limitations": [
+    "명시된 소유 경계는 협업 규칙이며 공유 로컬 파일의 보안 격리가 아니다.",
+    "동일 프로젝트의 구현 에이전트 실행은 Codex 위임 수단을 사용한다. 이 변경이 새 모델 워커를 자동 생성하지는 않는다.",
+    "한 번의 구현/검증으로 생산성 절감 배수나 무결함을 주장하지 않는다."
+  ]
+}
