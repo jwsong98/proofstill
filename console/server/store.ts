@@ -75,7 +75,12 @@ export class Store {
     this.db.prepare('INSERT INTO projects(id,name,root_path,created_at) VALUES(?,?,?,?)').run(project.id, project.name, project.rootPath, project.createdAt);
     return project;
   }
-  listProjects(): Project[] { return (this.db.prepare('SELECT * FROM projects ORDER BY created_at,id').all() as Row[]).map(row => this.rowProject(row)); }
+  listProjects(): Project[] { return (this.db.prepare('SELECT * FROM projects WHERE archived=0 ORDER BY created_at,id').all() as Row[]).map(row => this.rowProject(row)); }
+  setProjectArchived(id: string, archived: boolean): void {
+    this.getProject(id);
+    if (typeof archived !== 'boolean') throw new StoreError('archived must be a boolean');
+    this.db.prepare('UPDATE projects SET archived=? WHERE id=?').run(archived ? 1 : 0, id);
+  }
   getProject(id: string): Project { return this.rowProject(this.required(this.db.prepare('SELECT * FROM projects WHERE id=?').get(id) as Row | undefined, 'Project')); }
   private rowEvidence(row: Row): Evidence {
     return { id: row.id, projectId: row.project_id, sourceKind: row.source_kind, source: decode(row.source_json), content: row.content, capturedAt: row.captured_at };

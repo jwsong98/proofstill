@@ -30,7 +30,7 @@ test('empty database and migration survive reopening without seeding fake record
     assert.deepEqual(store.getSession(session.id).contextNodeIds, [node.id]);
     assert.deepEqual(store.listMessages(session.id).map(message => message.content), ['왜 필요한지 설명해줘', '이유 설명', '추가 질문']);
     assert.deepEqual(store.listMessages(session.id).map(message => message.createdAt), [42, 42, 42]);
-    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 6);
+    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 7);
     store.close();
   } finally { rmSync(folder, { recursive: true, force: true }); }
 });
@@ -322,7 +322,7 @@ test('feature checks migrate an existing database and persist actual association
     assert.equal(feature.acceptance!.fulfilled, true);
     assert.equal(feature.acceptance!.checks[0].executionId, result.executionId);
     assert.equal(feature.acceptance!.checks[0].execution!.output, result.execution!.output);
-    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 6);
+    assert.equal(store.db.prepare('SELECT count(*) count FROM schema_migrations').get()!.count, 7);
     store.close();
   } finally { rmSync(folder, { recursive: true, force: true }); }
 });
