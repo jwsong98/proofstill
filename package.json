@@ -51,6 +51,7 @@
     "proofstill/assets/tokens.css",
     "proofstill/assurance.py",
     "proofstill/collaboration.py",
+    "proofstill/comparison.py",
     "proofstill/contract.py",
     "proofstill/execution.py",
     "proofstill/handoff.py",

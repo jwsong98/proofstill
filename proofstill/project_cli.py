@@ -31,6 +31,10 @@ def configure(commands):
     command.add_argument('--answer', default='')
     command.add_argument('--source', default='')
 
+    command = actions.add_parser('compare')
+    command.add_argument('project_id')
+    command.add_argument('case_set')
+
 
 def run(h, args):
     action = args.project_action
@@ -49,10 +53,15 @@ def run(h, args):
             result = p.question(args.work, args.question_id, args.question, args.answer, args.source)
         elif action == 'test':
             result = p.run(jobs=args.jobs)
+        elif action == 'compare':
+            from .comparison import compare
+            result = compare(p, args.case_set)
         elif action == 'requirements':
             print(p.requirements())
             return 0
     print(json.dumps(result, ensure_ascii=False, indent=2))
+    if action == 'compare':
+        return 0 if result['comparable'] else 1
     if action == 'test':
         return 0 if not result['blocked'] and all(w['passed'] for w in result['work'].values()) else 1
     return 0
