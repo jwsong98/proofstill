@@ -50,5 +50,6 @@
 .review-node.selected { border-color: var(--graph-edge-highlight); outline: 2px solid var(--graph-edge-highlight); }
 .review-node.muted { opacity: .48; }
 .graph-day-divider { padding-bottom: 4px; }
-.graph-time-column { position: absolute; top: 25px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.graph-stage-heading { position: absolute; top: 25px; font-weight: 650; border-bottom: 1px solid var(--border); padding-bottom: 2px; }
+.graph-time-column { position: absolute; top: 48px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .graph-dot-node .graph-dot { background: var(--graph-kind-color, var(--border-control)); }

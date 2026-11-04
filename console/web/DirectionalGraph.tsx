@@ -79,19 +79,22 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       minZoom={.2} maxZoom={2} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null}
       colorMode="dark" aria-label="근거와 후속 작업의 흐름">
       <ViewportPortal>
-        {days.map(({ y, at, columns, width }) => <div key={y} className="graph-day-divider" style={{ top: y, width }}>
+        {days.map(({ y, at, bands, width }) => <div key={y} className="graph-day-divider" style={{ top: y, width }}>
           <strong>{at == null ? '시각 미확인' : boardDay.format(at)}</strong>
-          {columns.map(({ x, first, last }) => {
-            if (first == null || last == null) return null;
-            const start = columnTime.format(first), end = columnTime.format(last);
-            return <span key={x} className="graph-time-column" style={{ left: x }}>{start === end ? start : `${start} – ${end}`}</span>;
-          })}
+          {bands.map(band => <div key={band.label}>
+            <span className="graph-stage-heading" style={{ left: band.x, width: band.width }}>{band.label}</span>
+            {band.columns.map(({ x, first, last }) => {
+              if (first == null || last == null) return null;
+              const start = columnTime.format(first), end = columnTime.format(last);
+              return <span key={x} className="graph-time-column" style={{ left: x }}>{start === end ? start : `${start} – ${end}`}</span>;
+            })}
+          </div>)}
         </div>)}
       </ViewportPortal>
       <Controls showInteractive={false} position="top-left" />
     </ReactFlow>
     <button className="button graph-rearrange" disabled={!focused && !center} onClick={() => setFocused(!focused)} aria-pressed={focused}>{focused ? '전체 흐름 보기' : '선택 항목의 연결 보기'}</button>
     {!nodes.length && <div className="graph-empty-filter" role="status"><p>표시할 노드가 없어요.</p><button className="text-button" onClick={onShowAll}>전체 노드 표시하기</button></div>}
-    <div className="graph-legend"><span>{nodes.length}/{graph.nodes.length}개 표시</span><span>시간은 날짜 안에서 왼쪽부터</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
+    <div className="graph-legend"><span>{nodes.length}/{graph.nodes.length}개 표시</span><span>왼쪽부터 발언·근거 → 요구사항 → 결정 → 기능·작업</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
   </div>;
 }

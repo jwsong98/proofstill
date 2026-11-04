@@ -24,32 +24,53 @@ export const boardNodeWidth = 192;
 const columnStep = 232;
 const rowStep = 116;
 
+const stages = ['발언·근거', '요구사항·이슈', '결정', '기능·작업'] as const;
+const stageOf: Record<GraphNode['kind'], number> = {
+  evidence: 0, requirement: 1, issue: 1, decision: 2, feature: 3, task: 3, result: 3,
+};
+
 export function layoutReviewBoard(nodes: GraphNode[]) {
-  const ordered = nodes.map(node => ({ id: node.id, at: reviewTime(node).at }))
+  const ordered = nodes.map(node => ({ id: node.id, stage: stageOf[node.kind], at: reviewTime(node).at }))
     .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.id.localeCompare(b.id));
-  const groups = new Map<string, typeof ordered>();
+  const groups = new Map<string, { at: number | null; lanes: (typeof ordered)[] }>();
   for (const entry of ordered) {
     const day = entry.at == null ? 'unknown' : new Date(entry.at).toDateString();
-    const group = groups.get(day) ?? [];
-    group.push(entry);
+    const group = groups.get(day) ?? { at: entry.at, lanes: stages.map(() => []) };
+    group.lanes[entry.stage].push(entry);
     groups.set(day, group);
   }
+
+  let width = 0;
+  const lanes = stages.flatMap((label, index) => {
+    const max = Math.max(0, ...[...groups.values()].map(group => group.lanes[index].length));
+    if (!max) return [];
+    const count = Math.min(3, Math.ceil(Math.sqrt(max / 2)));
+    const x = width;
+    width += count * columnStep + 24;
+    return [{ index, label, x, count }];
+  });
 
   const positions = new Map<string, { x: number; y: number }>();
   const days = [];
   let y = 0;
-  for (const entries of groups.values()) {
-    // Balance busy dates across both axes, even when many records share a timestamp.
-    const rows = Math.ceil(Math.sqrt(entries.length / 2));
-    const columns: { x: number; first: number | null; last: number | null }[] = [];
-    for (let start = 0; start < entries.length; start += rows) {
-      const x = columns.length * columnStep;
-      const column = entries.slice(start, start + rows);
-      columns.push({ x, first: column[0].at, last: column[column.length - 1].at });
-      column.forEach((entry, row) => positions.set(entry.id, { x, y: y + 48 + row * rowStep }));
-    }
-    days.push({ y, at: entries[0].at, columns, width: columns[columns.length - 1].x + boardNodeWidth });
-    y += 56 + rows * rowStep;
+  for (const group of groups.values()) {
+    let height = 0;
+    const bands = lanes.flatMap(lane => {
+      const entries = group.lanes[lane.index];
+      if (!entries.length) return [];
+      const rows = Math.ceil(entries.length / lane.count);
+      height = Math.max(height, rows);
+      const columns: { x: number; first: number | null; last: number | null }[] = [];
+      for (let start = 0; start < entries.length; start += rows) {
+        const x = lane.x + columns.length * columnStep;
+        const column = entries.slice(start, start + rows);
+        columns.push({ x, first: column[0].at, last: column[column.length - 1].at });
+        column.forEach((entry, row) => positions.set(entry.id, { x, y: y + 68 + row * rowStep }));
+      }
+      return [{ x: lane.x, label: lane.label, width: lane.count * columnStep - (columnStep - boardNodeWidth), columns }];
+    });
+    days.push({ y, at: group.at, bands, width: width - 24 - (columnStep - boardNodeWidth) });
+    y += 76 + height * rowStep;
   }
   return { positions, days };
 }

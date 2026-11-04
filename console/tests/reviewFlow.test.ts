@@ -33,10 +33,13 @@ test('같은 시각의 여러 종류 노드를 가로와 세로로 나눠 겹치
   assert.equal(days.length, 1);
   assert.equal(new Set(points.map(({ x, y }) => `${x},${y}`)).size, nodes.length);
   assert.ok(new Set(points.map(({ x }) => x)).size > 1);
-  assert.ok(new Set(points.map(({ y }) => y)).size <= 4);
+  const requirements = nodes.filter(node => node.kind === 'requirement').map(node => positions.get(node.id)!);
+  const decisions = nodes.filter(node => node.kind === 'decision').map(node => positions.get(node.id)!);
+  assert.ok(new Set(requirements.map(({ x }) => x)).size > 1);
+  assert.ok(Math.max(...requirements.map(({ x }) => x)) < Math.min(...decisions.map(({ x }) => x)));
 });
 
-test('보드 배치는 발언 시각과 날짜 경계를 따르고 같은 날은 시간순으로 가로 배치한다', () => {
+test('보드 배치는 발언 시각과 나중에 기록된 발언도 결정과 작업 왼쪽에 둔다', () => {
   const day = new Date(2026, 10, 4, 9).getTime();
   const opinion = node('opinion', 'evidence', {
     ...source('message', 'user'), content: '  먼저 확인한\n  판단 기준  ',
@@ -53,4 +56,7 @@ test('보드 배치는 발언 시각과 날짜 경계를 따르고 같은 날은
   assert.equal(positions.get('opinion')!.y, positions.get('decision')!.y);
   assert.ok(positions.get('decision')!.y < positions.get('task')!.y);
   assert.equal(positions.get('task')!.y, positions.get('later')!.y);
+  assert.equal(positions.get('opinion')!.x, positions.get('later')!.x);
+  assert.ok(positions.get('later')!.x < positions.get('decision')!.x);
+  assert.ok(positions.get('decision')!.x < positions.get('task')!.x);
 });
