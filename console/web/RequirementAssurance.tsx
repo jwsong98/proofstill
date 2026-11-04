@@ -1,6 +1,7 @@
 import type { AssuredRow, ReviewEvidence } from '../shared/assurance.ts';
 import { criteriaReason, criteriaStatus, judgmentState } from '../shared/assurance.ts';
 import { implementationLabels, verificationLabels } from '../shared/progress.ts';
+import { accountabilityDecisionCopy } from './requirementDecisionCopy.ts';
 import { VerificationChecks } from './VerificationChecks.tsx';
 
 export function decisionLabel(row: AssuredRow, currentRead: boolean) {
@@ -29,6 +30,9 @@ export function RequirementDecision({ row, currentRead }: { row: AssuredRow; cur
       ? '이 항목의 구현 상태가 기록되지 않았어요.' : '구현 완료 기록이 아직 없어요.')
     : example?.observed ?? (check ? `${check.label} · ${verificationLabels[check.status]}` : '현재 실행에서 확인한 근거가 아직 없어요.');
   const human = row.humanChecks?.[0];
+  const acceptance = currentRead && state === 'ready' && row.taskId === 'accountability-web-v1'
+    ? accountabilityDecisionCopy[row.requirementId]
+    : undefined;
   const action = !currentRead ? '새로고침을 눌러 최신 상태를 다시 불러오세요.'
     : state === 'decision' ? row.pendingDecisions?.[0]?.question
     : state === 'ready' ? human?.action
@@ -37,7 +41,13 @@ export function RequirementDecision({ row, currentRead }: { row: AssuredRow; cur
   return <section className="handoff-decision" aria-label="지금 판단할 내용">
     <div><h3>지금 판단</h3><p className="handoff-verdict">{decisionLabel(row, currentRead)}</p></div>
     <div><h3>이렇게 판단한 이유</h3>{example && <small>{example.situation}</small>}<p>{evidence}</p></div>
-    <div><h3>내가 할 일</h3><p>{action}</p>{state === 'ready' && currentRead && human && <p className="small">기대 결과: {human.expected} 이 결과가 원하는 대로인지 결정해 주세요.</p>}</div>
+    {acceptance ? <div aria-label="YES·NO 기준">
+      <h3>볼 결과</h3><p>{acceptance.look}</p>
+      <dl className="handoff-answer">
+        <div><dt>YES</dt><dd>{acceptance.yes}</dd></div>
+        <div><dt>NO</dt><dd>{acceptance.no}</dd></div>
+      </dl>
+    </div> : <div><h3>내가 할 일</h3><p>{action}</p>{state === 'ready' && currentRead && human && <p className="small">기대 결과: {human.expected} 이 결과가 원하는 대로인지 결정해 주세요.</p>}</div>}
   </section>;
 }
 

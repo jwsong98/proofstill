@@ -55,3 +55,21 @@
 .handoff-statuses dd {
   margin: 2px 0 0;
 }
+.handoff-answer {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.handoff-answer > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 8px;
+}
+.handoff-answer dt {
+  font-weight: 650;
+}
+.handoff-answer dd {
+  margin: 0;
+}
