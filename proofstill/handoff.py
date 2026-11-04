@@ -62,6 +62,8 @@ def snapshot(h, feature):
     review_checks = {c['id']: c for c in (record or {}).get('answer', {}).get('checks', [])}
     criteria_review = review_summary(h, plan, state, 'criteria', criteria, source)
     implementation_review = review_summary(h, plan, state, 'implementation', criteria, source)
+    if record and not review_current:
+        implementation_review['status'] = 'stale'
     rows = []
     for req in plan['requirements']:
         recorded = state.get('implementations', {}).get(req['id'], {})

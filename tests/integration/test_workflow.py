@@ -57,6 +57,8 @@ class WorkflowTests(unittest.TestCase):
             self.assertNotEqual(fresh['session'], first['session'])
 
             call('test', 'counter', '--force')
+            row, = json.loads(call('handoff', 'counter'))['rows']
+            self.assertEqual(row['verification']['review']['gateStatus'], 'stale')
             after_new_evidence = json.loads(call('review', 'counter'))
             self.assertNotEqual(after_new_evidence['session'], fresh['session'])
 
