@@ -75,5 +75,6 @@ class PostgreSQLE2E(unittest.TestCase):
                                           'containerId': container_id, 'containerRemoved': True,
                                           'migration': '0001_tasks', 'seedCount': 2,
                                           'flowSteps': [s['id'] for s in records['steps']],
+                                          'flow': records,
                                           'task': task, 'persistedAfterServerRestart': True}, ensure_ascii=False, indent=2))
         print('POSTGRES_E2E_VERIFIED: migrations + seed + actual HTTP flow + restart persistence + container cleanup')

@@ -40,6 +40,10 @@ class ContainerE2E(unittest.TestCase):
                 self.assertTrue(result['containerRemoved'])
                 self.assertTrue(result['persistedAfterServerRestart'])
                 self.assertEqual(result['flowSteps'], ['create_task', 'complete_task', 'read_task'])
+                steps = result['flow']['steps']
+                self.assertTrue(all(step['description'] and step['expected'] for step in steps))
+                self.assertEqual([step['attempts'][0]['response']['body']['completed'] for step in steps],
+                                 [False, True, True])
                 self.assertTrue(result['task']['completed'])
                 output = run([manager, 'run', 'test:e2e'], ok=False,
                              extra={'DOCKER_HOST': 'unix:///nonexistent-proofstill-docker.sock'})
