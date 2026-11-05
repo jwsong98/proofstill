@@ -1,11 +1,34 @@
 import shlex
-from pathlib import Path
+import subprocess
 from urllib.parse import quote
 from .contract import HarnessError
 
 
 def link(label, path):
     return f'[{label}]({quote(str(path), safe="/:?#=&%")})'
+
+
+def code_references(h, plan):
+    paths = [str(path) for path in h.source_paths(plan)]
+    if not paths:
+        return ['- 등록된 소스 경로 없음']
+    try:
+        def git(*args):
+            return subprocess.check_output(['git', *args], cwd=h.root, text=True, stderr=subprocess.DEVNULL)
+
+        status = git('status', '--porcelain', '--', *paths)
+        commits = {}
+        for path in paths:
+            commit = git('log', '-1', '--format=%H %s', '--', path).strip()
+            if commit:
+                commits.setdefault(commit, []).append(path)
+    except (OSError, subprocess.CalledProcessError):
+        return ['- Git 커밋을 확인할 수 없음']
+    lines = [f'- `{commit.split(" ", 1)[0]}` {commit.partition(" ")[2]} ({", ".join(files)})'
+             for commit, files in commits.items()]
+    if status:
+        lines.append('- 등록된 소스에 미커밋 변경이 있음')
+    return lines or ['- 등록된 소스의 커밋 이력 없음']
 
 
 def render(h, plan, state, status):
@@ -27,7 +50,7 @@ def render(h, plan, state, status):
              f"- 의도: {plan['intent']}", f"- 업무 맥락: {plan['context']}",
              f"- 명령 실행 위치: `{h.root}`",
              f"- 기준: {link('고정된 요구사항·명령', evidence / 'plan.json')}",
-             f"- 기준 버전: `{current_criteria}`", f"- 소스 버전: `{current_source}`", '',
+             '', '## 관련 코드 커밋', *code_references(h, plan), '',
              '## 요구사항과 검증', '', '| 요구사항 | 상태 | 테스트·근거 |', '|---|---|---|']
     for item in plan['requirements']:
         refs = []
@@ -36,24 +59,17 @@ def render(h, plan, state, status):
             run = h.latest(state, 'green', check_id)
             current = bool(current_run(run) and run['accepted'])
             passed = passed and current
-            refs.append(link(check_id, run['log']) if run else f'{check_id}: 미실행')
+            refs.append(check_id)
         label = '자동 검사 통과' if passed else '실패/미검증'
         lines.append(f"| {item['id']}: {item['text'].replace('|', '/')} | {label} | {', '.join(refs)} |")
     lines += ['', '## 재현 명령과 검사 결과', '']
     for check in plan['checks']:
         lines += [f"### {check['id']} · {check['kind']} · {check['module']}", '',
                   '```sh', shlex.join(check['argv']), '```', '']
-        for phase in ['red', 'green']:
-            run = h.latest(state, phase, check['id'])
-            if run:
-                valid = current_run(run)
-                label = '현재 버전에서 무효' if not valid else ('기대 결과 확인' if run['accepted'] else '실패/미검증')
-                lines.append(f"- {phase.title()}: {label} · 종료 코드 `{run['exit_code']}` · {link('출력', run['log'])} · {link('실행 영수증', run['receipt'])}")
-            else:
-                lines.append(f"- {phase.title()}: {'선택 검사 · 미실행' if phase == 'red' else '미실행'}")
-        if check.get('trace_expectation'):
-            lines.append('- ' + link('고정된 기대 흐름', h.root / check['trace_expectation']))
         run = h.latest(state, 'green', check['id'])
+        label = ('미실행' if not run else '무효 · 다시 검사 필요' if not current_run(run)
+                 else '통과' if run['accepted'] else '실패')
+        lines.append(f'- 결과 · {label}')
         for trace in (run or {}).get('traces', []):
             viewer = link('UI 추적 보기', trace['html']) if trace.get('html') else 'UI 뷰어 미생성'
             lines.append(f"- 흐름 {trace['name']} · {trace['steps']}단계 · {viewer} · {link('원본 JSONL', trace['path'])}")
@@ -63,14 +79,6 @@ def render(h, plan, state, status):
                 lines.append('- 상태머신 미실행 전이: ' + (', '.join(coverage['unvisited_transitions']) or '없음'))
             for issue in trace['issues']:
                 lines.append(f'  - 흐름 검증: {issue}')
-        for path in check['files']:
-            item = h.root / path
-            if item.is_file():
-                lines.append(f"- {link('테스트 코드', item)}")
-            elif item.is_dir():
-                for test in sorted(item.rglob('*')):
-                    if test.is_file() and '__pycache__' not in test.parts:
-                        lines.append(f"- {link('테스트 ' + test.name, test)}")
     lines += ['', '## 독립 리뷰', '']
     for stage, title in [('criteria', '사전 기준 검토 · 선택'), ('implementation', '기준·구현 최종 검토')]:
         if stage == 'criteria' and stage in plan.get('required_reviews', []):
@@ -79,17 +87,12 @@ def render(h, plan, state, status):
         if not record:
             lines.append(f'- {title}: 미실행')
             continue
-        folder = Path(record['folder'])
         valid = h.review_evidence_current(record, state['developer_session']) and criteria_valid and record['criteria_digest'] == current_criteria and ((stage == 'criteria' and stage not in plan.get('required_reviews', [])) or record['source_digest'] == current_source)
         if stage == 'implementation':
             valid = valid and h.review_current(plan, state, current_criteria, current_source) and all(current_run(h.latest(state, 'green', c['id']))
                                   and h.latest(state, 'green', c['id'])['accepted'] for c in plan['checks'])
         label = '현재 버전에서 무효' if not valid else ('통과' if record['passed'] else '실패/미검증')
         lines += [f"- {title}: {label} · 세션 `{record.get('session', '미확인')}` · 실행기 `{record['launcher']}`"]
-        for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']:
-            path = folder / name
-            if path.is_file():
-                lines.append('  - ' + link(name, path))
         for check in record.get('answer', {}).get('checks', []):
             lines.append(f"  - {check.get('id')}: {check.get('status')} — {check.get('evidence')}")
     lines += ['', '## 구현·아티팩트', '']
@@ -106,7 +109,4 @@ def render(h, plan, state, status):
     for limitation in dict.fromkeys(limitations):
         lines.append('- ' + limitation)
     lines.append('- 검증은 위 기준과 대상 버전에 한정하며, 모든 버그의 부재나 사용자의 최종 수용을 뜻하지 않는다.')
-    from .handoff import briefing
-    overview = briefing(h, plan['id'])
-    lines[2:2] = [overview, '']
     return '\n'.join(lines) + '\n'
