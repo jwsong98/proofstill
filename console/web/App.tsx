@@ -5,6 +5,7 @@ import { ErrorNotice, Icon, Loading, Modal, nodeLabels, statusLabels, timeLabel 
 import { reviewTitle } from './reviewFlow.ts';
 import { GraphCanvas } from './GraphCanvas.tsx';
 import { HandoffView } from './HandoffView.tsx';
+import { DocumentContent } from './DocumentContent.tsx';
 import { SessionChat } from './SessionChat.tsx';
 
 type Dialog = { kind: 'project' | 'file' | 'remote' } | null;
@@ -21,8 +22,8 @@ function SourcePanel({ node, onOpenOriginal, onSelect }: { node: GraphNode; onOp
     const result = node.execution;
     return <><div><span className="small">실행 원문 · 읽기 전용</span><h2>{node.title}</h2></div><div className="row between"><span className="small">{new Date(result.startedAt).toLocaleString('ko-KR')}</span><span className={'badge ' + (result.status === 'passed' ? 'positive' : result.status === 'failed' ? 'negative' : '')}>{statusLabels[node.status]}</span></div>
       {result.command && <section><h3>실행한 명령</h3><pre>{result.command}</pre></section>}
-      {result.request != null && <section><h3>실제 요청</h3><pre>{json(result.request)}</pre></section>}
-      {result.response != null && (result.command ? <details><summary>실행 원본 데이터</summary><pre>{json(result.response)}</pre></details> : <section><h3>실제 응답</h3><pre>{json(result.response)}</pre></section>)}
+      {result.request != null && <section><h3>실제 요청</h3><DocumentContent content={json(result.request)} filename="request.json" /></section>}
+      {result.response != null && (result.command ? <details><summary>실행 원본 데이터</summary><DocumentContent content={json(result.response)} filename="response.json" /></details> : <section><h3>실제 응답</h3><DocumentContent content={json(result.response)} filename="response.json" /></section>)}
       <section><h3>실제 출력</h3><pre>{result.output || '(출력 없음)'}</pre></section><span className="small">종료 코드: {result.exitCode ?? '미확인'}</span></>;
   }
   const evidence = node.evidence;
@@ -43,10 +44,12 @@ function SourcePanel({ node, onOpenOriginal, onSelect }: { node: GraphNode; onOp
       {onSelect && <button className="text-button" onClick={onSelect}>근거 보기</button>}
     </div>
   </header>
-    {evidence.sourceKind === 'file' ? <div className="source-lines">{expanded && before && lines(before).map((line, i, all) => <div className="source-line" key={'before-' + i}><span>{start - all.length + i}</span><code>{line || ' '}</code></div>)}
+    <DocumentContent content={evidence.content} filename={evidence.sourceKind === 'file' ? String(source.path ?? '') : undefined}
+      original={evidence.sourceKind === 'file' ? <div className="source-lines">{expanded && before && lines(before).map((line, i, all) => <div className="source-line" key={'before-' + i}><span>{start - all.length + i}</span><code>{line || ' '}</code></div>)}
       {lines(evidence.content).map((line, i) => <div className="source-line cited" key={i}><span>{start + i}</span><code>{line || ' '}</code></div>)}
       {expanded && after && lines(after).map((line, i) => <div className="source-line" key={'after-' + i}><span>{Number(source.endLine) + i + 1}</span><code>{line || ' '}</code></div>)}
-    </div> : <pre className="raw-content">{evidence.content}</pre>}
+    </div> : <pre className="raw-content">{evidence.content}</pre>} />
+
   </>;
 }
 
@@ -85,7 +88,7 @@ function SessionContext({ project, session, onSelect, onOpenOriginal }: {
     <p className="small">작업 폴더 <code>{project.rootPath}</code></p>
     {!session.contextNodeIds.length ? <p className="small">프로젝트 루트 세션이에요. 선택한 노드 컨텍스트는 포함하지 않아요.</p>
       : <><ErrorNotice message={error} />{error ? <button className="text-button" onClick={() => setRetry(value => value + 1)}>컨텍스트 다시 불러오기</button> : !context ? <Loading /> : <>
-        {selectedNodes.map(node => <section className="detail-section" key={node.id}><h3>{node.title}</h3>{node.evidence || node.execution ? <SourcePanel node={node} onOpenOriginal={onOpenOriginal} /> : <p className="node-body">{node.body || '아직 내용이 없어요.'}</p>}</section>)}
+        {selectedNodes.map(node => <section className="detail-section" key={node.id}><h3>{node.title}</h3>{node.evidence || node.execution ? <SourcePanel node={node} onOpenOriginal={onOpenOriginal} /> : <DocumentContent content={node.body || '아직 내용이 없어요.'} />}</section>)}
         <EvidenceReferences nodes={evidence} onSelect={onSelect} onOpenOriginal={onOpenOriginal} />
       </>}</>}
   </details>;
@@ -284,7 +287,7 @@ export default function App() {
           <span className={'badge ' + (selected.status === 'failed' ? 'negative' : selected.status === 'completed' ? 'positive' : '')}>{statusLabels[selected.status]}</span>
           {!historical && <button className="button primary" disabled={busy} onClick={() => void startSession()}>{sessions.some(session => session.role === null && session.source === 'local' && session.contextNodeIds.length === 1 && session.contextNodeIds[0] === selected.id) ? '세션 이어가기' : '세션 시작하기'}</button>}
           <a className="icon-button" aria-label="컨텍스트 내보내기" title="컨텍스트 내보내기" href={api.contextUrl(projectId, [selected.id])} download><Icon name="download-simple" size={16} /></a>
-        </header>{historical && <p className="small">이전 기록 · 현재 항목에 통합된 결정 또는 작업이에요.</p>}{['feature', 'requirement'].includes(selected.kind) && <button className="text-button" onClick={() => { setHandoffNodeId(selected.id); setView('handoff'); }}>구현·검증 현황에서 보기</button>}{selected.kind === 'feature' && selected.acceptance && selected.acceptance.total > 0 && <section className="detail-section"><h3>정해진 검사</h3><p>{selected.acceptance.passed}/{selected.acceptance.total} 통과{selected.acceptance.fulfilled ? ' · 등록 검사 통과' : ' · 미충족'}</p></section>}<details key={`${selected.id}:body`} className="node-details"><summary>상세 내용</summary><p className="node-body">{selected.body || '아직 내용이 없어요.'}</p></details>
+        </header>{historical && <p className="small">이전 기록 · 현재 항목에 통합된 결정 또는 작업이에요.</p>}{['feature', 'requirement'].includes(selected.kind) && <button className="text-button" onClick={() => { setHandoffNodeId(selected.id); setView('handoff'); }}>구현·검증 현황에서 보기</button>}{selected.kind === 'feature' && selected.acceptance && selected.acceptance.total > 0 && <section className="detail-section"><h3>정해진 검사</h3><p>{selected.acceptance.passed}/{selected.acceptance.total} 통과{selected.acceptance.fulfilled ? ' · 등록 검사 통과' : ' · 미충족'}</p></section>}<details key={`${selected.id}:body`} className="node-details"><summary>상세 내용</summary><DocumentContent content={selected.body || '아직 내용이 없어요.'} /></details>
           <details key={`${selected.id}:evidence`} className="node-details"><summary>원문 근거 · {citedEvidence.length}개</summary><EvidenceReferences nodes={citedEvidence} onSelect={choose} onOpenOriginal={openOriginal} /></details>
           {!!selected.mergedRecords?.length && <details key={`${selected.id}:merged`} className="node-details"><summary>통합 전 논의·작업 · {selected.mergedRecords.length}개</summary><p className="small">이전 기록을 보존한 내용이에요. 현재 결함이나 미완료 판정과는 별개예요.</p>{selected.mergedRecords.map(record => <details key={record.id}><summary>{record.title}</summary><p className="node-body">{record.body}</p></details>)}</details>}
 

@@ -1,0 +1,19 @@
+.document-content { min-width: 0; font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
+.document-content > :first-child { margin-top: 0; }
+.document-content h1 { font-size: 22px; line-height: 1.4; margin: 20px 0 12px; }
+.document-content h2 { font-size: 19px; line-height: 1.5; margin: 20px 0 10px; }
+.document-content h3 { font-size: 16px; margin: 16px 0 8px; }
+.document-content p, .document-content ul, .document-content ol { margin: 8px 0; }
+.document-content ul, .document-content ol { padding-left: 24px; }
+.document-content li + li { margin-top: 4px; }
+.document-content blockquote { margin: 12px 0; padding-left: 12px; border-left: 3px solid var(--border-control); color: var(--text-secondary); }
+.document-content a { color: var(--accent-text); text-decoration: underline; }
+.document-content :not(pre) > code { font: 12px var(--font-mono); background: var(--fill); padding: 2px 4px; border-radius: var(--radius-sm); }
+.document-content pre { overflow-x: auto; white-space: pre; max-width: 100%; }
+.document-content table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; font-size: 12px; }
+.document-content th, .document-content td { padding: 8px 12px; border: 1px solid var(--border); white-space: pre-wrap; min-width: 80px; vertical-align: top; }
+.document-content th { background: var(--bg-subtle); text-align: left; font-weight: 600; }
+.document-table-scroll { overflow-x: auto; }
+.document-content .document-original { margin-top: 16px; color: var(--text-secondary); }
+.document-original summary { cursor: pointer; font-size: 12px; }
+.document-original[open] > summary { margin-bottom: 8px; }
