@@ -2,6 +2,7 @@ import shlex
 import subprocess
 from urllib.parse import quote
 from .contract import HarnessError
+from .handoff import IMPLEMENTATION, VERIFICATION, snapshot
 
 
 def link(label, path):
@@ -44,6 +45,7 @@ def render(h, plan, state, status):
     def current_run(run):
         return bool(run and h.run_current(plan, state, checks_by_id[run['check']], run, current_criteria, current_source))
 
+    progress = {row['requirementId']: row for row in snapshot(h, plan['id'])}
     lines = [f"# {plan['title']} — 기능 개발 보고", '',
              f"- 자동 검사·독립 리뷰: **{'검증 완료' if status['complete'] else '미완료'}**",
              f"- 인계 준비: {'필수 정보·기술 근거 있음' if status['handoff_ready'] else '보완 필요'}", '- 사용자 수용: 미확인',
@@ -51,17 +53,12 @@ def render(h, plan, state, status):
              f"- 명령 실행 위치: `{h.root}`",
              f"- 기준: {link('고정된 요구사항·명령', evidence / 'plan.json')}",
              '', '## 관련 코드 커밋', *code_references(h, plan), '',
-             '## 요구사항과 검증', '', '| 요구사항 | 상태 | 테스트·근거 |', '|---|---|---|']
+             '## 요구사항과 검증', '', '| 요구사항 | 구현 | 자동 검사 | 검사 ID |', '|---|---|---|---|']
     for item in plan['requirements']:
-        refs = []
-        passed = True
-        for check_id in item['checks']:
-            run = h.latest(state, 'green', check_id)
-            current = bool(current_run(run) and run['accepted'])
-            passed = passed and current
-            refs.append(check_id)
-        label = '자동 검사 통과' if passed else '실패/미검증'
-        lines.append(f"| {item['id']}: {item['text'].replace('|', '/')} | {label} | {', '.join(refs)} |")
+        row = progress[item['id']]
+        implemented = IMPLEMENTATION[row['implementation']['status']]
+        verification = VERIFICATION[row['verification']['status']]
+        lines.append(f"| {item['id']}: {item['text'].replace('|', '/')} | {implemented} | {verification} | {', '.join(item['checks'])} |")
     lines += ['', '## 재현 명령과 검사 결과', '']
     for check in plan['checks']:
         lines += [f"### {check['id']} · {check['kind']} · {check['module']}", '',
