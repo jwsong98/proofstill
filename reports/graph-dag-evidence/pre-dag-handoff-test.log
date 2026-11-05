@@ -1,0 +1,38 @@
+(node:57712) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ console projects current requirement reviews without relaxing the original task gate (549.658958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 621.718417
+
+✖ failing tests:
+
+test at console/tests/handoff.test.ts:129:1
+✖ console projects current requirement reviews without relaxing the original task gate (549.658958ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'passed',
+  +   'unverified',
+      'failed',
+  -   'failed',
+  -   'failed'
+    ]
+  
+      at TestContext.<anonymous> (file:///private/var/folders/7z/3z4qsrwj5pz6h3_kny75x0l00000gn/T/proofstill-before-dag-b9pvstdk/console/tests/handoff.test.ts:174:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'passed', 'unverified', 'failed' ],
+    expected: [ 'failed', 'failed', 'failed' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

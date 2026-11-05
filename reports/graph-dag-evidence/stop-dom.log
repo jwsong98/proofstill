@@ -1,0 +1,4 @@
+### Ran Playwright code
+```js
+await (async page => { await page.locator("#checks-ui-task").fill(JSON.stringify(["node","--version"])+"\n"+JSON.stringify(["node","-e","process.exit(0)"])); await page.getByRole("button",{name:"작업 설정 저장",exact:true}).click(); await page.getByRole("dialog").getByRole("button",{name:"DAG 실행",exact:true}).click(); await page.getByText("최근 실행 · 실행 중",{exact:true}).waitFor(); console.log(await page.locator("body").ariaSnapshot()); await page.getByRole("dialog").getByRole("button",{name:"실행 중단",exact:true}).click(); await page.getByText("최근 실행 · 중단",{exact:true}).waitFor(); console.log(await page.locator("body").ariaSnapshot()); })(page);
+```

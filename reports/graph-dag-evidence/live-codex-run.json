@@ -1,0 +1,62 @@
+{
+  "id": "91b2efd7-b332-4b24-b3fe-def72fa15ced",
+  "projectId": "58b39f56-1ecb-4f74-9bcc-f39be6308f96",
+  "graph": {
+    "nodes": [
+      {
+        "id": "hello",
+        "projectId": "58b39f56-1ecb-4f74-9bcc-f39be6308f96",
+        "kind": "task",
+        "title": "Write greeting fixture",
+        "body": "Create greeting.txt containing exactly hello DAG followed by a newline. Do not change README.md. No dependencies to install.",
+        "status": "pending",
+        "x": null,
+        "y": null,
+        "evidenceId": null,
+        "executionId": null,
+        "createdAt": 1793867463407,
+        "updatedAt": 1793867463407
+      }
+    ],
+    "edges": []
+  },
+  "tasks": [
+    {
+      "nodeId": "hello",
+      "title": "Write greeting fixture",
+      "definition": {
+        "owns": [
+          "greeting.txt"
+        ],
+        "checks": [
+          [
+            "node",
+            "-e",
+            "require('node:assert/strict').equal(require('node:fs').readFileSync('greeting.txt','utf8'),'hello DAG\\n')"
+          ]
+        ]
+      },
+      "dependsOn": [],
+      "status": "completed",
+      "commit": "32bc7281f5195a7cb47ef49895bb4ce5a2832381",
+      "summary": "I’ll read the project instructions and required Proofstill skills, then create only `greeting.txt` with the exact content.\n\nI’m applying the Proofstill development and commit skills. The DAG runner handles checks and commits for this task, so I’ll leave those steps to it.\n\nCreated `greeting.txt` containing exactly `hello DAG\\n`. Left `README.md` unchanged. Checks and commit are deferred to the DAG runner.\n",
+      "error": null,
+      "checks": [
+        {
+          "argv": [
+            "node",
+            "-e",
+            "require('node:assert/strict').equal(require('node:fs').readFileSync('greeting.txt','utf8'),'hello DAG\\n')"
+          ],
+          "exitCode": 0,
+          "output": ""
+        }
+      ],
+      "startedAt": 1793867463437,
+      "finishedAt": 1793867506225
+    }
+  ],
+  "status": "completed",
+  "startedAt": 1793867463428,
+  "finishedAt": 1793867506225
+}

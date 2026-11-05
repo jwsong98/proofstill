@@ -1,0 +1,137 @@
+{
+  "purpose": "화면 중단 및 새로고침 후 저장된 미완료 상태 확인",
+  "request": {
+    "method": "GET",
+    "url": "http://127.0.0.1:63877/api/projects/22cae2c9-d608-42e0-8c84-109286901301/dag"
+  },
+  "status": 200,
+  "response": {
+    "definitions": {
+      "ui-task": {
+        "owns": [
+          "hello.txt"
+        ],
+        "checks": [
+          [
+            "node",
+            "--version"
+          ],
+          [
+            "node",
+            "-e",
+            "process.exit(0)"
+          ]
+        ]
+      }
+    },
+    "run": {
+      "id": "fe05b500-060d-498b-bfea-0fcd843917ce",
+      "projectId": "22cae2c9-d608-42e0-8c84-109286901301",
+      "graph": {
+        "nodes": [
+          {
+            "id": "ui-task",
+            "projectId": "22cae2c9-d608-42e0-8c84-109286901301",
+            "kind": "task",
+            "title": "인사 파일 생성",
+            "body": "hello.txt에 hello 저장",
+            "status": "pending",
+            "x": null,
+            "y": null,
+            "evidenceId": null,
+            "executionId": null,
+            "createdAt": 1793867579156,
+            "updatedAt": 1793867649589
+          },
+          {
+            "id": "dag:57adb599-fec1-4fec-bafd-106b774a1d3c:ui-task",
+            "projectId": "22cae2c9-d608-42e0-8c84-109286901301",
+            "kind": "result",
+            "title": "인사 파일 생성 · 커밋 및 검사",
+            "body": "",
+            "status": "completed",
+            "x": null,
+            "y": null,
+            "evidenceId": null,
+            "executionId": "d78a3ea4-76a6-411e-884b-1796371fee29",
+            "createdAt": 1793867596652,
+            "updatedAt": 1793867596652,
+            "execution": {
+              "id": "d78a3ea4-76a6-411e-884b-1796371fee29",
+              "projectId": "22cae2c9-d608-42e0-8c84-109286901301",
+              "kind": "command",
+              "status": "passed",
+              "command": "[\"node\",\"--version\"]",
+              "request": null,
+              "response": {
+                "commit": "c408fdbc80ec69f8bafc7557704fb65255ded011",
+                "summary": "인사 파일을 생성했습니다.",
+                "owns": [
+                  "hello.txt"
+                ],
+                "checks": [
+                  {
+                    "argv": [
+                      "node",
+                      "--version"
+                    ],
+                    "exitCode": 0,
+                    "output": "v24.14.0\n"
+                  }
+                ]
+              },
+              "output": "v24.14.0\n",
+              "exitCode": 0,
+              "startedAt": 1793867596531,
+              "finishedAt": 1793867596651
+            }
+          }
+        ],
+        "edges": [
+          {
+            "id": "980ff131-8c5d-4e9a-b2bd-da526d1df9bb",
+            "projectId": "22cae2c9-d608-42e0-8c84-109286901301",
+            "sourceId": "ui-task",
+            "targetId": "dag:57adb599-fec1-4fec-bafd-106b774a1d3c:ui-task",
+            "kind": "precedes",
+            "reason": "DAG 러너가 관측한 검사 통과와 실제 커밋",
+            "createdAt": 1793867596652
+          }
+        ]
+      },
+      "tasks": [
+        {
+          "nodeId": "ui-task",
+          "title": "인사 파일 생성",
+          "definition": {
+            "owns": [
+              "hello.txt"
+            ],
+            "checks": [
+              [
+                "node",
+                "--version"
+              ],
+              [
+                "node",
+                "-e",
+                "process.exit(0)"
+              ]
+            ]
+          },
+          "dependsOn": [],
+          "status": "interrupted",
+          "commit": null,
+          "summary": "",
+          "error": "UI stop observed",
+          "checks": [],
+          "startedAt": 1793867649726,
+          "finishedAt": 1793867650511
+        }
+      ],
+      "status": "interrupted",
+      "startedAt": 1793867649713,
+      "finishedAt": 1793867650512
+    }
+  }
+}

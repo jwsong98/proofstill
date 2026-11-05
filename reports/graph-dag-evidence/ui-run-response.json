@@ -1,0 +1,84 @@
+{
+  "purpose": "화면에서 시작한 실행을 API로 다시 조회해 커밋·검사·완료 상태 보존을 확인",
+  "expected": "ui-task completed, 실제 커밋, 검사 exit 0",
+  "request": {
+    "method": "GET",
+    "url": "http://127.0.0.1:62687/api/projects/af2b1b69-a1ea-4c67-b578-828576c433c1/dag"
+  },
+  "status": 200,
+  "response": {
+    "definitions": {
+      "ui-task": {
+        "owns": [
+          "hello.txt"
+        ],
+        "checks": [
+          [
+            "node",
+            "--version"
+          ]
+        ]
+      }
+    },
+    "run": {
+      "id": "d1d095a0-2cec-40fe-99c0-78c16c9fbc04",
+      "projectId": "af2b1b69-a1ea-4c67-b578-828576c433c1",
+      "graph": {
+        "nodes": [
+          {
+            "id": "ui-task",
+            "projectId": "af2b1b69-a1ea-4c67-b578-828576c433c1",
+            "kind": "task",
+            "title": "인사 파일 생성",
+            "body": "hello.txt에 hello 저장",
+            "status": "pending",
+            "x": null,
+            "y": null,
+            "evidenceId": null,
+            "executionId": null,
+            "createdAt": 1793866977725,
+            "updatedAt": 1793866977725
+          }
+        ],
+        "edges": []
+      },
+      "tasks": [
+        {
+          "nodeId": "ui-task",
+          "title": "인사 파일 생성",
+          "definition": {
+            "owns": [
+              "hello.txt"
+            ],
+            "checks": [
+              [
+                "node",
+                "--version"
+              ]
+            ]
+          },
+          "dependsOn": [],
+          "status": "completed",
+          "commit": "3b66ce5ee2c0e290363ae6760504c8fdfa4283e9",
+          "summary": "인사 파일을 생성했습니다.",
+          "error": null,
+          "checks": [
+            {
+              "argv": [
+                "node",
+                "--version"
+              ],
+              "exitCode": 0,
+              "output": "v24.14.0\n"
+            }
+          ],
+          "startedAt": 1793867083687,
+          "finishedAt": 1793867083777
+        }
+      ],
+      "status": "completed",
+      "startedAt": 1793867083672,
+      "finishedAt": 1793867083777
+    }
+  }
+}
