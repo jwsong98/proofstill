@@ -16,7 +16,11 @@ async function body(request: IncomingMessage): Promise<any> {
 }
 
 export function createApi(options: { store: Store; codex: CodexTransport; distDir?: string }) {
-  const service = new ConsoleService(options.store, options.codex), store = options.store, handoff = new HandoffService(store);
+  const service = new ConsoleService(options.store, options.codex, () => {
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new StoreError('Graph tool endpoint is unavailable', 503);
+    return `http://127.0.0.1:${address.port}/api/graph-tool`;
+  }), store = options.store, handoff = new HandoffService(store);
   service.on('serviceError', error => console.error('Codex event processing failed:', error instanceof Error ? error.message : String(error)));
   const streams = new Set<ServerResponse>();
   const server = createServer(async (request, response) => {
@@ -44,6 +48,13 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         response.writeHead(200, { 'Content-Type': `${mime[extname(target)] || 'application/octet-stream'}${['.html', '.js', '.css', '.json', '.svg'].includes(extname(target)) ? '; charset=utf-8' : ''}` }); response.end(request.method === 'HEAD' ? undefined : data); return;
       }
       const method = request.method || 'GET', [, resource, id, sub, subId] = path;
+      if (resource === 'graph-tool' && path.length === 2) {
+        if (method !== 'POST' || request.headers.origin) throw new StoreError('Graph tool only accepts local Codex requests', 405);
+        const result = service.graphRpc(request.headers.authorization, await body(request));
+        if (result === undefined) { response.writeHead(202); response.end(); }
+        else json(response, 200, result);
+        return;
+      }
       if (resource === 'health' && method === 'GET') { json(response, 200, { ok: true }); return; }
       if (resource === 'codex' && id === 'status' && method === 'GET') { json(response, 200, await service.status()); return; }
       if (resource === 'codex' && id === 'threads' && method === 'GET') { json(response, 200, await service.remoteThreads({ projectId: url.searchParams.get('projectId') || undefined, cursor: url.searchParams.get('cursor') || undefined, limit: Number(url.searchParams.get('limit') || 20) })); return; }

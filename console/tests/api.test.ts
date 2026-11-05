@@ -169,6 +169,27 @@ test('manual graph edits are blocked while Codex can update evidence-backed inte
   assert.equal(store.getNode(project.id, source.id).evidence!.content, 'Original');
 });
 
+test('resumed chats can call a session-scoped graph MCP tool', async t => {
+  const { req, base, project, store, codex } = await setup(t);
+  const session = store.createSession(project.id, { title: 'Legacy', externalThreadId: 'legacy-thread' });
+  const source = store.captureEvidence(project.id, { title: 'source', sourceKind: 'file', source: { path: 'a', startLine: 1, endLine: 1 }, content: 'original' });
+  assert.equal((await req(`/sessions/${session.id}/messages`, 'POST', { content: 'Update graph' })).status, 202);
+  const resume = codex.calls.find(call => call.method === 'thread/resume')!;
+  const config = resume.params.config.mcp_servers.proofstill_console;
+  assert.equal(config.url, base + '/graph-tool');
+  const list = { jsonrpc: '2.0', id: 1, method: 'tools/list' };
+  assert.equal((await req('/graph-tool', 'POST', list)).status, 403);
+  assert.equal((await req('/graph-tool', 'POST', list, { ...config.http_headers, Origin: new URL(base).origin })).status, 405);
+  assert.equal((await req('/graph-tool', 'POST', list, config.http_headers)).data.result.tools[0].name, 'proofstill_graph');
+  const call = { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'proofstill_graph', arguments: {
+    nodes: [{ id: 'legacy-feature', kind: 'feature', title: 'Legacy feature', body: 'Test', status: 'pending', evidenceIds: [source.id] }],
+    edges: [{ sourceId: source.id, targetId: 'legacy-feature', kind: 'precedes', reason: 'Test' }],
+  } } };
+  assert.equal((await req('/graph-tool', 'POST', call, config.http_headers)).data.result.isError, undefined);
+  assert.equal(store.getNode(project.id, 'legacy-feature').title, 'Legacy feature');
+  assert.ok(store.listGraph(project.id).edges.some(edge => edge.kind === 'precedes' && edge.targetId === 'legacy-feature'));
+});
+
 test('SSE replay resumes after delivered event ID', async t => {
   const { req, base, project, store } = await setup(t);
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', {})).data;

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { readFile, readdir, realpath, stat } from 'node:fs/promises';
 import { basename, extname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -47,6 +48,8 @@ export class ConsoleService extends EventEmitter {
   readonly store: Store;
   readonly codex: CodexTransport;
   private pending = new Map<string, { sessionId: string; rpcId: string | number; request: PendingRequest }>();
+  private graphEndpoint?: () => string;
+  private graphTokens = new Map<string, string>();
   private activeTurns = new Map<string, string>();
   private busy = new Set<string>();
   private completedTurns = new Set<string>();
@@ -67,8 +70,8 @@ export class ConsoleService extends EventEmitter {
     this.pending.clear(); this.resumed.clear(); this.activeTurns.clear();
     for (const sessionId of sessionIds) this.event(sessionId, 'error', { message: error.message, disconnected: true });
   };
-  constructor(store: Store, codex: CodexTransport) {
-    super(); this.store = store; this.codex = codex;
+  constructor(store: Store, codex: CodexTransport, graphEndpoint?: () => string) {
+    super(); this.store = store; this.codex = codex; this.graphEndpoint = graphEndpoint;
     codex.on('notification', this.processNotification); codex.on('request', this.processRequest); codex.on('requestExpired', this.requestExpired); codex.on('disconnected', this.disconnected);
   }
   close() { this.codex.off('notification', this.processNotification); this.codex.off('request', this.processRequest); this.codex.off('requestExpired', this.requestExpired); this.codex.off('disconnected', this.disconnected); this.codex.close(); }
@@ -179,8 +182,9 @@ export class ConsoleService extends EventEmitter {
     this.unstartedThreads.delete(session.externalThreadId);
     try {
       if (!this.resumed.has(session.externalThreadId)) {
+        const config = this.graphEndpoint && session.role !== 'graph' ? this.graphConfig(session.id) : undefined;
         const response = await this.codex.request('thread/resume', { model: (await this.startParams(session.projectId)).model, threadId: session.externalThreadId, cwd: this.store.getProject(session.projectId).rootPath,
-          approvalPolicy: 'never', sandbox: 'danger-full-access', excludeTurns: true });
+          approvalPolicy: 'never', sandbox: 'danger-full-access', excludeTurns: true, ...(config ? { config } : {}) });
         if (response.thread?.id && response.thread.id !== session.externalThreadId) throw new StoreError('Codex resumed a different thread', 502);
         this.resumed.add(session.externalThreadId);
       }
@@ -265,6 +269,46 @@ export class ConsoleService extends EventEmitter {
       this.event(session.id, 'session/imported', { threadId, missingTimestamps, turns: turns.length }); return this.store.getSession(session.id);
     });
   }
+  // Dynamic tools are persisted at thread creation. Resumed threads can load the same tool through MCP.
+  private graphConfig(sessionId: string) {
+    let token = this.graphTokens.get(sessionId);
+    if (!token) {
+      token = randomUUID();
+      this.graphTokens.set(sessionId, token);
+    }
+    return { mcp_servers: { proofstill_console: {
+      url: this.graphEndpoint!(),
+      http_headers: { Authorization: `Bearer ${token}` },
+    } } };
+  }
+  graphRpc(authorization: string | undefined, request: any) {
+    const sessionId = [...this.graphTokens].find(([, token]) => authorization === `Bearer ${token}`)?.[0];
+    if (!sessionId) throw new StoreError('Unknown graph tool session', 403);
+    if (!object(request) || request.jsonrpc !== '2.0') throw new StoreError('Invalid graph tool request');
+    if (request.id === undefined) return undefined;
+    const reply = { jsonrpc: '2.0', id: request.id };
+    if (request.method === 'initialize') return { ...reply, result: {
+      protocolVersion: request.params?.protocolVersion, capabilities: { tools: {} },
+      serverInfo: { name: 'proofstill_console', version: '1.0.0' },
+    } };
+    if (request.method === 'ping') return { ...reply, result: {} };
+    if (request.method === 'tools/list') {
+      const { name, description, inputSchema } = graphTool;
+      return { ...reply, result: { tools: [{ name, description, inputSchema }] } };
+    }
+    if (request.method !== 'tools/call' || request.params?.name !== graphTool.name)
+      return { ...reply, error: { code: -32601, message: 'Unknown graph tool method' } };
+    try {
+      if (!this.busy.has(sessionId) && !this.activeTurns.has(sessionId)) throw new StoreError('Graph tool requires an active chat turn', 409);
+      const session = this.store.getSession(sessionId);
+      const graph = this.applyGraph(session.projectId, request.params.arguments);
+      this.event(session.id, 'graph/updated', { projectId: session.projectId });
+      return { ...reply, result: { content: [{ type: 'text', text: JSON.stringify({ nodeCount: graph.nodes.length, edgeCount: graph.edges.length }) }] } };
+    } catch (error) {
+      return { ...reply, result: { isError: true, content: [{ type: 'text', text: String(error) }] } };
+    }
+  }
+
   applyGraph(projectId: string, args: any) {
     if (!object(args) || !Array.isArray(args.nodes) || !Array.isArray(args.edges) || args.nodes.length > 200 || args.edges.length > 500) throw new StoreError('Invalid graph tool input');
     return this.store.transaction(() => {
