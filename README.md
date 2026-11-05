@@ -21,7 +21,7 @@ npm run console:setup
 npm run console
 ```
 
-[로컬 콘솔](http://127.0.0.1:7777)에서 프로젝트 폴더를 등록하고, 문서 원문이나 선택한 Codex 세션을 가져옵니다. 원문 근거를 바탕으로 AI가 그래프를 연결하며, 선택한 맥락의 일반 Codex 채팅으로 이어갈 수 있습니다. 별도 작업 시작·자동 후속 실행 기능은 없습니다. 근거 원문은 읽기 전용으로 보존하고 해석·관계와 분리합니다.
+[로컬 콘솔](http://127.0.0.1:7777)에서 프로젝트 폴더를 등록하고, 문서 원문이나 선택한 Codex 세션을 가져옵니다. 관계 그래프는 보존된 노드와 연결을 조회하며, 선택한 맥락의 일반 Codex 채팅으로 이어갈 수 있습니다. 별도 작업 시작·자동 후속 실행 기능은 없습니다. 근거 원문은 읽기 전용으로 보존하고 해석·관계와 분리합니다.
 
 기본 데이터는 `~/.local/share/proofstill/console/console.sqlite`에 남습니다. `PROOFSTILL_CONSOLE_DATA_DIR`로 보관 폴더, `PROOFSTILL_CONSOLE_PORT`로 포트를 바꿀 수 있습니다. `PROOFSTILL_CONSOLE_PROJECT_ROOT`를 지정하면 해당 프로젝트를 엽니다. Codex 인증은 로컬 app-server가 사용하며 브라우저에 인증 파일이나 API 키를 전달하지 않습니다.
 
@@ -203,6 +203,8 @@ refresh/revoke 정책이 포함되지 않습니다. 기존 예제 API는 공개 
 
 
 ## 제품과 핵심 로직을 병행하기
+
+제품 요구 문장은 `project.json`의 최상위 `requirements`에서 ID별로 한 번 정의합니다. 각 작업은 `feature.requirements`에 해당 ID와 자기 검사 ID만 연결합니다. 기존 작업별 문장을 담은 정의도 읽을 수 있습니다.
 
 [실행 예제](examples/agile_product/README.md)는 공통 입출력 계약을 두고 제품 저장·조회와 금액 계산·엣지케이스를 별도 작업으로 진행한다. `project init/claim/packet`으로 작업 경계를 공유하고, `project question`의 실제 답변으로 영향받는 작업만 보강한다. 구현 에이전트는 현재 Codex 위임 수단을 사용하며 CLI가 모델을 자동 생성하지는 않는다. `project test --jobs 2`는 독립 검사를 병행한 뒤 의존 통합 검사를 실행한다.
 

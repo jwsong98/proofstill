@@ -55,8 +55,8 @@ test('file capture preserves raw lines, rejects symlink escape, remains immutabl
   assert.equal(captured.status, 201); assert.equal(captured.data.evidence.content, 'two\r\n'); assert.equal(captured.data.evidence.source.contextBefore, 'one\r\n');
   await writeFile(resolve(root, 'requirements.md'), 'changed');
   assert.equal((await req(`/projects/${project.id}/graph`)).data.nodes[0].evidence.content, 'two\r\n');
-  assert.equal((await req(`/projects/${project.id}/nodes/${captured.data.id}`, 'PATCH', { body: 'altered' })).status, 409);
-  assert.equal((await req(`/projects/${project.id}/nodes/${captured.data.id}`, 'DELETE')).status, 409);
+  assert.equal((await req(`/projects/${project.id}/nodes/${captured.data.id}`, 'PATCH', { body: 'altered' })).status, 405);
+  assert.equal((await req(`/projects/${project.id}/nodes/${captured.data.id}`, 'DELETE')).status, 405);
   await symlink(tmpdir(), resolve(root, 'escape'));
   assert.equal((await req(`/projects/${project.id}/evidence/file`, 'POST', { path: 'escape/no-file' })).status, 400);
   const outside = await mkdtemp(resolve(tmpdir(), 'proofstill-outside-')); t.after(() => rm(outside, { recursive: true, force: true }));
@@ -140,19 +140,19 @@ test('ordinary session approvals are automatically accepted without a pending ga
   assert.equal((await req(`/sessions/${session.id}/requests/91`, 'POST', { decision: 'accept' })).status, 404);
 });
 
-test('AI graph edits cite evidence, cannot assert completion, and can remove a stale relation', async t => {
+test('graph content and relations are read only through API and chat', async t => {
   const { req, project, store, codex } = await setup(t);
-  const source = store.captureEvidence(project.id, { title: 'source', sourceKind: 'file', source: { path: 'a', startLine: 1, endLine: 1 }, content: 'Unchanged source' });
-  const session = (await req(`/projects/${project.id}/sessions`, 'POST', { nodeIds: [source.id] })).data;
-  const call = (id: number, args: any) => codex.emit('request', { id, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: args } });
-  call(1, { nodes: [{ id: 'feature', kind: 'feature', title: 'Feature', body: 'Interpretation', status: 'pending', evidenceIds: [source.id] }], edges: [] });
-  assert.equal(codex.replies.at(-1)!.result.success, true);
-  call(2, { nodes: [{ id: 'feature', kind: 'feature', title: 'Feature', body: 'all passed', status: 'completed', evidenceIds: [source.id] }], edges: [] });
-  assert.equal(codex.replies.at(-1)!.result.success, false); assert.equal(store.getNode(project.id, 'feature').status, 'pending');
-  const edgeId = store.listGraph(project.id).edges[0].id;
-  call(3, { nodes: [], edges: [], deleteEdgeIds: [edgeId] }); assert.equal(store.listGraph(project.id).edges.length, 0);
-  assert.equal(store.getNode(project.id, source.id).evidence!.content, 'Unchanged source');
-  assert.equal((await req(`/projects/${project.id}/nodes/feature`, 'PATCH', { status: 'completed' })).status, 409);
+  const prefix = `/projects/${project.id}`;
+  const node = store.createNode(project.id, { kind: 'feature', title: 'Existing feature' });
+  const session = (await req(`${prefix}/sessions`, 'POST', { nodeIds: [node.id] })).data;
+  assert.equal((await req(`${prefix}/nodes`, 'POST', { kind: 'feature', title: 'New' })).status, 405);
+  assert.equal((await req(`${prefix}/nodes/${node.id}`, 'PATCH', { title: 'Changed' })).status, 405);
+  assert.equal((await req(`${prefix}/nodes/${node.id}`, 'PATCH', { x: 1, y: 2 })).status, 200);
+  assert.equal((await req(`${prefix}/edges`, 'POST', {})).status, 405);
+  assert.equal((await req(`${prefix}/handoff/link`, 'POST', {})).status, 405);
+  codex.emit('request', { id: 1, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: { nodes: [], edges: [] } } });
+  assert.equal(codex.replies.at(-1)!.result.success, false);
+  assert.equal(store.getNode(project.id, node.id).title, 'Existing feature');
 });
 
 test('SSE replay resumes after delivered event ID', async t => {
@@ -341,10 +341,7 @@ test('full-access defaults apply to resumed threads and turns while analysis sta
   const turn = codex.calls.find(c => c.method === 'turn/start')!.params;
   assert.equal(turn.approvalPolicy, 'never'); assert.deepEqual(turn.sandboxPolicy, { type: 'dangerFullAccess' });
   store.captureEvidence(project.id, { title: 'source', sourceKind: 'file', source: { path: 'source.md', startLine: 1, endLine: 1 }, content: 'source' });
-  assert.equal((await req(`/projects/${project.id}/graph/analyze`, 'POST', {})).status, 201);
-  const analysisStart = codex.calls.filter(c => c.method === 'thread/start').at(-1)!.params;
-  assert.equal(analysisStart.sandbox, 'read-only');
-  assert.equal(codex.calls.filter(c => c.method === 'turn/start').at(-1)!.params.sandboxPolicy, undefined);
+  assert.equal((await req(`/projects/${project.id}/graph/analyze`, 'POST', {})).status, 405);
 });
 
 test('unified permission requests grant requested access only for ordinary sessions', async t => {
@@ -363,7 +360,7 @@ test('unified permission requests grant requested access only for ordinary sessi
 test('handoff API keeps legacy records readable and rejects edits', async t => {
   const { req, root, project, store, base } = await setup(t), prefix = `/projects/${project.id}`;
   await writeFile(resolve(root, 'implementation.ts'), 'export const upload = true;');
-  const node = (await req(`${prefix}/nodes`, 'POST', { kind: 'requirement', title: '업로드', body: '입력 파일 보존' })).data;
+  const node = store.createNode(project.id, { kind: 'requirement', title: '업로드', body: '입력 파일 보존' });
   let overview = (await req(`${prefix}/handoff`)).data;
   assert.equal(overview.rows[0].implementation.status, 'unknown');
   const declaration = { source: 'console', taskId: node.id, requirementId: node.id, implementation: { status: 'implemented', paths: ['implementation.ts'], remaining: '', note: '입력 저장' } };

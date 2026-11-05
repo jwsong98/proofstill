@@ -14,7 +14,6 @@ async function body(request: IncomingMessage): Promise<any> {
   try { const value = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(); return value; }
   catch { throw new StoreError('Expected a JSON object'); }
 }
-function forbidCompletion(input: any) { if (input.status === 'completed') throw new StoreError('Feature completion must be established by recorded scenario/test checks, not a graph edit', 409); }
 
 export function createApi(options: { store: Store; codex: CodexTransport; distDir?: string }) {
   const service = new ConsoleService(options.store, options.codex), store = options.store, handoff = new HandoffService(store);
@@ -54,7 +53,7 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         if (id) store.getProject(id);
         if (sub === 'handoff') {
           if (!subId && method === 'GET') { json(response, 200, await handoff.snapshot(id)); return; }
-          if (subId === 'link' && method === 'POST') { const input = await body(request); json(response, 200, await handoff.link(id, input.taskId, input.requirementId)); return; }
+          if (subId === 'link' && method === 'POST') { throw new StoreError('Graph records are read only', 405); }
           if (subId === 'implementation' && method === 'PUT') { throw new StoreError('Edit requirements and checks in the project files', 405); }
           if (subId === 'code' && method === 'GET') { json(response, 200, await handoff.code(id, url.searchParams.get('path') || '')); return; }
           if (subId === 'export' && method === 'GET') {
@@ -69,7 +68,7 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         }
         if (sub === 'files' && method === 'GET') { json(response, 200, await service.files(id)); return; }
         if (sub === 'graph' && !subId && method === 'GET') { json(response, 200, store.listGraph(id, url.searchParams.get('history') === '1')); return; }
-        if (sub === 'graph' && subId === 'analyze' && method === 'POST') { json(response, 201, await service.analyzeGraph(id, await body(request))); return; }
+        if (sub === 'graph' && subId === 'analyze' && method === 'POST') { throw new StoreError('Graph records are read only', 405); }
         if (sub === 'features' && subId && path[5] === 'checks') {
           if (method === 'GET') { json(response, 200, store.featureAcceptance(id, subId)); return; }
           if (method === 'POST') { throw new StoreError('Edit requirements and checks in the project files', 405); }
@@ -79,13 +78,13 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
           if (method === 'POST') { throw new StoreError('Edit requirements and checks in the project files', 405); }
         }
         if (sub === 'nodes') {
-          if (!subId && method === 'POST') { const input = await body(request); forbidCompletion(input); json(response, 201, store.createNode(id, input)); return; }
-          if (subId && method === 'PATCH') { const input = await body(request); forbidCompletion(input); json(response, 200, store.updateNode(id, subId, input)); return; }
-          if (subId && method === 'DELETE') { store.deleteNode(id, subId); json(response, 200, { ok: true }); return; }
+          if (!subId && method === 'POST') { throw new StoreError('Graph records are read only', 405); }
+          if (subId && method === 'PATCH') { const input = await body(request); if (!input || !Number.isFinite(input.x) || !Number.isFinite(input.y) || Object.keys(input).some(key => key !== 'x' && key !== 'y')) throw new StoreError('Only graph layout can be changed', 405); json(response, 200, store.updateNode(id, subId, input)); return; }
+          if (subId && method === 'DELETE') { throw new StoreError('Graph records are read only', 405); }
         }
         if (sub === 'edges') {
-          if (!subId && method === 'POST') { json(response, 201, store.createEdge(id, await body(request))); return; }
-          if (subId && method === 'DELETE') { store.deleteEdge(id, subId); json(response, 200, { ok: true }); return; }
+          if (!subId && method === 'POST') { throw new StoreError('Graph records are read only', 405); }
+          if (subId && method === 'DELETE') { throw new StoreError('Graph records are read only', 405); }
         }
         if (sub === 'evidence' && subId === 'file' && method === 'POST') { json(response, 201, await service.captureFile(id, await body(request))); return; }
         if (sub === 'evidence' && subId === 'message' && method === 'POST') { json(response, 201, service.captureMessage(id, await body(request))); return; }

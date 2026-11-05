@@ -13,9 +13,8 @@ export function HandoffView({ projectId, graph, initialNodeId, onGraphSelect }: 
   const [data, setData] = useState<HandoffSnapshot | null>(null), [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialNodeId ? `console:${initialNodeId}` : null), [filter, setFilter] = useState('all'), [search, setSearch] = useState('');
   const [scope, setScope] = useState('current');
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false), [loading, setLoading] = useState(false);
-  const request = useRef<AbortController | null>(null), alive = useRef(true), savingRef = useRef(saving); savingRef.current = saving;
+  const [loading, setLoading] = useState(false);
+  const request = useRef<AbortController | null>(null), alive = useRef(true);
   const refresh = useCallback(async () => {
     request.current?.abort(); const controller = new AbortController(); request.current = controller;
     setLoading(true);
@@ -24,7 +23,7 @@ export function HandoffView({ projectId, graph, initialNodeId, onGraphSelect }: 
     finally { if (!controller.signal.aborted && alive.current) setLoading(false); }
   }, [projectId]);
   useEffect(() => {
-    alive.current = true; void refresh(); const timer = setInterval(() => { if (!document.hidden && !savingRef.current) void refresh(); }, 15000);
+    alive.current = true; void refresh(); const timer = setInterval(() => { if (!document.hidden) void refresh(); }, 15000);
     return () => { alive.current = false; clearInterval(timer); request.current?.abort(); };
   }, [refresh]);
   const rows = data?.rows ?? [], selected = rows.find(r => r.id === selectedId && (scope === 'all' || (scope === 'history' ? r.historical : !r.historical))) ?? (selectedId ? rows.find(r => r.nodeId === initialNodeId && (scope === 'all' || (scope === 'history' ? r.historical : !r.historical))) : undefined);
@@ -40,13 +39,13 @@ export function HandoffView({ projectId, graph, initialNodeId, onGraphSelect }: 
   const automaticDetails = automaticChecks.filter(c => !selected?.verification.criteriaChecks?.some(negative => negative.id === c.id));
   const usageChecks = selected?.verification.checks.filter(c => c.kind === 'scenario' || c.surface === 'browser') ?? [];
   return <div className="handoff-view">
-    <div className="handoff-toolbar"><span className="small">{scopedRows.length}개 항목 · 목록에서 확인할 항목을 고르세요.</span><div className="row"><button className="button" title="최근 구현 기록과 실제 검사 결과를 다시 읽어요." disabled={loading || saving} onClick={() => void refresh()}>{loading ? '조회 중' : '새로고침'}</button><a className="button" href={api.handoffUrl(projectId)} download>근거 포함 인계 파일 받기</a></div></div>
-    <ErrorNotice message={saveError || (error && data ? '최신 상태를 읽지 못했어요. 아래는 이전 조회 자료예요. 지금은 통과로 판단하지 마세요. ' + error : error)} />{data?.errors.map((e, i) => <div className="error-notice" role="alert" key={i}>{e.taskId}: {e.message} 이 범위는 현황에 포함되지 않았어요.</div>)}
+    <div className="handoff-toolbar"><span className="small">{scopedRows.length}개 항목 · 목록에서 확인할 항목을 고르세요.</span><div className="row"><button className="button" title="최근 구현 기록과 실제 검사 결과를 다시 읽어요." disabled={loading} onClick={() => void refresh()}>{loading ? '조회 중' : '새로고침'}</button><a className="button" href={api.handoffUrl(projectId)} download>근거 포함 인계 파일 받기</a></div></div>
+    <ErrorNotice message={(error && data ? '최신 상태를 읽지 못했어요. 아래는 이전 조회 자료예요. 지금은 통과로 판단하지 마세요. ' + error : error)} />{data?.errors.map((e, i) => <div className="error-notice" role="alert" key={i}>{e.taskId}: {e.message} 이 범위는 현황에 포함되지 않았어요.</div>)}
     {!data && loading ? <Loading /> : <div className="handoff-workspace"><section className="handoff-list" aria-label="구현·검증 현황">
-      <div className="handoff-filters"><select aria-label="목록 범위" value={scope} disabled={saving} onChange={e => { setScope(e.target.value); setSelectedId(null); setSaveError(null); }}><option value="current">현재 기능</option><option value="history">이전 작업</option><option value="all">전체 기록</option></select><input aria-label="요구 검색" placeholder="이름으로 찾기 (선택)" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="현황 필터" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">전체</option><option value="remaining">남은 구현</option><option value="verification">검증 필요</option><option value="failed">실패 발견</option></select></div>
+      <div className="handoff-filters"><select aria-label="목록 범위" value={scope} onChange={e => { setScope(e.target.value); setSelectedId(null); }}><option value="current">현재 기능</option><option value="history">이전 작업</option><option value="all">전체 기록</option></select><input aria-label="요구 검색" placeholder="이름으로 찾기 (선택)" value={search} onChange={e => setSearch(e.target.value)} /><select aria-label="현황 필터" value={filter} onChange={e => setFilter(e.target.value)}><option value="all">전체</option><option value="remaining">남은 구현</option><option value="verification">검증 필요</option><option value="failed">실패 발견</option></select></div>
       {!rows.length ? <div className="empty-page"><h2>아직 요구·기능이 없어요.</h2><p>프로젝트 파일에서 하네스 작업을 등록하면 여기에 표시돼요.</p><p className="small">기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.</p></div> : <><ul className="handoff-flow-index">{[...groups].map(([group, groupRows]) => <li key={group}>
         <h3>{group}</h3><ul>{groupRows.map(row => <li key={row.id}>
-          <button aria-pressed={selected?.id === row.id} disabled={saving} onClick={() => { setSelectedId(row.id); setSaveError(null); }}>
+          <button aria-pressed={selected?.id === row.id} onClick={() => { setSelectedId(row.id); }}>
             <strong>{row.title}</strong><small>{decisionLabel(row, !error)}</small>
           </button>
         </li>)}</ul>
@@ -57,7 +56,7 @@ export function HandoffView({ projectId, graph, initialNodeId, onGraphSelect }: 
         <RequirementDecision row={selected} currentRead={!error} />
         <details className="handoff-full-detail"><summary>판정 근거</summary>
         <RequirementContext row={selected} />
-        {!selected.nodeId && selected.source === 'harness' && <button className="text-button" disabled={saving} onClick={() => { setSaving(true); void api.linkHarnessRequirement(projectId, selected.taskId, selected.requirementId).then(node => { if (alive.current) onGraphSelect(node.id); }).catch(e => { if (alive.current) setSaveError(errorText(e)); }).finally(() => { if (alive.current) setSaving(false); }); }}>관계 그래프에 연결하기</button>}{selected.nodeId && <button className="text-button" onClick={() => onGraphSelect(selected.nodeId!)}>관계 그래프에서 보기</button>}
+        {selected.nodeId && <button className="text-button" onClick={() => onGraphSelect(selected.nodeId!)}>관계 그래프에서 보기</button>}
         <HumanConfirmation key={'human-'+selected.id} row={selected} />
         <details><summary>요구 조건</summary><p>{selected.description || selected.origin}</p></details>
         <section><h3>구현 · {implementationLabels[selected.implementation.status]}</h3><p>{selected.implementation.note || '구현 설명 미기록'}</p><p>다음 할 일: {selected.implementation.remaining || (selected.implementation.status === 'implemented' ? '구현 기록상 남은 범위 없음 · 검사·리뷰 상태를 확인해 주세요.' : '미기록')}</p>{selected.implementation.paths.map(path => <CodeEvidence key={path} projectId={projectId} path={path} />)}</section>
