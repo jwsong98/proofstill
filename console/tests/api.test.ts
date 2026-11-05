@@ -140,7 +140,7 @@ test('ordinary session approvals are automatically accepted without a pending ga
   assert.equal((await req(`/sessions/${session.id}/requests/91`, 'POST', { decision: 'accept' })).status, 404);
 });
 
-test('graph content and relations are read only through API and chat', async t => {
+test('manual graph edits are blocked while Codex can update evidence-backed interpretations', async t => {
   const { req, project, store, codex } = await setup(t);
   const prefix = `/projects/${project.id}`;
   const node = store.createNode(project.id, { kind: 'feature', title: 'Existing feature' });
@@ -150,9 +150,23 @@ test('graph content and relations are read only through API and chat', async t =
   assert.equal((await req(`${prefix}/nodes/${node.id}`, 'PATCH', { x: 1, y: 2 })).status, 200);
   assert.equal((await req(`${prefix}/edges`, 'POST', {})).status, 405);
   assert.equal((await req(`${prefix}/handoff/link`, 'POST', {})).status, 405);
-  codex.emit('request', { id: 1, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: { nodes: [], edges: [] } } });
+  const tools = codex.calls.find(call => call.method === 'thread/start')!.params.dynamicTools;
+  assert.ok(tools.some((tool: { name: string }) => tool.name === 'proofstill_graph'));
+  const source = store.captureEvidence(project.id, { title: 'Source', sourceKind: 'file', source: { path: 'a', startLine: 1, endLine: 1 }, content: 'Original' });
+  const interpretation = { id: node.id, kind: 'feature', title: 'Interpreted feature', body: 'Cited change', status: 'pending', evidenceIds: [source.id] };
+  const call = (id: number, args: object) => codex.emit('request', { id, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: args } });
+  call(1, { nodes: [interpretation], edges: [] });
+  assert.equal(codex.replies.at(-1)!.result.success, true);
+  assert.equal(store.getNode(project.id, node.id).title, interpretation.title);
+  const [edge] = store.listGraph(project.id).edges;
+  assert.equal((await req(`${prefix}/edges/${edge.id}`, 'DELETE')).status, 405);
+  call(2, { nodes: [{ ...interpretation, status: 'completed' }], edges: [], deleteEdgeIds: [edge.id] });
   assert.equal(codex.replies.at(-1)!.result.success, false);
-  assert.equal(store.getNode(project.id, node.id).title, 'Existing feature');
+  assert.equal(store.listGraph(project.id).edges.length, 1);
+  call(3, { nodes: [], edges: [], deleteEdgeIds: [edge.id] });
+  assert.equal(codex.replies.at(-1)!.result.success, true);
+  assert.equal(store.listGraph(project.id).edges.length, 0);
+  assert.equal(store.getNode(project.id, source.id).evidence!.content, 'Original');
 });
 
 test('SSE replay resumes after delivered event ID', async t => {
