@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
+import { layoutFocusedReview, highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -112,4 +112,16 @@ test('기능과 작업은 왼쪽 근거를 강조하고 요구는 오른쪽 작�
   assert.deepEqual(highlightedReviewLinks({ nodes, edges }, 't').nodeIds, new Set(['r', 'source']));
   assert.equal(highlightedReviewLinks({ nodes, edges }, 'r').edgeIds.size, 0);
   assert.equal(highlightedReviewLinks({ nodes, edges }, null).edgeIds.size, 0);
+});
+
+test('포커스는 선택 기능을 중심으로 근거와 작업을 두 가지로 배치한다', () => {
+  const graph = { nodes: [node('e1', 'evidence'), node('e2', 'evidence'), node('r', 'requirement'),
+    node('f', 'feature'), node('t', 'task')], edges: [
+      edge('e1', 'f', 'related'), edge('e2', 'f', 'related'), edge('r', 'f', 'related'), edge('f', 't', 'precedes'),
+    ] };
+  const { positions } = layoutFocusedReview(graph, 'f');
+  assert.equal(new Set([...positions.values()].map(p => p.x + ',' + p.y)).size, 5);
+  for (const id of ['e1', 'e2', 'r']) assert.ok(positions.get(id)!.x < positions.get('f')!.x);
+  assert.ok(positions.get('t')!.x > positions.get('f')!.x);
+  assert.equal(positions.get('t')!.y, positions.get('f')!.y);
 });

@@ -22,6 +22,7 @@ function DotNode({ data, selected }: NodeProps<Dot>) {
 const nodeTypes = { dot: DotNode };
 type GraphCanvasProps = {
   graph: Graph; currentNodeIds: Set<string>; selectedId: string | null; onSelect: (id: string) => void; onMove: (id: string, x: number, y: number) => void;
+  onRestoreSelection: (id: string | null) => void;
   onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 };
 export function GraphCanvas(props: GraphCanvasProps) {

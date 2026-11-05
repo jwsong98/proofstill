@@ -88,6 +88,24 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
+export function layoutFocusedReview(graph: Graph, centerId: string) {
+  const center = graph.nodes.find(node => node.id === centerId);
+  const positions = new Map<string, { x: number; y: number }>();
+  if (!center) return { positions, branchEdges: new Set<string>() };
+  const left: GraphNode[] = [], right: GraphNode[] = [];
+  const others = graph.nodes.filter(node => node.id !== centerId)
+    .sort((a, b) => (reviewTime(a).at ?? Infinity) - (reviewTime(b).at ?? Infinity) || a.id.localeCompare(b.id));
+  for (const node of others) (stageOf[node.kind] <= stageOf[center.kind] ? left : right).push(node);
+  const height = Math.max(left.length, right.length, 1);
+  positions.set(centerId, { x: columnStep, y: (height - 1) * rowStep / 2 });
+  for (const [column, entries] of [[0, left], [2, right]] as const) {
+    entries.forEach((node, index) => positions.set(node.id, {
+      x: column * columnStep, y: ((height - entries.length) / 2 + index) * rowStep,
+    }));
+  }
+  return { positions, branchEdges: new Set(graph.edges.map(edge => edge.id)) };
+}
+
 export function highlightedReviewLinks(graph: Graph, selectedId: string | null) {
   const selected = graph.nodes.find(node => node.id === selectedId);
   const nodeIds = new Set<string>(), edgeIds = new Set<string>();
