@@ -140,7 +140,7 @@ export default function App() {
       currentNodeIds.has(node.id) || node.kind === 'decision' || node.kind === 'task'
     ));
     const ids = new Set(nodes.map(node => node.id));
-    return { nodes, edges: boardSource.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
+    return { nodes, clouds: boardSource.clouds, edges: boardSource.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
   }, [boardSource, currentNodeIds]);
   const selected = (view === 'graph' ? boardGraph : graph).nodes.find(node => node.id === selectedId) ?? null;
   const readProjects = useCallback(async () => {

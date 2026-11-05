@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
+import { collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -93,4 +93,14 @@ test('대표 연결이 없는 사용자 발언도 작업 가지 밑으로 보내
   ]);
   assert.ok(positions.get('opinion')!.y < positions.get('requirement')!.y);
   assert.equal(positions.get('requirement')!.y, positions.get('task')!.y);
+});
+
+test('클라우드는 주변 항목만 접고 다른 기능과 연결된 항목을 유지한다', () => {
+  const nodes = [node('rep', 'decision'), node('task', 'task'), node('shared', 'task'),
+    node('external', 'feature'), node('requirement', 'requirement')];
+  const graph = { nodes, edges: [edge('rep', 'task', 'related'), edge('shared', 'external', 'related')],
+    clouds: [{ representativeId: 'rep', memberIds: ['task', 'shared', 'requirement'] }] };
+  assert.deepEqual([...collapsibleClouds(graph, nodes)], [['rep', ['task']]]);
+  assert.equal(collapsibleClouds(graph, nodes.filter(item => item.id !== 'rep')).size, 0);
+  assert.deepEqual(graph.clouds[0].memberIds, ['task', 'shared', 'requirement']);
 });

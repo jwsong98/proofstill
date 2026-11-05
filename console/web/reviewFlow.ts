@@ -88,6 +88,24 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
+export function collapsibleClouds(graph: Graph, visibleNodes: GraphNode[]) {
+  const visible = new Set(visibleNodes.map(node => node.id));
+  const structural = new Set(graph.nodes.filter(node => ['decision', 'feature', 'requirement'].includes(node.kind)).map(node => node.id));
+  const groups = new Map<string, string[]>();
+  for (const { representativeId, memberIds } of graph.clouds ?? []) {
+    if (!visible.has(representativeId)) continue;
+    const group = new Set([representativeId, ...memberIds]);
+    const protectedIds = new Set<string>();
+    for (const { sourceId, targetId } of graph.edges) {
+      if (structural.has(sourceId) && !group.has(sourceId)) protectedIds.add(targetId);
+      if (structural.has(targetId) && !group.has(targetId)) protectedIds.add(sourceId);
+    }
+    const members = memberIds.filter(id => visible.has(id) && !structural.has(id) && !protectedIds.has(id));
+    if (members.length) groups.set(representativeId, members);
+  }
+  return groups;
+}
+
 export function reviewTitle(node: GraphNode, limit = 120): string {
   if (node.evidence?.sourceKind !== 'message') return node.title;
   const excerpt = node.evidence.content.replace(/\s+/g, ' ').trim();
