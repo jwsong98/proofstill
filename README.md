@@ -143,7 +143,7 @@ flow는 하나이며 별도 session 이름이나 ID를 선택하지 않습니다
 
 기본 서버는 매번 SQLite :memory:에 같은 Alembic migration과 `seed/tasks.json`을 적용합니다. 외부 DATABASE_URL을 지정한 서버는 최신 스키마인지 확인하며 자동으로 migration/seed를 수행하지 않습니다. 먼저 db:migrate와 db:seed를 실행합니다. test:unit/integration/flow/fast와 db:check는 외부 DB 설정을 무시합니다.
 
-test:e2e는 메모리 DB의 unit/integration/flow를 먼저 실행하고 통과한 경우에만 컨테이너 단계로 진행합니다. E2E는 실행 중인 Docker가 필요합니다. Testcontainers가 임시 PostgreSQL을 만들고 migration·seed, 실제 API 사용자 흐름, SQL 행 일치와 서버 재시작 지속성까지 확인한 뒤 컨테이너를 제거합니다. Docker 오류는 실패이며 메모리 DB로 대체하거나 건너뛰지 않습니다. 성공 결과는 `.proofstill/test-results/e2e.json`에 남고, 다음 E2E 시작 시 오래된 결과를 제거합니다. 브라우저 클릭은 이 API E2E의 범위에 포함하지 않습니다.
+test:e2e는 메모리 DB의 unit/integration/flow를 먼저 실행하고 통과한 경우에만 컨테이너 단계로 진행합니다. E2E는 실행 중인 Docker가 필요합니다. Testcontainers가 임시 PostgreSQL을 만들고 migration·seed, 실제 API 사용자 흐름, SQL 행 일치와 서버 재시작 지속성까지 확인한 뒤 컨테이너를 제거합니다. Docker 오류는 실패이며 메모리 DB로 대체하거나 건너뛰지 않습니다. 성공 결과는 `.proofstill/test-results/e2e.json`에 남습니다. `flow`에는 API Tracker의 단계별 목적·기대 상태와 실제 요청·응답·ID 연결이 포함됩니다., 다음 E2E 시작 시 오래된 결과를 제거합니다. 브라우저 클릭은 이 API E2E의 범위에 포함하지 않습니다.
 
 구성 근거: [Alembic 연결 공유](https://alembic.sqlalchemy.org/en/latest/cookbook.html#sharing-a-connection-across-one-or-more-programmatic-migration-commands), [Testcontainers PostgreSQL](https://testcontainers-python.readthedocs.io/en/latest/).
 
@@ -151,7 +151,7 @@ test:e2e는 메모리 DB의 unit/integration/flow를 먼저 실행하고 통과�
 
 `init <기능 정의 JSON>` → 구현 및 `test <ID>` → `review <ID>` → `report <ID>` 순서로 진행합니다. test는 기본 Green, review는 기준 적절성과 구현을 함께 보는 최종 독립 리뷰입니다. 사전 criteria 리뷰와 Red 검사는 선택 사항입니다. `test <ID>`는 입력과 증거가 그대로인 Green을 `reused: true`로 반환하고, 변경·실패·미실행인 검사만 실행합니다. 환경이 바뀌었거나 직접 재현할 때는 `test <ID> --force`를 사용합니다.
 
-각 검사의 `files`에는 실행 스크립트·fixture·기대값을 넣고, 선택 항목인 `sources`에는 실제로 읽는 코드·설정·공유 의존성을 지정합니다. `sources`가 없으면 작업 전체 소스가 검사 입력입니다. 공통 맥락·결정과 고정 계획은 전체에 적용됩니다. 기존 실행 기록은 당시 작업 전체 지문이 일치할 때만 재사용하고, 새 실행부터 검사별 지문을 저장합니다. 독립 검토는 작업 전체의 현재 버전을 판정합니다. `review <ID>`는 입력·근거·실행기 설정이 일치하는 통과 판정을 재사용하고, `review <ID> --force`는 새 판정을 요청합니다. 새 세션은 현재 Green 영수증을 독립적으로 대조하고 부족한 근거만 추가로 확인합니다. 판정 진행 이벤트가 30초 동안 없으면 종료하고 한 번 재시도합니다. 실행 중인 명령에는 기존 전체 시간 한도를 적용합니다. 시도별 시간·종료 원인·기록된 토큰은 `attempts.json`에서 확인할 수 있습니다.
+각 검사의 `files`에는 실행 스크립트·fixture·기대값을 넣고, 선택 항목인 `sources`에는 실제로 읽는 코드·설정·공유 의존성을 지정합니다. `sources`가 없으면 작업 전체 소스가 검사 입력입니다. 공통 맥락·결정과 고정 계획은 전체에 적용됩니다. 기존 실행 기록은 당시 작업 전체 지문이 일치할 때만 재사용하고, 새 실행부터 검사별 지문을 저장합니다. 독립 검토는 작업 전체의 현재 버전을 판정합니다. `review <ID>`는 입력·근거·실행기 설정이 일치하는 통과 판정을 재사용하고, `review <ID> --force`는 새 판정을 요청합니다. 새 세션은 현재 Green 영수증을 독립적으로 대조하고 부족한 근거만 추가로 확인합니다. 리뷰의 기본 전체 제한은 300초입니다. 무출력 제한과 재시도는 명시한 경우에만 적용합니다. 시도별 시간·종료 원인·기록된 토큰은 `attempts.json`에서 확인할 수 있습니다.
 
 리뷰는 원본 프로젝트를 읽고 대상 경로·해시만 보존합니다. 코드 복사본을 만들지 않으며, 리뷰 중 담당 소스나 테스트가 바뀌면 판정을 무효화합니다. 같은 작업 ID의 명령은 동시에 쓰지 못하게 잠그고, 서로 다른 작업은 담당 sources와 공유 의존성 범위로 검사합니다.
 
