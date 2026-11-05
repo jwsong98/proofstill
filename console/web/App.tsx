@@ -145,7 +145,7 @@ export default function App() {
     const ids = new Set(nodes.map(node => node.id));
     return { nodes, clouds: boardSource.clouds, edges: boardSource.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
   }, [boardSource, currentNodeIds]);
-  const selected = (view === 'graph' ? boardGraph : graph).nodes.find(node => node.id === selectedId) ?? null;
+  const selected = [...boardGraph.nodes, ...graph.nodes].find(node => node.id === selectedId) ?? null;
   const readProjects = useCallback(async () => {
     const list = await api.projects(); setProjects(list);
     if (!projectId && list.length) setProjectId(list.find(item => item.id === localStorage.getItem('proofstill:project'))?.id ?? list[0].id);
@@ -250,11 +250,35 @@ export default function App() {
         {project && view === 'graph' && <div className="toolbar"><button className="button" disabled={busy} onClick={() => { setError(null); setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}><Icon name="file-text" size={16} />근거 가져오기</button></div>}
       </header>
       {error && !modal && <div className="global-error"><ErrorNotice message={error} /><button className="icon-button" aria-label="오류 닫기" onClick={() => setError(null)}><Icon name="x" size={16} /></button></div>}
-      {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className={'workspace' + (view === 'session' || view === 'handoff' || !selected ? ' session-workspace' : selected?.evidence || selected?.execution || citedEvidence.length > 0 ? ' source-reading' : '')} style={detailWidth === null ? undefined : { '--detail-width': `${detailWidth}%` } as React.CSSProperties}><section className="center-panel">
-        {view === 'handoff' && <HandoffView key={projectId} projectId={projectId} graph={graph} initialNodeId={handoffNodeId} onGraphSelect={id => { const targetProject = projectId; void refreshGraph().then(data => { if (currentProject.current === targetProject) choose(id, data); }).catch(error => setError(errorText(error))); }} />}
-        {view === 'graph' && <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능</label></div>
+      {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className="persistent-workspace" style={detailWidth === null ? undefined : { '--detail-width': `${detailWidth}%` } as React.CSSProperties}>
+      <section className="center-panel graph-side-panel" aria-label="상시 관계 그래프">
+        <div className="row graph-side-heading"><strong>관계 그래프</strong>{selected && view !== 'graph' && <button className="text-button" onClick={() => setView('graph')}>선택 항목 상세 보기</button>}</div>
+        <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능</label></div>
           <div className="node-filters" role="group" aria-label="노드 종류 표시">{boardKinds.map(kind => <button key={kind} className="node-filter" aria-pressed={!hiddenKinds.has(kind)} aria-label={`${nodeLabels[kind]} 노드 표시`} onClick={() => setHiddenKinds(current => { const next = new Set(current); if (next.has(kind)) next.delete(kind); else next.add(kind); return next; })}>{nodeLabels[kind]}<span>{boardGraph.nodes.filter(node => node.kind === kind).length}</span></button>)}{hiddenKinds.size > 0 && <button className="text-button" onClick={() => setHiddenKinds(new Set())}>전체 표시</button>}</div>
-          {boardGraph.nodes.length ? <GraphCanvas onRestoreSelection={setSelectedId} key={projectId} graph={boardGraph} currentNodeIds={currentNodeIds} selectedId={selectedId} onSelect={choose} onlyIncomplete={onlyIncomplete} hiddenKinds={hiddenKinds} onShowAll={() => { setHiddenKinds(new Set()); setOnlyIncomplete(false); }} onMove={(id, x, y) => void perform(async () => { await api.updateNode(projectId, id, { x, y }); await refreshGraph(); })} /> : <div className="empty-page"><Icon name="share-network" size={32} /><h2>아직 연결된 자료가 없어요.</h2><p>가져온 근거와 기록된 관계를 여기에서 확인해요.</p><button className="text-button" onClick={() => { setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}>문서 근거 가져오기<Icon name="arrow-right" /></button></div>}</>}
+          {boardGraph.nodes.length ? <GraphCanvas onRestoreSelection={setSelectedId} key={projectId} graph={boardGraph} currentNodeIds={currentNodeIds} selectedId={selectedId} onSelect={setSelectedId} onlyIncomplete={onlyIncomplete} hiddenKinds={hiddenKinds} onShowAll={() => { setHiddenKinds(new Set()); setOnlyIncomplete(false); }} onMove={(id, x, y) => void perform(async () => { await api.updateNode(projectId, id, { x, y }); await refreshGraph(); })} /> : <div className="empty-page"><Icon name="share-network" size={32} /><h2>아직 연결된 자료가 없어요.</h2><p>가져온 근거와 기록된 관계를 여기에서 확인해요.</p><button className="text-button" onClick={() => { setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}>문서 근거 가져오기<Icon name="arrow-right" /></button></div>}</>
+      </section><section className="persistent-content">
+        <div className="detail-resize" role="separator" aria-label="상세 패널 너비" aria-orientation="vertical"
+          aria-valuemin={25} aria-valuemax={70} aria-valuenow={detailWidth ?? 55} tabIndex={0}
+          onPointerDown={event => {
+            if (event.button === 0) event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={event => {
+            const handle = event.currentTarget;
+            if (!handle.hasPointerCapture(event.pointerId)) return;
+            const bounds = handle.closest('.persistent-workspace')!.getBoundingClientRect();
+            if (bounds.width) resizeDetail((bounds.right - event.clientX) / bounds.width * 100);
+          }}
+          onKeyDown={event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const width = detailWidth ?? 55;
+            resizeDetail(width + (event.key === 'ArrowLeft' ? 5 : -5));
+          }} />
+
+        <div className={'workspace content-workspace' + (view === 'graph' ? ' show-node-detail' : '')}><section className="center-panel">
+        {view === 'handoff' && <HandoffView key={projectId} projectId={projectId} graph={graph} initialNodeId={handoffNodeId} onGraphSelect={id => { const targetProject = projectId; void refreshGraph().then(data => { if (currentProject.current === targetProject) choose(id, data); }).catch(error => setError(errorText(error))); }} />}
+
+        {view === 'graph' && !selected && <div className="empty-page"><p>그래프에서 노드를 선택하면 상세 내용을 볼 수 있어요.</p></div>}
         {view === 'session' && (activeSessionId ? <SessionChat key={`${projectId}:${activeSessionId}`} sessionId={activeSessionId} messageTarget={messageTarget} onActivity={() => void loadSessions()} onGraphUpdated={() => void refreshGraph().catch(error => setError(errorText(error)))} onCapture={captureMessage} onDetail={detail => { if (currentProject.current === detail.session.projectId && currentSession.current === detail.session.id) setSessionDetail(detail); }} renderContext={session => session.projectId === project.id ? <SessionContext key={`${project.id}:${session.id}:${JSON.stringify(session.contextNodeIds)}`} project={project} session={session} onSelect={choose} onOpenOriginal={openOriginal} /> : null} /> : <div className="empty-page"><p>Codex 세션 목록에서 대화를 선택해 주세요.</p></div>)}
         {view === 'results' && <div className="results-view"><div className="result-summary" aria-label="실행 결과 요약">
           <div><span>전체</span><strong>{resultCounts.all}</strong></div><div><span>통과</span><strong className="success-text">{resultCounts.passed}</strong></div><div><span>실패</span><strong className="danger-text">{resultCounts.failed}</strong></div><div><span>확인 필요</span><strong>{resultCounts.other}</strong></div>
@@ -263,24 +287,7 @@ export default function App() {
             {!results.length && <div className="empty-page"><Icon name="check-circle" size={32} /><h2>아직 기록된 실행 결과가 없어요.</h2><p>Codex가 실제 명령이나 API 요청을 실행하면 관찰한 결과가 여기에 시간순으로 쌓여요.</p></div>}
             {!!results.length && !visibleResults.length && <div className="empty-page compact"><p>이 상태에 해당하는 실행 결과가 없어요.</p><button className="text-button" onClick={() => setResultFilter('all')}>전체 결과 보기</button></div>}
           </div></div>}
-      </section>{view !== 'session' && view !== 'handoff' && selected && <aside className="detail-panel" aria-label="선택 항목 상세">
-        <div className="detail-resize" role="separator" aria-label="상세 패널 너비" aria-orientation="vertical"
-          aria-valuemin={25} aria-valuemax={70} aria-valuenow={detailWidth ?? (selected.evidence || selected.execution ? 58 : 40)} tabIndex={0}
-          onPointerDown={event => {
-            if (event.button === 0) event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerMove={event => {
-            const handle = event.currentTarget;
-            if (!handle.hasPointerCapture(event.pointerId)) return;
-            const bounds = handle.closest('.workspace')!.getBoundingClientRect();
-            if (bounds.width) resizeDetail((bounds.right - event.clientX) / bounds.width * 100);
-          }}
-          onKeyDown={event => {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-            event.preventDefault();
-            const width = detailWidth ?? (selected.evidence || selected.execution ? 58 : 40);
-            resizeDetail(width + (event.key === 'ArrowLeft' ? 5 : -5));
-          }} />
+      </section>{view === 'graph' && selected && <aside className="detail-panel" aria-label="선택 항목 상세">
         <button type="button" className="icon-button" style={{ alignSelf: 'flex-end' }} aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
         {selected.evidence || selected.execution ? <SourcePanel node={selected} onOpenOriginal={openOriginal} /> : <><header className="node-toolbar" aria-label="노드 제목·상태·작업">
           <h2 title={`${nodeLabels[selected.kind]} · ${selected.title}`} aria-label={`${nodeLabels[selected.kind]}: ${selected.title}`}>{selected.title}</h2>
@@ -297,7 +304,7 @@ export default function App() {
         {connectedNodes.map(node => <div className="relation-row" key={node.id}><button className="source-link" onClick={() => choose(node.id)}>{node.title}</button></div>)}
         {!connectedNodes.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}
       </section>}
-      </aside>}</div>}
+      </aside>}</div></section></div>}
     </main></div>
     {modal && <Modal title={modal.kind === 'project' ? '어떤 프로젝트를 등록할까요?' : modal.kind === 'file' ? '어떤 문서를 근거로 보존할까요?' : '어떤 Codex 세션을 가져올까요?'} onClose={() => !busy && setModal(null)}><ErrorNotice message={error} />
       {modal.kind === 'project' && <form onSubmit={event => { const input = fields(event); void perform(async () => { const created = await api.createProject({ name: String(input.name), rootPath: String(input.rootPath) }); const list = await api.projects(); setProjects(list); setProjectId(created.id); setModal(null); }); }}><label>프로젝트 이름<input name="name" required placeholder="프로젝트 이름" /></label><label>로컬 폴더 경로<input name="rootPath" required placeholder="/Users/name/project" /></label><button className="button primary" disabled={busy}>{busy ? '등록 중' : '등록하기'}</button></form>}

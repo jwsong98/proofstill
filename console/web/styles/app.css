@@ -67,3 +67,16 @@
 .workspace.source-reading:has(>.detail-panel){grid-template-columns:minmax(0,1fr) minmax(0,var(--detail-width,58%))}
 .detail-resize{position:absolute;grid-area:1/2;justify-self:start;top:0;bottom:0;width:10px;margin-left:-5px;cursor:col-resize;touch-action:none;z-index:5}
 .detail-resize:is(:hover,:active,:focus-visible){background:color-mix(in srgb,var(--accent) 40%,transparent);outline:none}
+
+.persistent-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,var(--detail-width,55%));position:relative;min-height:0;flex:1}
+.graph-side-panel{border-right:1px solid var(--border)}
+.graph-side-heading{padding:8px 16px;justify-content:space-between;min-height:40px;font-size:13px}
+.persistent-content{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
+.persistent-content>.detail-resize{left:0;grid-area:auto}
+.persistent-content>.content-workspace{display:flex;flex-direction:column;min-width:0;min-height:0;flex:1}
+.content-workspace>.center-panel{flex:1}
+.content-workspace.show-node-detail:has(>.detail-panel)>.center-panel{display:none}
+.content-workspace>.detail-panel{flex:1;border-left:0}
+.persistent-content .handoff-workspace{grid-template-columns:minmax(0,1fr)}
+.persistent-content .handoff-list{max-height:35%;border-bottom:1px solid var(--border)}
+.persistent-content .handoff-detail{border-left:0}
