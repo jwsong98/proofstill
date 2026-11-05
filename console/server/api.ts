@@ -5,6 +5,8 @@ import { ConsoleService, type CodexTransport } from './service.ts';
 import { Store, StoreError } from './store.ts';
 import { HandoffService } from './handoff.ts';
 import { exportHandoff } from './handoffExport.ts';
+import { DagRunner } from './dagRunner.ts';
+import type { DagWorker } from './dagWorker.ts';
 
 function json(response: ServerResponse, status: number, data: unknown) { response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); response.end(JSON.stringify(data)); }
 async function body(request: IncomingMessage): Promise<any> {
@@ -15,12 +17,12 @@ async function body(request: IncomingMessage): Promise<any> {
   catch { throw new StoreError('Expected a JSON object'); }
 }
 
-export function createApi(options: { store: Store; codex: CodexTransport; distDir?: string }) {
+export function createApi(options: { store: Store; codex: CodexTransport; distDir?: string; dagWorker?: DagWorker }) {
   const service = new ConsoleService(options.store, options.codex, () => {
     const address = server.address();
     if (!address || typeof address === 'string') throw new StoreError('Graph tool endpoint is unavailable', 503);
     return `http://127.0.0.1:${address.port}/api/graph-tool`;
-  }), store = options.store, handoff = new HandoffService(store);
+  }), store = options.store, handoff = new HandoffService(store), dag = new DagRunner(store, options.dagWorker);
   service.on('serviceError', error => console.error('Codex event processing failed:', error instanceof Error ? error.message : String(error)));
   const streams = new Set<ServerResponse>();
   const server = createServer(async (request, response) => {
@@ -62,6 +64,16 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         if (!id && method === 'GET') { json(response, 200, store.listProjects()); return; }
         if (!id && method === 'POST') { json(response, 201, await service.createProject(await body(request))); return; }
         if (id) store.getProject(id);
+        if (sub === 'dag') {
+          if (!subId && method === 'GET') { json(response, 200, dag.snapshot(id)); return; }
+          if (subId === 'start' && method === 'POST') { const input = await body(request); json(response, 202, await dag.start(id, input.jobs ?? 2)); return; }
+          if (subId === 'stop' && method === 'POST') { await body(request); dag.stop(id); json(response, 200, { ok: true }); return; }
+          if (subId === 'tasks' && path[5] && method === 'PUT') {
+            if (dag.snapshot(id).run?.status === 'running') throw new StoreError('실행 중에는 작업 설정을 바꿀 수 없습니다.', 409);
+            try { json(response, 200, dag.data.define(id, path[5], await body(request))); }
+            catch (error) { throw new StoreError(error instanceof Error ? error.message : String(error)); } return;
+          }
+        }
         if (sub === 'handoff') {
           if (!subId && method === 'GET') { json(response, 200, await handoff.snapshot(id)); return; }
           if (subId === 'link' && method === 'POST') { throw new StoreError('Graph records are read only', 405); }
@@ -137,5 +149,5 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
       json(response, status, { error: error instanceof Error ? error.message : String(error) });
     }
   });
-  return { server, service, async close() { for (const stream of streams) stream.end(); service.close(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); } };
+  return { server, service, dag, async close() { await dag.close(); for (const stream of streams) stream.end(); service.close(); await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); } };
 }
