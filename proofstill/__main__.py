@@ -111,11 +111,11 @@ def main():
         elif args.command == 'revise':
             print(json.dumps(h.revise(args.feature, args.plan, args.reason, args.source), ensure_ascii=False))
         elif args.command == 'test':
-            result = h.run(args.feature, args.phase, kind=args.kind, module=args.module, reuse=not args.force)
+            result = h.run(args.feature, args.phase, kind=args.kind, module=args.module, reuse=False)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if all(r['accepted'] for r in result) else 1
         elif args.command == 'review':
-            result = h.review(args.feature, args.stage, reuse=not args.force)
+            result = h.review(args.feature, args.stage, reuse=False)
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0 if result['passed'] else 1
         elif args.command == 'status':

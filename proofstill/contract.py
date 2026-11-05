@@ -1,6 +1,6 @@
-import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -21,11 +21,9 @@ def read_json(path):
 
 
 def digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
 
 
-def file_hash(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else 'missing'
 
 
 def project_path(root, value):
@@ -36,20 +34,27 @@ def project_path(root, value):
     return path
 
 
+def git_version(root, paths):
+    """Reference Git history without copying or hashing project contents."""
+    root = Path(root).resolve()
+    names = [str(project_path(root, name).relative_to(root)) for name in paths]
+    def git(*args):
+        result = subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+        return result.stdout.strip() if result.returncode == 0 else None
+    top = git('rev-parse', '--show-toplevel')
+    if not top or not root.is_relative_to(Path(top).resolve()):
+        return {'commit': None, 'status': 'unversioned', 'paths': names}
+    # Use the last commit affecting this scope so unrelated commits do not force reruns.
+    commit = git('log', '-1', '--format=%H', '--', *names)
+    tracked = git('ls-files', '--error-unmatch', '--', *names)
+    dirty = git('status', '--porcelain', '--untracked-files=all', '--', *names)
+    return {'commit': commit or None, 'status': 'committed' if commit and tracked and dirty == '' else 'uncommitted', 'paths': names}
+
+
 def inventory(root, paths):
-    result = {}
-    ignored = {'.git', '.proofstill', '__pycache__', '.pytest_cache', '.review-tmp', 'reports'}
-    for name in paths:
-        path = project_path(root, name)
-        if path.is_dir():
-            result[str(path.relative_to(root)) + '/'] = 'directory'
-            files = (p for p in path.rglob('*') if p.is_file() and not ignored.intersection(p.relative_to(root).parts))
-        else:
-            files = [path]
-        for item in files:
-            resolved = project_path(root, str(item))
-            result[str(item.relative_to(root))] = file_hash(resolved)
-    return result
+    return {'git': git_version(root, paths)}
+
+
 
 
 def validate_check_files(root, check):

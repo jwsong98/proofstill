@@ -77,3 +77,5 @@ test(orders): 중복 결제 방지 조건을 검증한다
 - [LangChain 커밋 이력](https://github.com/langchain-ai/langchain/commits): `fix(core)`·`feat(core)`처럼 분류와 범위를 드러내는 제목.
 - [Spring Boot 팀 관례](https://github.com/spring-projects/spring-boot/wiki/Team-Practices#commit-messages): 짧은 제목, 명령형, 구현 방법보다 무엇을 왜 바꾸는지 설명. type 태그를 필수로 쓰는 프로젝트라는 뜻은 아니다.
 - [FastAPI 커밋 이력](https://github.com/fastapi/fastapi/commits): 이모지 분류와 짧은 동작 중심 제목. 여기서는 분류 목적을 참고하고 텍스트 태그로 통일한다.
+
+- 코드·문서의 변경 기준은 Git 커밋만 사용한다. 검증용 코드 복사·내보내기·별도 checkout/worktree/clone과 별도 소스·내용 해시 기반 버전·게이트를 만들지 않는다. 현재 작업 디렉터리에서 필요한 검사만 수행하고 파일 해시·수정 시각·Git 커밋 비교로 검사·리뷰의 최신성이나 통과를 자동 결정하지 않는다. Git은 버전 기록에만 사용하고, 실행 결과는 관측 시점·검사 범위·한계로 설명한다.

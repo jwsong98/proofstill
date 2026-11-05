@@ -20,8 +20,8 @@ def implementation_basis(h, plan, state, requirement, paths):
     checks = [c for c in plan['checks'] if c['id'] in req['checks']]
     sources = list(paths) + [p for c in checks for p in c.get('sources', h.source_paths(plan))]
     return digest({'checks': [check_basis(plan, state, c) for c in checks],
-                   'files': inventory(h.root, plan['context_files'] + [p for c in checks for p in c['files']]),
-                   'sources': inventory(h.root, sources)})
+                   'files': plan['context_files'] + [p for c in checks for p in c['files']],
+                   'sources': sources})
 
 
 def revise(h, feature, path, reason, source):
@@ -63,5 +63,5 @@ def review_delta(h, plan, state, previous, manifest):
             affected.append(req['id'])
     return {'changed_files': changed, 'focus_requirements': affected,
             'previous_checks': list(prior.values()), 'previous_manifest': str(Path(previous['folder']) / 'manifest.json'),
-            'previous_evidence': previous['evidence_hashes'],
+            'previous_evidence': {'folder': previous['folder']},
             'rule': '변경과 교차 영향을 우선 검토한다. 유지할 판정은 현재 입력과 이전 증거를 확인한다. 연결이 불충분하면 전체 검토한다. 모든 요구를 판정하며 미검증을 자동 통과시키지 않는다.'}

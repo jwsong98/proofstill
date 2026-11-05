@@ -1,6 +1,6 @@
 """Explain acceptance criteria using current executions and independent verdicts."""
 from pathlib import Path
-from .contract import HarnessError, file_hash, read_json, require
+from .contract import HarnessError, read_json, require
 from .trace_check import verify_trace
 
 
@@ -40,7 +40,7 @@ def review_summary(h, plan, state, stage, criteria, source):
     record = state.get('reviews', {}).get(stage)
     if not record:
         return {'status': 'not_run', 'evidence': '독립 기준 검토를 아직 실행하지 않았어요.' if stage == 'criteria' else '독립 구현 검토를 아직 실행하지 않았어요.', 'findings': [], 'limitations': [], 'history': []}
-    current = bool(criteria and record.get('criteria_digest') == criteria and record.get('source_digest') == source
+    current = bool(criteria and record.get('criteria_digest') == criteria
                    and h.review_evidence_current(record, state['developer_session']))
     answer = record.get('answer', {})
     from .reviewer import outcome
@@ -83,7 +83,7 @@ def observations(h, feature, check, run, current):
     if run and current:
         for trace in run.get('traces', []):
             path = Path(trace['path']).resolve()
-            if not path.is_relative_to(h.folder(feature).resolve()) or file_hash(path) != trace.get('sha256'):
+            if not path.is_relative_to(h.folder(feature).resolve()) or not path.is_file():
                 continue
             try:
                 expected = read_json(h.root / check['trace_expectation']) if check.get('trace_expectation') else None

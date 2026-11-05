@@ -68,12 +68,7 @@ def snapshot(h, feature):
     for req in plan['requirements']:
         recorded = state.get('implementations', {}).get(req['id'], {})
         implementation = {key: recorded.get(key, default) for key, default in {'status': 'unknown', 'paths': [], 'remaining': '', 'note': ''}.items()}
-        implementation_current = bool(recorded.get('source_digest') == source and criteria and recorded.get('criteria_digest') == criteria
-                                      and all((h.root / p).exists() for p in implementation['paths'])
-                                      and recorded.get('paths_digest') == digest(inventory(h.root, implementation['paths']))) if recorded.get('source_digest') else None
-        if recorded.get('requirement_digest') and recorded.get('source_digest'):
-            from .revisions import implementation_basis
-            implementation_current = bool(criteria and recorded['requirement_digest'] == implementation_basis(h, plan, state, req['id'], implementation['paths']))
+        implementation_current = None  # Declarations do not establish source freshness.
         issues = []
         if implementation['status'] != 'implemented':
             issues.append('구현 완료 기록이 없습니다. 코드와 남은 범위를 확인하세요.')
@@ -111,7 +106,7 @@ def record_implementation(h, feature, requirement, status, paths, remaining='', 
     require(status != 'partial' or remaining.strip(), '일부 구현에는 남은 범위가 필요합니다')
     state.setdefault('implementations', {})[requirement] = {'status': status, 'paths': paths, 'remaining': remaining, 'note': note,
         'source_digest': h.source_digest(plan), 'criteria_digest': h.criteria_digest(plan, state),
-        'paths_digest': digest(inventory(h.root, paths))}
+        'paths_digest': digest(paths)}
     from .revisions import implementation_basis
     state['implementations'][requirement]['requirement_digest'] = implementation_basis(h, plan, state, requirement, paths)
     # This is an implementation declaration, never a test/review success claim.

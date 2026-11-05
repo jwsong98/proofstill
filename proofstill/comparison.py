@@ -30,7 +30,7 @@ def compare(project, name):
         require(isinstance(command.get('sources'), list) and command['sources'], '비교 구현/검사 소스 경로가 필요합니다')
         paths.extend(command['sources'])
     before = inventory(h.root, paths)
-    require(all(v != 'missing' for v in before.values()), '비교 입력/구현 파일이 없습니다')
+    require(all(project_path(h.root, name).exists() for name in paths), '비교 입력/구현 파일이 없습니다')
     timeout = spec.get('timeout', 10)
     require(type(timeout) in (int, float) and 0 < timeout <= 300, '비교 명령 제한은 0~300초입니다')
     folder = project.folder / 'comparisons' / (name + '-' + uuid.uuid4().hex[:12])
@@ -47,7 +47,7 @@ def compare(project, name):
     for case in cases:
         for candidate in candidates:
             label = case['id'] + '/' + candidate['id']
-            row = {'case': case['id'], 'candidate': candidate['id'], 'input_hash': digest(case['input'])}
+            row = {'case': case['id'], 'candidate': candidate['id'], 'input': case['input']}
             try:
                 output, elapsed = execute(candidate, case['input'], label + '/command')
                 judged, _ = execute(validator, {'case': case, 'output': output}, label + '/validation')
@@ -59,9 +59,9 @@ def compare(project, name):
             except (HarnessError, ValueError, KeyError, TypeError, RuntimeError) as error:
                 row.update(status='error', error=str(error))
             rows.append(row)
-    current = before == inventory(h.root, paths)
+    current = None
     result = {'id': name, 'evidence': str(folder), 'source_unchanged': current, 'rows': rows,
-              'comparable': current and all(row['status'] != 'error' for row in rows),
+              'comparable': all(row['status'] != 'error' for row in rows),
               'note': '같은 입력의 실제 출력과 별도 검사 결과입니다. invalid는 우수한 지표로 상쇄하지 않습니다. 전체 최적성이나 제품 수용을 뜻하지 않습니다.'}
     write_json(folder / 'result.json', result)
     return result

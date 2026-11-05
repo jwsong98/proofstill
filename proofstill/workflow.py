@@ -9,7 +9,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from .contract import HarnessError, digest, file_hash, inventory, read_json, require, validate_check_files, validate_plan
+from .contract import HarnessError, digest, inventory, read_json, require, validate_check_files, validate_plan
 from . import reviewer
 from .execution import ExecutionControl, stop_process
 
@@ -73,7 +73,7 @@ class Harness:
 
     def basis(self, plan):
         paths = [p for c in plan['checks'] for p in c['files']] + plan['context_files']
-        return {'plan': plan, 'files': inventory(self.root, paths)}
+        return {'plan': plan, 'files': paths}
 
     def validate_frozen_plan(self, plan, state):
         require(digest(plan) == state['plan_digest'], '보관된 기준이 변경되었습니다')
@@ -94,16 +94,16 @@ class Harness:
         return list(dict.fromkeys([*plan['sources'], *(p for c in plan['checks'] for p in c.get('sources', []))]))
 
     def source_digest(self, plan):
-        return digest(inventory(self.root, self.source_paths(plan)))
+        return digest({'paths': self.source_paths(plan)})
 
     def check_digests(self, plan, state, check):
         from .revisions import check_basis
         criteria = digest({
             'basis': check_basis(plan, state, check),
-            'files': inventory(self.root, [*check['files'], *plan['context_files']]),
+            'files': [*check['files'], *plan['context_files']],
         })
         paths = check['sources'] if 'sources' in check else self.source_paths(plan)
-        source = digest(inventory(self.root, paths))
+        source = digest({'paths': paths})
         return criteria, source
 
     def run_current(self, plan, state, check, run, criteria, source):
@@ -111,7 +111,7 @@ class Harness:
             return False
         if run.get('fingerprint_scope') == 'check':
             criteria, source = self.check_digests(plan, state, check)
-        return run['criteria_digest'] == criteria and (run['phase'] == 'red' or run['source_digest'] == source)
+        return run['criteria_digest'] == criteria
 
     def init(self, path, *, check_files=True):
         origin = Path(path).resolve()
@@ -221,10 +221,15 @@ class Harness:
 
     @staticmethod
     def evidence_current(run):
-        return bool(run and not run.get('pending') and
-                    all(Path(run.get(key, '')).is_file() and run.get('evidence_hashes', {}).get(key) == file_hash(Path(run[key]))
-                        for key in ['log', 'receipt']) and
-                    all(file_hash(Path(t['path'])) == t['sha256'] for t in run.get('traces', [])))
+        if not run or run.get('pending'):
+            return False
+        try:
+            receipt = read_json(Path(run['receipt']))
+            return (receipt == run and Path(run['log']).is_file()
+                    and all(Path(t['path']).is_file() for t in run.get('traces', [])))
+        except (HarnessError, KeyError, OSError):
+            return False
+
 
     def _run_check(self, plan, state, check, phase):
         from .trace_check import verify_trace
@@ -260,7 +265,7 @@ class Harness:
                 unchanged = False
             for path in sorted(trace_dir.glob('*.jsonl')):
                 verified = verify_trace(path, expectation)
-                item = {'path': str(path), 'sha256': file_hash(path), 'html': None,
+                item = {'path': str(path), 'html': None,
                         'valid': verified['valid'], 'issues': verified['issues'], 'steps': len(verified['steps']), 'name': verified['name']}
                 if 'state_machine' in verified:
                     item['state_machine'] = verified['state_machine']
@@ -277,7 +282,6 @@ class Harness:
             raise
         finally:
             save_json(folder / 'result.json', record)
-            record['evidence_hashes'] = {key: file_hash(Path(record[key])) for key in ['log', 'receipt']}
             self.save(plan, state)
 
     @exclusive
@@ -292,7 +296,7 @@ class Harness:
         else:
             criteria, source = self.green_ready(plan, state)
         runs = [self.latest(state, 'green', check['id']) for check in plan['checks']] if stage == 'implementation' else []
-        green_receipts = {run['check']: run['evidence_hashes']['receipt'] for run in runs} if runs else None
+        green_receipts = {run['check']: run['receipt'] for run in runs} if runs else None
         previous = state['reviews'].get(stage, {})
         launcher = {'launcher': self.codex, 'model': self.model, 'ignore_user_config': self.ignore_user_config}
         if (reuse and (previous.get('passed') or previous.get('outcome') == 'unverified') and previous.get('criteria_digest') == criteria
@@ -314,7 +318,7 @@ class Harness:
             packet['delta'] = delta
         if runs:
             packet['current_green'] = [
-                {key: run[key] for key in ('check', 'receipt', 'log', 'evidence_hashes', 'traces')}
+                {key: run[key] for key in ('check', 'receipt', 'log', 'traces')}
                 for run in runs
             ]
         record = {'passed': False, 'criteria_digest': criteria, 'source_digest': source,
@@ -347,16 +351,20 @@ class Harness:
             raise
         finally:
             save_json(folder / 'receipt.json', record)
-            record['evidence_hashes'] = {name: file_hash(folder / name) for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']}
             self.save(plan, state)
         return record
 
     @staticmethod
     def review_evidence_current(record, developer_session):
         folder = Path(record.get('folder', '/nonexistent-proofstill-review'))
-        return bool(record.get('session') and record['session'] != developer_session
-                    and all((folder / name).is_file() and record.get('evidence_hashes', {}).get(name) == file_hash(folder / name)
-                            for name in ['answer.json', 'receipt.json', 'events.jsonl', 'input.txt', 'manifest.json']))
+        try:
+            return bool(record.get('session') and record['session'] != developer_session
+                        and read_json(folder / 'receipt.json') == record
+                        and read_json(folder / 'answer.json') == record.get('answer')
+                        and all((folder / name).is_file() for name in ['events.jsonl', 'input.txt', 'manifest.json']))
+        except (HarnessError, OSError):
+            return False
+
 
     def review_current(self, plan, state, criteria, source):
         record = state.get('reviews', {}).get('implementation', {})
@@ -368,7 +376,7 @@ class Harness:
             run = self.latest(state, 'green', check['id'])
             if not (self.run_current(plan, state, check, run, criteria, source) and run['accepted']):
                 return False
-            if bound is not None and bound.get(check['id']) != run['evidence_hashes']['receipt']:
+            if bound is not None and bound.get(check['id']) != run['receipt']:
                 return False
         return True
 

@@ -25,20 +25,6 @@ export async function projectFile(rootPath: string, path: string): Promise<strin
   if (rel.split(sep).some(part => ['.git', '.proofstill', 'node_modules', '.env'].includes(part)) || rel.split(sep).some(part => part.startsWith('.env.'))) throw new StoreError('Internal or secret paths are not exported', 403);
   return candidate;
 }
-async function changedAt(path: string, seen = new Set<string>()): Promise<number> {
-  const actual = await realpath(path);
-  if (seen.has(actual)) return 0;
-  seen.add(actual);
-  const info = await stat(path);
-  if (!info.isDirectory()) return info.mtimeMs;
-  let latest = info.mtimeMs;
-  for (const child of await readdir(path, { withFileTypes: true })) {
-    if (child.isSymbolicLink()) continue;
-    if (['node_modules', '.git', '.proofstill', '__pycache__', '.pytest_cache', 'dist'].includes(child.name)) continue;
-    latest = Math.max(latest, await changedAt(resolve(path, child.name), seen));
-  }
-  return latest;
-}
 export class HandoffService {
   readonly store: Store;
   constructor(store: Store) { this.store = store; }
@@ -70,22 +56,21 @@ export class HandoffService {
     const linkedNodes = new Set(result.rows.map(r => r.nodeId).filter(Boolean));
     for (const node of graph.nodes.filter(n => ['feature', 'requirement'].includes(n.kind) && !linkedNodes.has(n.id))) {
       const implementation = this.store.implementationProgress(projectId, node.id), acceptance = this.store.featureAcceptance(projectId, node.id);
-      let modified = Math.max(implementation.updatedAt ?? 0, this.store.definitionUpdatedAt(projectId, node.id));
-      const limitations = ['구현 상태는 근거를 붙인 기록이며 사용자 수용과 별개예요.', '앱 검사 유효성은 요구·구현 기록과 지정 코드의 수정 시각을 기준으로 해요. 시각이 보존된 외부 변경은 감지하지 못해요.'];
+      const limitations = ['구현 상태는 근거를 붙인 기록이며 사용자 수용과 별개예요.', '실행 당시의 등록 검사 결과예요. 파일 시각·해시·Git 커밋으로 최신성을 자동 판정하지 않아요. 현재 코드와의 관련성은 직접 확인해야 해요.'];
       let missing = false;
       for (const path of implementation.paths) {
-        try { modified = Math.max(modified, await changedAt(await projectFile(project.rootPath, path))); }
+        try { await projectFile(project.rootPath, path); }
         catch { missing = true; limitations.push(`구현 경로를 확인할 수 없어요: ${path}`); }
       }
       const checks = await Promise.all(acceptance.checks.map(async check => {
         const e = check.execution;
-        let checkModified = modified, checkMissing = missing;
+        let checkMissing = missing;
         for (const file of check.files ?? []) {
-          try { checkModified = Math.max(checkModified, await changedAt(await projectFile(project.rootPath, file))); }
+          try { await projectFile(project.rootPath, file); }
           catch { checkMissing = true; limitations.push(`검사 경로를 확인할 수 없어요: ${file}`); }
         }
         if (!check.files?.length) limitations.push(`검사 파일 미등록: ${check.label}. 검사 코드 변경은 자동 감지하지 못해요.`);
-        const status: VerificationStatus = !e ? 'not_run' : checkMissing || checkModified > e.startedAt ? 'stale' : e.status === 'passed' && e.exitCode === 0 ? 'passed' : e.status === 'failed' ? 'failed' : e.status === 'interrupted' ? 'interrupted' : 'unverified';
+        const status: VerificationStatus = !e ? 'not_run' : checkMissing ? 'unverified' : e.status === 'passed' && e.exitCode === 0 ? 'passed' : e.status === 'failed' ? 'failed' : e.status === 'interrupted' ? 'interrupted' : 'unverified';
         return { id: check.id, label: check.label, kind: check.kind, purpose:check.purpose, rationale:check.rationale, expected:check.expected, command: check.command, status, output: e?.output ?? '', exitCode: e?.exitCode ?? null,
           recordedAt: e?.finishedAt, files: check.files ?? [], scope: check.label, nodeId: e ? graph.nodes.find(n => n.executionId === e.id)?.id : undefined };
       }));

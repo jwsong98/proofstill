@@ -64,7 +64,7 @@ def run(h, args):
             return 0
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if action == 'snapshot':
-        return 0 if result['status'] == 'verified' else 1
+        return 0 if result['status'] == 'recorded' else 1
     if action == 'compare':
         return 0 if result['comparable'] else 1
     if action == 'test':
