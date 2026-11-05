@@ -28,9 +28,9 @@ test('같은 시각의 여러 종류 노드를 가로와 세로로 나눠 겹치
   const nodes = Array.from({ length: 24 }, (_, index) => ({
     ...node(String(index), kinds[index % kinds.length]), createdAt: 1_700_000_000_000,
   }));
-  const { positions, days } = layoutReviewBoard(nodes);
+  const { positions, bands } = layoutReviewBoard(nodes);
   const points = [...positions.values()];
-  assert.equal(days.length, 1);
+  assert.equal(bands.length, 3);
   assert.equal(new Set(points.map(({ x, y }) => `${x},${y}`)).size, nodes.length);
   assert.ok(new Set(points.map(({ x }) => x)).size > 1);
   const requirements = nodes.filter(node => node.kind === 'requirement').map(node => positions.get(node.id)!);
@@ -48,15 +48,30 @@ test('보드 배치는 발언 시각과 나중에 기록된 발언도 결정과 
   const decision = { ...node('decision', 'decision'), createdAt: day + 3_600_000 };
   const task = { ...node('task', 'task'), createdAt: day + 86_400_000 };
   const later = node('later', 'evidence', { ...source('message', 'user'), capturedAt: day + 86_400_000 });
-  const { positions } = layoutReviewBoard([task, later, decision, opinion]);
+  const { positions } = layoutReviewBoard([task, later, decision, opinion], [edge('opinion', 'decision', 'related'), edge('decision', 'task', 'precedes')]);
   assert.equal(reviewTitle(opinion), '먼저 확인한 판단 기준');
   assert.deepEqual(reviewTime(opinion), { at: day, label: '발언' });
   assert.deepEqual(reviewTime(later), { at: later.evidence!.capturedAt, label: '보존' });
   assert.ok(positions.get('opinion')!.x < positions.get('decision')!.x);
   assert.equal(positions.get('opinion')!.y, positions.get('decision')!.y);
-  assert.ok(positions.get('decision')!.y < positions.get('task')!.y);
-  assert.equal(positions.get('task')!.y, positions.get('later')!.y);
-  assert.equal(positions.get('opinion')!.x, positions.get('later')!.x);
+  assert.equal(positions.get('decision')!.y, positions.get('task')!.y);
+  assert.ok(positions.get('opinion')!.x < positions.get('later')!.x);
   assert.ok(positions.get('later')!.x < positions.get('decision')!.x);
   assert.ok(positions.get('decision')!.x < positions.get('task')!.x);
+});
+
+test('날짜가 달라도 기능과 작업을 요구별 가지에 모은다', () => {
+  const nodes = [node('r1', 'requirement'), node('r2', 'requirement'), node('feature', 'feature'),
+    node('older', 'task'), node('newer', 'task'), node('other', 'task')]
+    .map((record, index) => ({ ...record, createdAt: 1_700_000_000_000 + index * 86_400_000 }));
+  const edges = [edge('feature', 'r1', 'related'), edge('feature', 'older', 'precedes'),
+    edge('feature', 'newer', 'precedes'), edge('r2', 'other', 'related')];
+  const { positions } = layoutReviewBoard(nodes, edges);
+  const point = (id: string) => positions.get(id)!;
+  assert.equal(point('r1').y, point('feature').y);
+  assert.equal(point('feature').y, (point('older').y + point('newer').y) / 2);
+  assert.equal(point('r2').y, point('other').y);
+  assert.ok(point('other').y > point('newer').y);
+  assert.ok(point('r1').x < point('feature').x && point('feature').x < point('older').x);
+  assert.ok(point('older').x < point('newer').x);
 });

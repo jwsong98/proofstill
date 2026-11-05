@@ -24,55 +24,73 @@ export const boardNodeWidth = 192;
 const columnStep = 232;
 const rowStep = 116;
 
-const stages = ['발언·근거', '요구사항·이슈', '결정', '기능·작업'] as const;
+const stages = ['발언·근거', '요구사항·이슈', '결정·기능', '작업·결과'] as const;
 const stageOf: Record<GraphNode['kind'], number> = {
-  evidence: 0, requirement: 1, issue: 1, decision: 2, feature: 3, task: 3, result: 3,
+  evidence: 0, requirement: 1, issue: 1, decision: 2, feature: 2, task: 3, result: 3,
 };
 
-export function layoutReviewBoard(nodes: GraphNode[]) {
+export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   const ordered = nodes.map(node => ({ id: node.id, stage: stageOf[node.kind], at: reviewTime(node).at }))
     .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.id.localeCompare(b.id));
-  const groups = new Map<string, { at: number | null; lanes: (typeof ordered)[] }>();
-  for (const entry of ordered) {
-    const day = entry.at == null ? 'unknown' : new Date(entry.at).toDateString();
-    const group = groups.get(day) ?? { at: entry.at, lanes: stages.map(() => []) };
-    group.lanes[entry.stage].push(entry);
-    groups.set(day, group);
+  const byId = new Map(ordered.map(entry => [entry.id, entry]));
+  const parents = new Map<string, { id: string; stage: number; directed: boolean }>();
+  for (const edge of edges) {
+    let parent = byId.get(edge.sourceId), child = byId.get(edge.targetId);
+    if (!parent || !child) continue;
+    const directed = edge.kind === 'precedes';
+    if (!directed && parent.stage > child.stage) [parent, child] = [child, parent];
+    if (parent.stage >= child.stage) continue;
+    const previous = parents.get(child.id);
+    // An explicit predecessor wins. Otherwise prefer the nearest role and break ties stably.
+    if (!previous || Number(directed) > Number(previous.directed) ||
+        (directed === previous.directed && (parent.stage > previous.stage ||
+          (parent.stage === previous.stage && parent.id.localeCompare(previous.id) < 0)))) {
+      parents.set(child.id, { id: parent.id, stage: parent.stage, directed });
+    }
   }
 
+  const children = new Map<string, string[]>();
+  for (const entry of ordered) {
+    const parent = parents.get(entry.id);
+    if (!parent) continue;
+    const siblings = children.get(parent.id) ?? [];
+    siblings.push(entry.id);
+    children.set(parent.id, siblings);
+  }
+  const positions = new Map<string, { x: number; y: number }>();
   let width = 0;
-  const lanes = stages.flatMap((label, index) => {
-    const max = Math.max(0, ...[...groups.values()].map(group => group.lanes[index].length));
-    if (!max) return [];
-    const count = Math.min(3, Math.ceil(Math.sqrt(max / 2)));
+  const bands = stages.flatMap((label, stage) => {
+    const entries = ordered.filter(entry => entry.stage === stage);
+    if (!entries.length) return [];
+    const count = Math.min(3, entries.length);
     const x = width;
+    entries.forEach((entry, index) => {
+      positions.set(entry.id, { x: x + Math.floor(index * count / entries.length) * columnStep, y: 0 });
+    });
     width += count * columnStep + 24;
-    return [{ index, label, x, count }];
+    return [{ x, label, width: (count - 1) * columnStep + boardNodeWidth }];
   });
 
-  const positions = new Map<string, { x: number; y: number }>();
-  const days = [];
-  let y = 0;
-  for (const group of groups.values()) {
-    let height = 0;
-    const bands = lanes.flatMap(lane => {
-      const entries = group.lanes[lane.index];
-      if (!entries.length) return [];
-      const rows = Math.ceil(entries.length / lane.count);
-      height = Math.max(height, rows);
-      const columns: { x: number; first: number | null; last: number | null }[] = [];
-      for (let start = 0; start < entries.length; start += rows) {
-        const x = lane.x + columns.length * columnStep;
-        const column = entries.slice(start, start + rows);
-        columns.push({ x, first: column[0].at, last: column[column.length - 1].at });
-        column.forEach((entry, row) => positions.set(entry.id, { x, y: y + 68 + row * rowStep }));
-      }
-      return [{ x: lane.x, label: lane.label, width: lane.count * columnStep - (columnStep - boardNodeWidth), columns }];
-    });
-    days.push({ y, at: group.at, bands, width: width - 24 - (columnStep - boardNodeWidth) });
-    y += 76 + height * rowStep;
+  let nextRow = 0;
+  function place(id: string): number {
+    const branches = children.get(id);
+    const rows = branches?.map(place);
+    const row = rows?.length ? (rows[0] + rows[rows.length - 1]) / 2 : nextRow++;
+    positions.get(id)!.y = 48 + row * rowStep;
+    return row;
   }
-  return { positions, days };
+  for (const entry of ordered) {
+    if (!parents.has(entry.id) && children.has(entry.id)) place(entry.id);
+  }
+  const columnRows = new Map<number, number>();
+  for (const entry of ordered) {
+    if (parents.has(entry.id) || children.has(entry.id)) continue;
+    const position = positions.get(entry.id)!;
+    const row = columnRows.get(position.x) ?? nextRow;
+    position.y = 48 + row * rowStep;
+    columnRows.set(position.x, row + 1);
+  }
+  return { positions, bands };
 }
 
 export function reviewTitle(node: GraphNode, limit = 120): string {
