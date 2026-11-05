@@ -22,7 +22,8 @@ export type GraphNode = {
   evidence?: Evidence; execution?: Execution; acceptance?: FeatureAcceptance;
 };
 export type GraphEdge = { id: string; projectId: string; sourceId: string; targetId: string; kind: RelationKind; reason: string; createdAt: number };
-export type Graph = { nodes: GraphNode[]; edges: GraphEdge[] };
+export type GraphCloud = { representativeId: string; memberIds: string[] };
+export type Graph = { nodes: GraphNode[]; edges: GraphEdge[]; clouds?: GraphCloud[] };
 export type Session = {
   id: string; projectId: string; externalThreadId: string | null; title: string;
   source: 'local' | 'import'; role: string | null; createdAt: number;

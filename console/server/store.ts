@@ -338,12 +338,36 @@ export class Store {
       }
     });
   }
+  saveGraphClouds(projectId: string, clouds: NonNullable<Graph['clouds']>) {
+    const graph = this.listGraph(projectId);
+    const nodes = new Set(graph.nodes.map(node => node.id));
+    const assigned = new Set<string>();
+    for (const cloud of clouds) {
+      if (!cloud || !Array.isArray(cloud.memberIds) || !cloud.memberIds.length) throw new StoreError('Graph cloud needs members');
+      for (const id of [cloud.representativeId, ...cloud.memberIds]) {
+        if (!nodes.has(id) || assigned.has(id)) throw new StoreError('Graph clouds need distinct nodes from this project');
+        assigned.add(id);
+      }
+    }
+    this.db.prepare('DELETE FROM graph_cloud_members WHERE project_id=?').run(projectId);
+    const insert = this.db.prepare('INSERT INTO graph_cloud_members(project_id,representative_id,member_id) VALUES(?,?,?)');
+    for (const cloud of clouds) for (const id of cloud.memberIds) insert.run(projectId, cloud.representativeId, id);
+  }
   listGraph(projectId: string, includeMerged = false): Graph {
     this.getProject(projectId);
     const nodes = (this.db.prepare('SELECT * FROM nodes WHERE project_id=? ORDER BY created_at,id').all(projectId) as Row[])
       .filter(row => includeMerged || !this.db.prepare('SELECT 1 FROM node_merges WHERE node_id=?').get(row.id)).map(row => this.rowNode(row));
     const ids = new Set(nodes.map(n => n.id));
-    return { nodes, edges: (this.db.prepare('SELECT * FROM edges WHERE project_id=? ORDER BY created_at,id').all(projectId) as Row[])
+    const members = new Map<string, string[]>();
+    const rows = this.db.prepare('SELECT representative_id,member_id FROM graph_cloud_members WHERE project_id=? ORDER BY member_id').all(projectId) as Row[];
+    for (const row of rows) {
+      if (!ids.has(row.representative_id) || !ids.has(row.member_id)) continue;
+      const group = members.get(row.representative_id) ?? [];
+      group.push(row.member_id);
+      members.set(row.representative_id, group);
+    }
+    const clouds = [...members].map(([representativeId, memberIds]) => ({ representativeId, memberIds }));
+    return { nodes, ...(clouds.length ? { clouds } : {}), edges: (this.db.prepare('SELECT * FROM edges WHERE project_id=? ORDER BY created_at,id').all(projectId) as Row[])
       .filter(row => ids.has(row.source_id) && ids.has(row.target_id)).map(row => this.rowEdge(row)) };
   }
   buildContext(projectId: string, nodeIds: string[]): GraphContext {

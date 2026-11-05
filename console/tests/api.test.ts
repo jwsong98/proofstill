@@ -190,6 +190,27 @@ test('resumed chats can call a session-scoped graph MCP tool', async t => {
   assert.ok(store.listGraph(project.id).edges.some(edge => edge.kind === 'precedes' && edge.targetId === 'legacy-feature'));
 });
 
+test('Codex can inspect candidates and save separate cloud metadata', async t => {
+  const { req, project, store, codex } = await setup(t);
+  const representative = store.createNode(project.id, { kind: 'feature', title: 'Feature' });
+  const member = store.createNode(project.id, { kind: 'task', title: 'Task' });
+  const session = (await req(`/projects/${project.id}/sessions`, 'POST', {})).data;
+  const call = (id: number, args: object) => codex.emit('request', { id, method: 'item/tool/call', params: {
+    threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: { nodes: [], edges: [], ...args },
+  } });
+  call(1, { inspectCloudCandidates: true });
+  assert.equal(JSON.parse(codex.replies.at(-1)!.result.contentItems[0].text).nodes.length, 2);
+  const cloud = { representativeId: representative.id, memberIds: [member.id] };
+  call(2, { clouds: [cloud] });
+  assert.equal(codex.replies.at(-1)!.result.success, true);
+  call(3, { clouds: [cloud, cloud] });
+  assert.equal(codex.replies.at(-1)!.result.success, false);
+  const graph = (await req(`/projects/${project.id}/graph`)).data;
+  assert.deepEqual(graph.clouds, [cloud]);
+  assert.equal(graph.nodes.length, 2);
+  assert.deepEqual(graph.edges, []);
+});
+
 test('SSE replay resumes after delivered event ID', async t => {
   const { req, base, project, store } = await setup(t);
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', {})).data;
