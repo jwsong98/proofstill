@@ -114,6 +114,7 @@ function ImportSessions({ projectId, onImport }: { projectId: string; onImport: 
 }
 
 export default function App() {
+  const [detailOnLeft, setDetailOnLeft] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]), [projectId, setProjectId] = useState<string>('');
   const [graph, setGraph] = useState<Graph>(emptyGraph), [selectedId, setSelectedId] = useState<string | null>(null);
   const [handoffNodeId, setHandoffNodeId] = useState<string | null>(null);
@@ -259,7 +260,10 @@ export default function App() {
             {!!results.length && !visibleResults.length && <div className="empty-page compact"><p>이 상태에 해당하는 실행 결과가 없어요.</p><button className="text-button" onClick={() => setResultFilter('all')}>전체 결과 보기</button></div>}
           </div></div>}
       </section>{view !== 'session' && view !== 'handoff' && selected && <aside className="detail-panel" aria-label="선택 항목 상세">
-        <button type="button" className="icon-button" style={{ alignSelf: 'flex-end' }} aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
+        <div className="row detail-panel-actions">
+          <button type="button" className="text-button" onClick={() => setDetailOnLeft(!detailOnLeft)}>{detailOnLeft ? '오른쪽으로 옮기기' : '왼쪽으로 옮기기'}</button>
+          <button type="button" className="icon-button" aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
+        </div>
         {selected.evidence || selected.execution ? <SourcePanel node={selected} onOpenOriginal={openOriginal} /> : <><header className="node-toolbar" aria-label="노드 제목·상태·작업">
           <h2 title={`${nodeLabels[selected.kind]} · ${selected.title}`} aria-label={`${nodeLabels[selected.kind]}: ${selected.title}`}>{selected.title}</h2>
           <span className={'badge ' + (selected.status === 'failed' ? 'negative' : selected.status === 'completed' ? 'positive' : '')}>{statusLabels[selected.status]}</span>
