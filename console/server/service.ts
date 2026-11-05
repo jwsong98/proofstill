@@ -160,6 +160,7 @@ export class ConsoleService extends EventEmitter {
       const threadId = requiredText(response.thread?.id, 'Codex thread ID');
       const title = input.title || (nodeIds.length ? this.store.getNode(projectId, nodeIds[0]).title : '새 Codex 세션');
       const session = this.store.createSession(projectId, { title, role, externalThreadId: threadId, contextNodeIds: nodeIds });
+      this.event(session.id, 'session/created', { source: 'thread/start', threadId });
       this.unstartedThreads.add(threadId);
       this.resumed.add(threadId);
       try { await this.codex.request('thread/name/set', { threadId, name: title }); } catch (error) { this.event(session.id, 'warning', { message: 'Codex session title could not be synchronized', detail: String(error) }); }
@@ -234,11 +235,20 @@ export class ConsoleService extends EventEmitter {
     const threadId = session.externalThreadId;
     const turns = await this.history(threadId, error => {
       const message = error instanceof Error ? error.message : String(error);
-      const untouched = session.source === 'local' && this.unstartedThreads.has(threadId)
+      const missingRollout = `invalid paginated history lineage for ${threadId}: missing source rollout`;
+      const events = this.store.listEvents(id);
+      const createdLocally = this.unstartedThreads.has(threadId) || events.some(event => {
+        const provenance = event.payload as any;
+        if (provenance?.source !== 'thread/start' || provenance.threadId !== threadId) return false;
+        return event.method === 'session/created' || (event.method === 'history/sync'
+          && provenance.status === 'not_started' && provenance.observed === false
+          && provenance.reason === 'missing_source_rollout' && provenance.method === 'thread/turns/list' && provenance.error === missingRollout);
+      });
+      const untouched = session.source === 'local' && createdLocally
         && session.lastConversationAt === null && !this.busy.has(id) && !this.activeTurns.has(id)
         && this.store.listMessages(id).length === 0 && this.store.listUsage(id).length === 0
-        && !this.store.listEvents(id).some(event => /^(turn|item|message)\//.test(event.method));
-      if (!untouched || message !== `invalid paginated history lineage for ${session.externalThreadId}: missing source rollout`) return false;
+        && !events.some(event => /^(turn|item|message)\//.test(event.method));
+      if (!untouched || message !== missingRollout) return false;
       this.event(id, 'history/sync', { status: 'not_started', observed: false, source: 'thread/start',
         reason: 'missing_source_rollout', method: 'thread/turns/list', threadId: session.externalThreadId, error: message });
       return true;
@@ -250,6 +260,7 @@ export class ConsoleService extends EventEmitter {
         this.notification({ method: 'item/completed', params: { threadId: session.externalThreadId, turnId: turn.id, item } }, timestamp(item.createdAt) ?? timestamp(turn.completedAt) ?? timestamp(turn.startedAt) ?? Date.now());
         known.add(item.id);
       }
+      this.recoverInterruptedHistory(session, turns);
     });
     return this.session(id);
   }
@@ -275,8 +286,55 @@ export class ConsoleService extends EventEmitter {
         missingTimestamps ||= time === null;
         this.store.addMessage(session.id, { externalId: item.id, role: item.type === 'userMessage' ? 'user' : 'assistant', content: itemText(item), createdAt: time ?? 0, trackConversation: time !== null, turnId: turn.id });
       }
+      this.recoverInterruptedHistory(session, turns);
       this.event(session.id, 'session/imported', { threadId, missingTimestamps, turns: turns.length }); return this.store.getSession(session.id);
     });
+  }
+  private recoverInterruptedHistory(session: Session, turns: any[]) {
+    const events = this.store.listEvents(session.id);
+    for (const turn of turns) {
+      if (!['interrupted', 'failed'].includes(turn.status) || typeof turn.id !== 'string') continue;
+      for (const item of turn.items ?? []) {
+        if (item.type !== 'commandExecution' || item.status !== 'inProgress' || !item.id
+          || events.some(event => (event.payload as any)?.item?.id === item.id)) continue;
+        this.event(session.id, 'item/started', { threadId: session.externalThreadId, turnId: turn.id, item, historySource: 'thread/turns/list' },
+          timestamp(item.createdAt) ?? timestamp(turn.startedAt) ?? timestamp(turn.completedAt) ?? Date.now());
+      }
+      if (!events.some(event => event.method === 'turn/completed' && !(event.payload as any)?.agentThreadId && (event.payload as any)?.turn?.id === turn.id)) {
+        this.event(session.id, 'turn/completed', { threadId: session.externalThreadId, turn, historySource: 'thread/turns/list' }, timestamp(turn.completedAt) ?? Date.now());
+      }
+    }
+    for (const event of this.store.listEvents(session.id)) if (event.method === 'turn/completed') this.recordInterruptedCommands(session, event);
+  }
+  private recordInterruptedCommands(session: Session, terminal: SessionEvent) {
+    const payload = terminal.payload as any, turn = payload?.turn;
+    if (payload?.agentThreadId || !['interrupted', 'failed'].includes(turn?.status) || typeof turn.id !== 'string') return;
+    const commands = new Map<string, { item: any; startedAt: number; eventIds: number[]; output: string }>();
+    for (const event of this.store.listEvents(session.id)) {
+      const data = event.payload as any;
+      if (data?.agentThreadId || data?.turnId !== turn.id) continue;
+      if (['item/started', 'item/completed'].includes(event.method) && data.item?.type === 'commandExecution') {
+        const previous = commands.get(data.item.id);
+        commands.set(data.item.id, { item: { ...previous?.item, ...data.item }, startedAt: previous?.startedAt ?? event.createdAt,
+          eventIds: [...previous?.eventIds ?? [], event.id], output: typeof data.item.aggregatedOutput === 'string' ? data.item.aggregatedOutput : previous?.output ?? '' });
+      }
+      if (event.method === 'item/commandExecution/outputDelta' && typeof data.delta === 'string') {
+        const command = commands.get(data.itemId);
+        if (command) { command.output += data.delta; command.eventIds.push(event.id); }
+      }
+    }
+    const existing = new Set(this.store.listGraph(session.projectId).nodes.map(node => node.id));
+    for (const [itemId, command] of commands) {
+      const id = `command:${session.id}:${itemId}`;
+      if (command.item.status !== 'inProgress' || existing.has(id)) continue;
+      const node = this.store.recordExecution(session.projectId, { id, title: command.item.command || '중단된 Codex 명령', kind: 'command',
+        status: turn.status === 'interrupted' ? 'interrupted' : 'unverified', command: command.item.command ?? null,
+        output: command.output, exitCode: null, startedAt: command.startedAt, finishedAt: terminal.createdAt,
+        response: { item: command.item, commandEventIds: command.eventIds, completionObserved: false,
+          terminalTurnEvent: { id: terminal.id, method: terminal.method, payload: terminal.payload, createdAt: terminal.createdAt } } });
+      for (const contextId of session.contextNodeIds) this.store.createEdge(session.projectId, { sourceId: node.id, targetId: contextId, kind: 'related', reason: '턴 종료 시 완료 미관측 명령' });
+      this.event(session.id, 'graph/updated', { projectId: session.projectId });
+    }
   }
   // Dynamic tools are persisted at thread creation. Resumed threads can load the same tool through MCP.
   private graphConfig(sessionId: string) {
@@ -442,10 +500,11 @@ ${basis.quote}` });
       return;
     }
     if (child && method === 'item/agentMessage/delta') return;
-    this.event(session.id, method, child ? { ...params, agentThreadId: params.threadId } : params, observedAt);
+    const observedEvent = this.event(session.id, method, child ? { ...params, agentThreadId: params.threadId } : params, observedAt);
     if (!child && method === 'thread/name/updated' && typeof params.threadName === 'string') this.store.updateSession(session.id, { title: params.threadName });
     if (!child && method === 'turn/started' && params.turn?.id) this.activeTurns.set(session.id, params.turn.id);
     if (!child && method === 'turn/completed') { this.activeTurns.delete(session.id); if (params.turn?.id) this.completedTurns.add(`${session.id}:${params.turn.id}`); }
+    if (!child && method === 'turn/completed') this.recordInterruptedCommands(session, observedEvent);
     if (method === 'item/started' && params.item?.id) this.starts.set(`${session.id}:${params.item.id}`, Date.now());
     if (method === 'item/completed' && params.item) {
       const item = params.item;
