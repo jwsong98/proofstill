@@ -62,7 +62,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     return next;
   });
   const visible = useMemo(() => {
-    const nodes = graph.nodes.filter(node => !hiddenKinds.has(node.kind) && (!onlyIncomplete || node.kind !== 'feature' || node.status !== 'completed'));
+    const nodes = graph.nodes.filter(node => !hiddenKinds.has(node.kind) && (!onlyIncomplete || !['feature', 'task'].includes(node.kind) || node.status !== 'completed'));
     const ids = new Set(nodes.map(node => node.id));
     return { nodes, edges: graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
   }, [graph, hiddenKinds, onlyIncomplete]);

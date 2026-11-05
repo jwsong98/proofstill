@@ -40,7 +40,7 @@ function FreeGraph({ graph, currentNodeIds, selectedId, onSelect, onMove, onlyIn
   const flow = useRef<ReactFlowInstance<Dot> | null>(null);
   const fitPending = useRef(true);
   const flowNodes = useMemo<Dot[]>(() => graph.nodes
-    .filter(record => !hiddenKinds.has(record.kind) && (!onlyIncomplete || record.kind !== 'feature' || record.status !== 'completed'))
+    .filter(record => !hiddenKinds.has(record.kind) && (!onlyIncomplete || !['feature', 'task'].includes(record.kind) || record.status !== 'completed'))
     .map((record, index): Dot => {
       const angle = index * 2.399963;
       const radius = Math.sqrt(index) * 100;

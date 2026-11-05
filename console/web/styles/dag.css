@@ -1,0 +1,12 @@
+.dag-toolbar { padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.dag-task-list { display: flex; flex-direction: column; gap: 16px; margin: 16px 0; }
+.dag-task { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.dag-task > summary { cursor: pointer; font-weight: 600; }
+.dag-task label { display: block; margin: 12px 0 4px; color: var(--text-secondary); font-size: 12px; }
+.dag-task textarea { width: 100%; resize: vertical; font-family: var(--font-mono); font-size: 12px; }
+.dag-task > button { margin-top: 8px; }
+.dag-evidence { margin-top: 16px; }
+.dag-evidence code, .dag-evidence summary { overflow-wrap: anywhere; }
+.dag-evidence pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow: auto; }
+.dag-jobs { display: flex; align-items: center; gap: 8px; }
+.modal .dag-jobs input { width: 64px; }

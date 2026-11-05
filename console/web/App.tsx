@@ -4,6 +4,7 @@ import { api, type RemoteThread, type SessionDetail } from './api.ts';
 import { ErrorNotice, Icon, Loading, Modal, nodeLabels, statusLabels, timeLabel } from './components.tsx';
 import { reviewTitle } from './reviewFlow.ts';
 import { GraphCanvas } from './GraphCanvas.tsx';
+import { DagPanel } from './DagPanel.tsx';
 import { HandoffView } from './HandoffView.tsx';
 import { DocumentContent } from './DocumentContent.tsx';
 import { SessionChat } from './SessionChat.tsx';
@@ -300,8 +301,9 @@ export default function App() {
       {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className="persistent-workspace" style={detailWidth === null ? undefined : { '--detail-width': `${detailWidth}%` } as React.CSSProperties}>
       <section className="center-panel graph-side-panel" aria-label="상시 관계 그래프">
         <div className="row graph-side-heading"><strong>관계 그래프</strong>{selected && view !== 'graph' && <button className="text-button" onClick={() => openNode(selected.id)}>선택 항목 상세 보기</button>}</div>
-        <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능</label></div>
+        <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능·작업</label></div>
           <div className="node-filters" role="group" aria-label="노드 종류 표시">{boardKinds.map(kind => <button key={kind} className="node-filter" aria-pressed={!hiddenKinds.has(kind)} aria-label={`${nodeLabels[kind]} 노드 표시`} onClick={() => setHiddenKinds(current => { const next = new Set(current); if (next.has(kind)) next.delete(kind); else next.add(kind); return next; })}>{nodeLabels[kind]}<span>{boardGraph.nodes.filter(node => node.kind === kind).length}</span></button>)}{hiddenKinds.size > 0 && <button className="text-button" onClick={() => setHiddenKinds(new Set())}>전체 표시</button>}</div>
+          <DagPanel key={projectId + ":dag"} projectId={projectId} graph={graph} onSelect={openNode} onGraphUpdated={() => void refreshGraph().catch(error => setError(errorText(error)))} />
           {boardGraph.nodes.length ? <GraphCanvas onRestoreSelection={setSelectedId} key={projectId} graph={boardGraph} currentNodeIds={currentNodeIds} selectedId={selectedId} onSelect={openNode} onlyIncomplete={onlyIncomplete} hiddenKinds={hiddenKinds} onShowAll={() => { setHiddenKinds(new Set()); setOnlyIncomplete(false); }} onMove={(id, x, y) => void perform(async () => { await api.updateNode(projectId, id, { x, y }); await refreshGraph(); })} /> : <div className="empty-page"><Icon name="share-network" size={32} /><h2>아직 연결된 자료가 없어요.</h2><p>가져온 근거와 기록된 관계를 여기에서 확인해요.</p><button className="text-button" onClick={() => { setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}>문서 근거 가져오기<Icon name="arrow-right" /></button></div>}</>
       </section><section className="persistent-content">
         <div className="detail-resize" role="separator" aria-label="상세 패널 너비" aria-orientation="vertical"
