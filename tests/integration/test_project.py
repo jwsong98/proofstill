@@ -91,6 +91,20 @@ class ProjectTests(unittest.TestCase):
         with self.assertRaisesRegex(HarnessError, '순환'):
             Project.create(self.h, self.path)
 
+    def test_product_requirements_are_resolved_once_for_multiple_work_items(self):
+        value = json.loads(self.path.read_text())
+        value['requirements'] = {'SHARED': 'one product condition'}
+        for item in value['work']:
+            item['feature']['requirements'] = [{'id': 'SHARED', 'checks': [item['id']]}]
+        self.path.write_text(json.dumps(value))
+        project = Project.create(self.h, self.path, reason='consolidate', source='user decision')
+        for item in project.load()[0]['work']:
+            self.assertEqual(item['feature']['requirements'][0]['text'], 'one product condition')
+        value['work'][0]['feature']['requirements'][0]['text'] = 'divergent wording'
+        self.path.write_text(json.dumps(value))
+        with self.assertRaisesRegex(HarnessError, '제품 정의에만'):
+            Project.create(self.h, self.path, reason='edit', source='test')
+
     def test_single_definition_sync_keeps_unchanged_feature_evidence(self):
         self.project.run()
         value = json.loads(self.path.read_text())

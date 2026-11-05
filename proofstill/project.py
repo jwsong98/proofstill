@@ -33,6 +33,11 @@ def validate(h, value):
     require(isinstance(work, list) and work, '제품/로직 작업이 필요합니다')
     ids = [identifier(item.get('id')) for item in work]
     require(len(ids) == len(set(ids)), '중복 작업 ID')
+    requirements = value.get('requirements')
+    if requirements is not None:
+        require(isinstance(requirements, dict) and requirements and
+                all(isinstance(text, str) and text.strip() for text in requirements.values()),
+                '제품 요구는 ID와 조건 문장으로 정의하세요')
     owners = []
     for item in work:
         require(item.get('kind') in ['product', 'logic', 'integration'], '작업 kind는 product/logic/integration')
@@ -49,11 +54,22 @@ def validate(h, value):
         item['depends_on'] = deps
         feature = item.get('feature')
         require(isinstance(feature, dict), '작업 feature 정의가 필요합니다')
+        if requirements is not None:
+            refs = feature.get('requirements')
+            require(isinstance(refs, list), '작업에 요구 ID를 연결하세요')
+            for ref in refs:
+                require(isinstance(ref, dict) and isinstance(ref.get('id'), str)
+                        and ref['id'] in requirements, '제품에 정의되지 않은 요구 ID')
+                require('text' not in ref, '요구 조건은 제품 정의에만 작성하세요')
+                ref['text'] = requirements[ref['id']]
         feature['id'] = identifier(value['id'] + '-' + item['id'])
         feature.setdefault('intent', value['intent'])
         feature.setdefault('context', '공유 계약을 보존하며 작업 경계 안에서 구현한다.')
         feature['context_files'] = list(dict.fromkeys([*value['contracts'], *feature.get('context_files', [])]))
         validate_plan(h.root, feature, check_files=False)
+    if requirements is not None:
+        assigned = {ref['id'] for item in work for ref in item['feature']['requirements']}
+        require(assigned == requirements.keys(), '모든 제품 요구에 작업과 검사를 연결하세요')
     for contract in value['contracts']:
         require(any(overlaps(path, contract) and (Path(path) == Path(contract) or Path(path) in Path(contract).parents) for _, path in owners),
                 f'공유 계약을 수정할 단일 소유 작업이 필요합니다: {contract}')

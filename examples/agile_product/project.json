@@ -5,6 +5,11 @@
   "contracts": [
     "contract.json"
   ],
+  "requirements": {
+    "PRODUCT": "유효 입력→계산 경계→저장→조회와 재시작 보존",
+    "LOGIC": "반올림 half-up, 무료, 경계와 큰 정수의 정확한 금액",
+    "INTEGRATION": "실제 계산을 저장과 재조회까지 연결한다"
+  },
   "work": [
     {
       "id": "product",
@@ -22,7 +27,6 @@
         "requirements": [
           {
             "id": "PRODUCT",
-            "text": "유효 입력→계산 경계→저장→조회와 재시작 보존",
             "checks": [
               "product"
             ]
@@ -72,7 +76,6 @@
         "requirements": [
           {
             "id": "LOGIC",
-            "text": "반올림 half-up, 무료, 경계와 큰 정수의 정확한 금액",
             "checks": [
               "logic"
             ]
@@ -129,7 +132,6 @@
         "requirements": [
           {
             "id": "INTEGRATION",
-            "text": "실제 계산을 저장과 재조회까지 연결한다",
             "checks": [
               "integration"
             ]
@@ -162,44 +164,6 @@
             }
           ]
         }
-      }
-    }
-  ],
-  "comparisons": [
-    {
-      "id": "rounding",
-      "cases": "cases.json",
-      "candidates": [
-        {
-          "id": "baseline",
-          "argv": [
-            "python3",
-            "engine.py",
-            "--baseline"
-          ],
-          "sources": [
-            "engine.py"
-          ]
-        },
-        {
-          "id": "candidate",
-          "argv": [
-            "python3",
-            "engine.py"
-          ],
-          "sources": [
-            "engine.py"
-          ]
-        }
-      ],
-      "validator": {
-        "argv": [
-          "python3",
-          "compare_validator.py"
-        ],
-        "sources": [
-          "compare_validator.py"
-        ]
       }
     }
   ]
