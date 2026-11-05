@@ -323,10 +323,14 @@ test('legacy acceptance is readable and new commands do not change it', async t 
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', { nodeIds: [feature.id] })).data;
   const path = `/projects/${project.id}/features/${feature.id}/checks`;
   assert.equal((await req(path)).data.fulfilled, false);
-  const checks = [{ id: 'scenario', label: '등록 재시도', kind: 'scenario', command: '/bin/zsh -lc "node scenario.js"' },
+  const checks = [{ id: 'scenario', label: '등록 재시도', kind: 'scenario', purpose: '재시도 입력의 저장 결과 확인', rationale: '중복 저장 회귀를 찾는다', expected: '한 개만 저장', command: '/bin/zsh -lc "node scenario.js"' },
     { id: 'red-test', label: 'Red 단계 테스트', kind: 'test', command: '/bin/zsh -lc "node --test"' }];
   assert.equal((await req(path, 'POST', { checks })).status, 405);
   store.defineFeatureChecks(project.id, feature.id, checks as Parameters<Store['defineFeatureChecks']>[2]);
+  const explained = (await req(path)).data.checks[0];
+  for (const field of ['purpose','rationale','expected']) assert.equal(explained[field], (checks[0] as any)[field]);
+  assert.equal((await req(path, 'POST', { checks: [{...checks[0], status:'passed'}] })).status, 405);
+  assert.equal((await req(path, 'POST', { checks: [{...checks[0], purpose:42}] })).status, 405);
   assert.equal((await req(path, 'POST', { checks, resultId: 'forged', success: true })).status, 405);
   codex.emit('notification', { method: 'item/completed', params: { threadId: session.externalThreadId, turnId: 'acceptance', item: { id: 'scenario-result', type: 'commandExecution', command: checks[0].command, exitCode: 0, status: 'completed' } } });
   assert.equal((await req(path)).data.passed, 0);
@@ -336,7 +340,7 @@ test('console chat cannot define legacy checks', async t => {
   const { req, project, codex, store } = await setup(t);
   const feature = store.createNode(project.id, { title: '검사 정의', kind: 'feature' });
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', { nodeIds: [feature.id] })).data;
-  const checks = [{ id: 'check', label: 'scenario', kind: 'scenario', command: 'node scenario.js' }];
+  const checks = [{ id: 'check', label: 'scenario', kind: 'scenario', command: 'node scenario.js', purpose:'입력과 조회 확인', rationale:'회귀 확인', expected:'원래 값을 조회' }];
   codex.emit('request', { id: 1400, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_feature_checks', arguments: { featureId: feature.id, checks } } });
   assert.equal(codex.replies.find(reply => reply.id === 1400)?.result.success, false);
   assert.equal(store.featureAcceptance(project.id, feature.id).total, 0);

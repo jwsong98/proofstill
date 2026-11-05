@@ -1,6 +1,8 @@
 # Proofstill 웹 콘솔 요구사항
 
-상태: 사용자가 DB → API → UI 구현 및 서브 에이전트 검증을 승인했다. 초기 구현 검증에 이어 U15 세션 복구·권한·결과 표시 보강을 완료했다. 최신 보강은 검사 56개·타입 검사·빌드·브라우저 확인 및 독립 검토를 통과했다. 새 모델 turn은 실행하지 않았다. 결과는 reports/web-console.md 및 .proofstill/evidence/web-console-live/independent-review-accepted.json에 연결한다.
+현재 실제 사용 검증: 실제 모델·제품 8개 묶음의 관측·수정·미검증은 `console/tests/live-observations.json`과 `reports/live-product-validation-v1.md`에서 확인한다. 아래 기존 검증 표시는 당시 범위이며 현재 판정은 웹의 실제 검사·독립 리뷰를 따른다. 새 모델 turn 미실행이라는 과거 설명은 이번 실제 실행에 적용하지 않는다.
+
+기존 구현 기록: 사용자가 DB → API → UI 구현 및 서브 에이전트 검증을 승인했다. 초기 구현 검증에 이어 U15 세션 복구·권한·결과 표시 보강을 완료했다. 최신 보강은 검사 56개·타입 검사·빌드·브라우저 확인 및 독립 검토를 통과했다. 새 모델 turn은 실행하지 않았다. 결과는 reports/web-console.md 및 .proofstill/evidence/web-console-live/independent-review-accepted.json에 연결한다.
 
 ## 원문·답변 근거
 

@@ -1,0 +1,648 @@
+{
+  "schemaVersion": 1,
+  "recordValidationOnly": true,
+  "scenarios": [
+    {
+      "id": "workspace",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/project-b-isolation.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/empty-root-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-current.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/project-race-isolated.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/rpc-observations.jsonl"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-handoff-before.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-restart-audit.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-restarted.dom.txt"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/project-b-isolation.json",
+          "kind": "json",
+          "pointer": "/nodes",
+          "equals": []
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/empty-root-final.json",
+          "kind": "json",
+          "pointer": "/session/projectId",
+          "equals": "091023e5-6a82-40ce-8d44-479e6c3b58ad"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/session-final.json",
+          "kind": "json",
+          "pointer": "/activeTurnId",
+          "equals": null
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/main-current.ax.txt",
+          "kind": "dom",
+          "includes": "55"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/project-race-isolated.ax.txt",
+          "kind": "dom",
+          "includes": "실사용 검증 B · 격리 확인"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/rpc-observations.jsonl",
+          "kind": "text",
+          "includes": "thread/resume"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/main-restart-audit.json",
+          "kind": "json",
+          "pointer": "/allEightPreserved",
+          "equals": true
+        }
+      ],
+      "limitations": [
+        "격리 서버 58779와 주 서버 7777을 실제 재시작하여 보존된 기록을 다시 조회했다. 전체 OS 재부팅·전역 설치·배포는 이번 시나리오의 확인 범위가 아니다."
+      ]
+    },
+    {
+      "id": "evidence",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/api-boundaries.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-inline-evidence.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/context-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/imported.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/source-geometry.json"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/api-boundaries.json",
+          "kind": "json",
+          "pointer": "/checks/originalImmutable",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/api-boundaries.json",
+          "kind": "json",
+          "pointer": "/checks/newCaptureSeparate",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/api-boundaries.json",
+          "kind": "json",
+          "pointer": "/checks/missingRejected",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/api-boundaries.json",
+          "kind": "json",
+          "pointer": "/checks/captureRecovered",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/graph-inline-evidence.ax.txt",
+          "kind": "dom",
+          "includes": "주문 ID가 같으면 첫 내용만 저장한다."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/context-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "뒤 문맥: 원본은 그대로 유지한다."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/imported.ax.txt",
+          "kind": "dom",
+          "includes": "IMPORT_REAL_SENTINEL_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/source-geometry.json",
+          "kind": "json",
+          "pointer": "/0/width",
+          "equals": 1280
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/source-geometry.json",
+          "kind": "json",
+          "pointer": "/1/width",
+          "equals": 900
+        }
+      ],
+      "limitations": [
+        "출처 전체 문자열은 DOM title로 확인했다. OS가 띄우는 네이티브 툴팁의 마우스 표시 자체는 직접 관측하지 않았다."
+      ]
+    },
+    {
+      "id": "graph",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-all-hidden.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-filter-roundtrip.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-54a4eb1f-d745-4278-9df6-438ff5c0baea.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-after-ai-and-manual.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-before-ai.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-7a578dd4-ae7d-4f7b-acec-5bdea2734c8a.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/drag-position.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/drag-after-restart.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/drag-restored.dom.txt"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/graph-all-hidden.ax.txt",
+          "kind": "dom",
+          "includes": "표시할 노드가 없어요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/graph-filter-roundtrip.ax.txt",
+          "kind": "dom",
+          "includes": "문제·이슈 노드 표시, Value: 0"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/session-54a4eb1f-d745-4278-9df6-438ff5c0baea.json",
+          "kind": "text",
+          "includes": "MANUAL_EDIT_PRESERVED_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/graph-after-ai-and-manual.json",
+          "kind": "text",
+          "includes": "사용자가 직접 수정한 조건: MANUAL_EDIT_PRESERVED_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/drag-position.json",
+          "kind": "json",
+          "pointer": "/changed",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/drag-after-restart.json",
+          "kind": "json",
+          "pointer": "/savedPositionRestored",
+          "equals": true
+        }
+      ],
+      "limitations": [
+        "실제 native 드래그로 저장한 x/y를 같은 SQLite와 서버 재시작 뒤 API 및 실제 DOM translate로 대조했다. AI가 유사 노드의 모든 의미 중복을 자동 통합한다고 보장하지 않는다."
+      ]
+    },
+    {
+      "id": "chat",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/new-empty-session-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/sync-failure-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/sync-recovered-legacy-fixture.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/pagination-import-api.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/pagination-fixture.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/import-source.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/rpc-observations.jsonl"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/project-race-isolated.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/empty-root-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/empty-after-restart-before-fix.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/empty-after-restart-fixed.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/empty-after-restart-fixed.dom.txt"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/new-empty-session-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "프로젝트 루트에서 대화를 시작해요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/sync-failure-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "기록 갱신 실패:"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/sync-failure-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "DRAFT_PRESERVED_AFTER_SYNC_FAILURE_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/sync-recovered-legacy-fixture.ax.txt",
+          "kind": "dom",
+          "includes": "IMPORT_REAL_SENTINEL_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/session-final.json",
+          "kind": "text",
+          "includes": "RESUMED_CONTEXT_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/pagination-import-api.json",
+          "kind": "json",
+          "pointer": "/checks/sameImportedSession",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/pagination-import-api.json",
+          "kind": "json",
+          "pointer": "/checks/foreignImport409",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/pagination-fixture.ax.txt",
+          "kind": "dom",
+          "includes": "마지막 세션이에요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/empty-after-restart-fixed.json",
+          "kind": "json",
+          "pointer": "/existingHistoryProvenance/status",
+          "equals": 200
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/empty-after-restart-fixed.json",
+          "kind": "json",
+          "pointer": "/newCreationProvenance/status",
+          "equals": 200
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/empty-after-restart-fixed.json",
+          "kind": "json",
+          "pointer": "/newCreationProvenance/unobservedHistory",
+          "equals": true
+        }
+      ],
+      "limitations": [
+        "기록 동기화 503과 events 누락은 실제 제품 HTTP 앞단의 장애/구버전 응답 fixture다. 실제 과거 서버 장애를 겪었다고 주장하지 않는다.",
+        "28개 페이지 중 23개는 모델을 실행하지 않은 metadata 호환성 fixture다. 실제 모델 대화·가져오기는 별도 원본 5개로 구분한다.",
+        "통합 네트워크·파일 권한 요청의 자동 허용은 프로토콜 회귀 검사 범위다. 실제 모델이 별도 권한 요청을 발생시킨 분기는 관측하지 않았다."
+      ]
+    },
+    {
+      "id": "usage",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/usage-turns-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/imported.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-final.json"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/usage-turns-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "턴별 사용량 · 4개 관측"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/usage-turns-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "누적 토큰 332,438"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/imported.ax.txt",
+          "kind": "dom",
+          "includes": "컨텍스트 사용량 미확인"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/imported.ax.txt",
+          "kind": "dom",
+          "includes": "누적 토큰 미확인"
+        }
+      ],
+      "limitations": [
+        "실제 raw.last/raw.total과 화면을 대조했다. 재개 후 raw.total이 332438→35423으로 초기화되는 것을 관측해 모델 제공 누적값의 범위를 안내했다. 실제 모든 모델의 사용량 형식을 보장하지 않는다."
+      ]
+    },
+    {
+      "id": "results",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/result-failure.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/result-http.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/child-complete-parent-active.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/command-in-progress.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/interruption-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/interrupted-result-fixed.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/links-and-keyboard.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/session-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-final.json"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/result-failure.ax.txt",
+          "kind": "dom",
+          "includes": "종료 코드:  7"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/result-http.ax.txt",
+          "kind": "dom",
+          "includes": "LIVE_HTTP_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/child-complete-parent-active.ax.txt",
+          "kind": "dom",
+          "includes": "42 (17 + 25 = 42)"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/command-in-progress.ax.txt",
+          "kind": "dom",
+          "includes": "실행 중"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/interruption-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "명령 완료는 확인되지 않았어요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/interrupted-result-fixed.ax.txt",
+          "kind": "dom",
+          "includes": "중단"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/links-and-keyboard.json",
+          "kind": "json",
+          "pointer": "/unsafeAnchor",
+          "equals": 0
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/links-and-keyboard.json",
+          "kind": "json",
+          "pointer": "/firstGroupOpen",
+          "equals": true
+        }
+      ],
+      "limitations": [
+        "의도한 종료 코드 7은 제품 결함이 아닌 실패 표시 검증용 명령이다. 중단 명령의 종료 코드·완료를 추정하지 않고 turn 종료 출처와 관측 출력만 보존했다.",
+        "실제 HTTP 200은 로컬 합성 서버로 확인했고 HTTP 오류/중단/timeout의 모든 조합은 회귀 fixture 검사 범위다."
+      ]
+    },
+    {
+      "id": "desktop",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/title-geometry-fixed.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/task-focus.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/graph-final.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/source-geometry.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/mouse-entry-preview.json"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/title-geometry-fixed.json",
+          "kind": "json",
+          "pointer": "/0/width",
+          "equals": 1280
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/title-geometry-fixed.json",
+          "kind": "json",
+          "pointer": "/1/width",
+          "equals": 900
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/title-geometry-fixed.json",
+          "kind": "json",
+          "pointer": "/0/details/0/open",
+          "equals": false
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/task-focus.ax.txt",
+          "kind": "dom",
+          "includes": "TASK_PREVIEW_FULL_SENTINEL"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/graph-final.json",
+          "kind": "text",
+          "includes": "중복 주문은 최초 내용만 보존"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/mouse-entry-preview.json",
+          "kind": "json",
+          "pointer": "/source",
+          "equals": "2LONG_SOURCE_SELECTED_SENTINEL"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/mouse-entry-preview.json",
+          "kind": "json",
+          "pointer": "/preview",
+          "includes": "TASK_PREVIEW_FULL_SENTINEL"
+        }
+      ],
+      "limitations": [
+        "키보드 포커스/Escape와 실제 마우스 진입은 확인했다. 마우스는 문서화된 native drag로 그래프 바깥에서 작업 위로 진입한 입력이며 노드를 클릭하지 않았다. 일반 버튼을 누르지 않은 hover 및 OS 네이티브 툴팁의 지연 표시는 직접 미관측이다.",
+        "900/1280은 실제 DOM innerWidth로 측정했고 기존 브라우저 확대 배율을 변경하지 않았다."
+      ]
+    },
+    {
+      "id": "handoff",
+      "evidence": [
+        {
+          "path": ".proofstill/evidence/live-product-v1/handoff-snapshot.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/handoff-recovered.dom.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/handoff-load-failure-fixed.dom.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/synthetic-handoff.html"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-history.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-handoff-before.html"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-handoff-before.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/main-current.ax.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/publish-audit.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/eight-linked-web.dom.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/check-metadata-ui-registered.dom.txt"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/check-metadata-model-after.json"
+        },
+        {
+          "path": ".proofstill/evidence/live-product-v1/check-metadata-handoff.html"
+        }
+      ],
+      "observations": [
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/handoff-snapshot.json",
+          "kind": "json",
+          "pointer": "/errors",
+          "equals": []
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/handoff-recovered.dom.txt",
+          "kind": "dom",
+          "includes": "HANDOFF_SAVED_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/handoff-recovered.dom.txt",
+          "kind": "dom",
+          "includes": "HANDOFF_REMAINING_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/handoff-load-failure-fixed.dom.txt",
+          "kind": "dom",
+          "includes": "항목이 없는지 확인하지 못했어요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/synthetic-handoff.html",
+          "kind": "text",
+          "includes": "MODEL_CONTEXT_ALPHA_731"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/main-history.ax.txt",
+          "kind": "dom",
+          "includes": "이전 작업"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/main-handoff-before.html",
+          "kind": "text",
+          "includes": "실행 출력"
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/publish-audit.json",
+          "kind": "json",
+          "pointer": "/groups",
+          "equals": 8
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/publish-audit.json",
+          "kind": "json",
+          "pointer": "/errors",
+          "equals": []
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/check-metadata-model-after.json",
+          "kind": "json",
+          "pointer": "/acceptance/fulfilled",
+          "equals": true
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/check-metadata-model-after.json",
+          "kind": "json",
+          "pointer": "/acceptance/checks/0/purpose",
+          "equals": "등록한 설명과 실제 명령 결과가 같은 검사에 연결되는지 확인해요."
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/check-metadata-model-after.json",
+          "kind": "json",
+          "pointer": "/acceptance/checks/0/execution/exitCode",
+          "equals": 0
+        },
+        {
+          "evidence": ".proofstill/evidence/live-product-v1/check-metadata-handoff.html",
+          "kind": "text",
+          "includes": "LIVE_COMMAND_OK_731"
+        }
+      ],
+      "limitations": [
+        "합성 fixture의 구현 편집·저장은 실제 API/화면으로 확인했고 주문 기능을 구현했다고 기록하지 않았다. 현재 요구/이전 작업·WC ID 검색·실제 코드/검사 출력 HTML은 주 프로젝트에서 읽기 확인했다.",
+        "독립 리뷰 결과와 최종 웹 연결은 이 관측 수집 이후 별도 CLI 세션/보고에 기록한다. 기록 대조 검사 통과를 실제 사용 전체 통과로 치환하지 않는다.",
+        "실제 UI와 모델의 설명 포함 검사 등록 및 지정 명령 연결은 별도 합성 fixture feature로 확인했다. 주문 기능의 구현이나 수용을 검증한 것이 아니다."
+      ]
+    }
+  ]
+}
