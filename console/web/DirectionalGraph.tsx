@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type NodeProps } from '@xyflow/react';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
-import { collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTitle, reviewTime } from './reviewFlow.ts';
+import { highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTitle, reviewTime } from './reviewFlow.ts';
 import './styles/review-flow.css';
 
 const nodeTime = new Intl.DateTimeFormat('ko-KR', {
@@ -51,17 +51,18 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     const ids = new Set(nodes.map(node => node.id));
     return { nodes, edges: graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
   }, [graph, hiddenKinds, onlyIncomplete]);
+  const highlighted = useMemo(() => highlightedReviewLinks(visible, selectedId), [visible, selectedId]);
   const clouds = useMemo(() => collapsibleClouds(graph, visible.nodes), [graph, visible.nodes]);
   const cloudMode = cloudPreference ?? clouds.size > 0;
   const collapsed = useMemo(() => {
     if (!cloudMode) return visible;
     const hidden = new Set<string>();
     for (const [id, members] of clouds) {
-      if (!expanded.has(id) && !members.includes(selectedId ?? '')) members.forEach(member => hidden.add(member));
+      if (!expanded.has(id) && !members.includes(selectedId ?? '')) members.filter(member => !highlighted.nodeIds.has(member)).forEach(member => hidden.add(member));
     }
     return { nodes: visible.nodes.filter(node => !hidden.has(node.id)),
       edges: visible.edges.filter(edge => !hidden.has(edge.sourceId) && !hidden.has(edge.targetId)) };
-  }, [visible, clouds, cloudMode, expanded, selectedId]);
+  }, [visible, clouds, cloudMode, expanded, selectedId, highlighted]);
   const center = visible.nodes.find(node => node.id === selectedId);
   const displayed = useMemo(() => {
     if (!focused || !center) return collapsed;
@@ -70,11 +71,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     return { nodes: visible.nodes.filter(node => ids.has(node.id)), edges: links.map(link => link.edge) };
   }, [visible, collapsed, focused, center]);
   const { positions, branchEdges } = useMemo(() => layoutReviewBoard(displayed.nodes, displayed.edges), [displayed]);
-  const connected = new Set<string>();
-  for (const edge of displayed.edges) {
-    if (edge.sourceId === selectedId) connected.add(edge.targetId);
-    if (edge.targetId === selectedId) connected.add(edge.sourceId);
-  }
+  const connected = highlighted.nodeIds;
   const nodes = displayed.nodes.map((record): FlowNode => {
     const members = !focused && cloudMode ? clouds.get(record.id) : undefined;
     const memberSelected = members?.includes(selectedId ?? '') ?? false;
@@ -87,17 +84,11 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${reviewTitle(record)}`,
     };
   });
-  const isDownstream = (edge: Graph['edges'][number]) => {
-    if (edge.sourceId !== selectedId && edge.targetId !== selectedId) return false;
-    if (edge.kind === 'precedes') return edge.sourceId === selectedId;
-    const otherId = edge.sourceId === selectedId ? edge.targetId : edge.sourceId;
-    return positions.get(otherId)!.x > positions.get(selectedId)!.x;
-  };
   const edges = displayed.edges.filter(edge =>
-    focused || showAllLinks || branchEdges.has(edge.id) || isDownstream(edge)
+    focused || showAllLinks || branchEdges.has(edge.id) || highlighted.edgeIds.has(edge.id)
   ).map(edge => {
     const directed = edge.kind === 'precedes';
-    const active = isDownstream(edge);
+    const active = highlighted.edgeIds.has(edge.id);
     const color = active ? 'var(--graph-edge-highlight)' : directed ? 'var(--text-secondary)' : 'var(--border-control)';
     const [sourceHandle, targetHandle] = edgeSides(positions.get(edge.sourceId)!, positions.get(edge.targetId)!);
     return { id: edge.id, source: edge.sourceId, target: edge.targetId, sourceHandle, targetHandle, type: 'smoothstep',

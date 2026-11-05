@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
+import { highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -103,4 +103,13 @@ test('클라우드는 주변 항목만 접고 다른 기능과 연결된 항목�
   assert.deepEqual([...collapsibleClouds(graph, nodes)], [['rep', ['task', 'statement']]]);
   assert.equal(collapsibleClouds(graph, nodes.filter(item => item.id !== 'rep')).size, 0);
   assert.deepEqual(graph.clouds[0].memberIds, ['task', 'shared', 'requirement', 'statement']);
+});
+
+test('기능과 작업은 왼쪽 근거를 강조하고 요구는 오른쪽 작업을 강조하지 않는다', () => {
+  const nodes = [node('source', 'evidence'), node('r', 'requirement'), node('f', 'feature'), node('t', 'task')];
+  const edges = [edge('r', 'f', 'precedes'), edge('t', 'r', 'related'), edge('source', 't', 'related'), edge('f', 'source', 'related')];
+  assert.deepEqual(highlightedReviewLinks({ nodes, edges }, 'f').nodeIds, new Set(['r', 'source']));
+  assert.deepEqual(highlightedReviewLinks({ nodes, edges }, 't').nodeIds, new Set(['r', 'source']));
+  assert.equal(highlightedReviewLinks({ nodes, edges }, 'r').edgeIds.size, 0);
+  assert.equal(highlightedReviewLinks({ nodes, edges }, null).edgeIds.size, 0);
 });

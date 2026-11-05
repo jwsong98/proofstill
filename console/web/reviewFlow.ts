@@ -88,6 +88,22 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
+export function highlightedReviewLinks(graph: Graph, selectedId: string | null) {
+  const selected = graph.nodes.find(node => node.id === selectedId);
+  const nodeIds = new Set<string>(), edgeIds = new Set<string>();
+  if (!selected) return { nodeIds, edgeIds };
+  const byId = new Map(graph.nodes.map(node => [node.id, node]));
+  for (const edge of graph.edges) {
+    if (edge.sourceId !== selected.id && edge.targetId !== selected.id) continue;
+    const otherId = edge.sourceId === selected.id ? edge.targetId : edge.sourceId;
+    const other = byId.get(otherId);
+    if (!other || stageOf[other.kind] >= stageOf[selected.kind]) continue;
+    nodeIds.add(otherId);
+    edgeIds.add(edge.id);
+  }
+  return { nodeIds, edgeIds };
+}
+
 export function collapsibleClouds(graph: Graph, visibleNodes: GraphNode[]) {
   const visible = new Set(visibleNodes.map(node => node.id));
   const statements = new Set(graph.nodes.filter(node => evidenceLabel(node) === '사용자 발언').map(node => node.id));
