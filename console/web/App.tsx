@@ -116,7 +116,39 @@ function ImportSessions({ projectId, onImport }: { projectId: string; onImport: 
   </>;
 }
 
+function NodeDetails({ node, graph, boardGraph, currentNodeIds, projectId, busy, sessions, onStart, onSelect, onOpenOriginal, onHandoff }: {
+  node: GraphNode; graph: Graph; boardGraph: Graph; currentNodeIds: Set<string>; projectId: string; busy: boolean; sessions: Session[];
+  onStart: (node: GraphNode) => void; onSelect: (id: string) => void; onOpenOriginal: (sessionId: string, messageId: string) => void; onHandoff: (id: string) => void;
+}) {
+  const historical = !currentNodeIds.has(node.id);
+  const relevantEdges = boardGraph.edges.filter(edge => edge.sourceId === node.id || edge.targetId === node.id);
+  const connectedIds = new Set(relevantEdges.map(edge => edge.sourceId === node.id ? edge.targetId : edge.sourceId));
+  const connectedNodes = boardGraph.nodes.filter(record => connectedIds.has(record.id));
+  const citedEvidence = graph.nodes.filter(record => record.evidence && connectedIds.has(record.id));
+  return <aside className="detail-panel" aria-label="선택 항목 상세">
+        {node.evidence || node.execution ? <SourcePanel node={node} onOpenOriginal={onOpenOriginal} /> : <><header className="node-toolbar" aria-label="노드 제목·상태·작업">
+          <h2 title={`${nodeLabels[node.kind]} · ${node.title}`} aria-label={`${nodeLabels[node.kind]}: ${node.title}`}>{node.title}</h2>
+          <span className={'badge ' + (node.status === 'failed' ? 'negative' : node.status === 'completed' ? 'positive' : '')}>{statusLabels[node.status]}</span>
+          {!historical && <button className="button primary" disabled={busy} onClick={() => onStart(node)}>{sessions.some(session => session.role === null && session.source === 'local' && session.contextNodeIds.length === 1 && session.contextNodeIds[0] === node.id) ? '세션 이어가기' : '세션 시작하기'}</button>}
+          <a className="icon-button" aria-label="컨텍스트 내보내기" title="컨텍스트 내보내기" href={api.contextUrl(projectId, [node.id])} download><Icon name="download-simple" size={16} /></a>
+        </header>{historical && <p className="small">이전 기록 · 현재 항목에 통합된 결정 또는 작업이에요.</p>}{['feature', 'requirement'].includes(node.kind) && <button className="text-button" onClick={() => { onHandoff(node.id); }}>구현·검증 현황에서 보기</button>}{node.kind === 'feature' && node.acceptance && node.acceptance.total > 0 && <section className="detail-section"><h3>정해진 검사</h3><p>{node.acceptance.passed}/{node.acceptance.total} 통과{node.acceptance.fulfilled ? ' · 등록 검사 통과' : ' · 미충족'}</p></section>}<details key={`${node.id}:body`} className="node-details"><summary>상세 내용</summary><DocumentContent content={node.body || '아직 내용이 없어요.'} /></details>
+          <details key={`${node.id}:evidence`} className="node-details"><summary>원문 근거 · {citedEvidence.length}개</summary><EvidenceReferences nodes={citedEvidence} onSelect={onSelect} onOpenOriginal={onOpenOriginal} /></details>
+          {!!node.mergedRecords?.length && <details key={`${node.id}:merged`} className="node-details"><summary>통합 전 논의·작업 · {node.mergedRecords.length}개</summary><p className="small">이전 기록을 보존한 내용이에요. 현재 결함이나 미완료 판정과는 별개예요.</p>{node.mergedRecords.map(record => <details key={record.id}><summary>{record.title}</summary><p className="node-body">{record.body}</p></details>)}</details>}
+
+
+        </>}
+      {node && <section className="detail-section"><h3>연결된 항목</h3>
+        {connectedNodes.map(node => <div className="relation-row" key={node.id}><button className="source-link" onClick={() => onSelect(node.id)}>{node.title}</button></div>)}
+        {!connectedNodes.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}
+      </section>}
+      </aside>;
+}
+
+type WorkspaceTab = { key: string; kind: 'session' | 'node'; targetId: string; title: string; projectId: string; messageTarget?: string | null };
+
 export default function App() {
+  const [tabs, setTabs] = useState<WorkspaceTab[]>([]);
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [detailWidth, setDetailWidth] = useState<number | null>(null);
   const resizeDetail = (percent: number) => setDetailWidth(Math.round(Math.max(25, Math.min(70, percent))));
   const [projects, setProjects] = useState<Project[]>([]), [projectId, setProjectId] = useState<string>('');
@@ -124,7 +156,6 @@ export default function App() {
   const [handoffNodeId, setHandoffNodeId] = useState<string | null>(null);
   const [view, setView] = useState<'graph' | 'session' | 'results' | 'handoff'>('handoff');
 
-  const [messageTarget, setMessageTarget] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]), [sessionsCursor, setSessionsCursor] = useState<string | null>(null), [sessionsOpen, setSessionsOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false), [activeSessionId, setActiveSessionId] = useState<string | null>(null), [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null), [busy, setBusy] = useState(false), [loading, setLoading] = useState(true);
@@ -169,11 +200,43 @@ export default function App() {
     finally { if (sessionLoadingRef.current === id) { sessionLoadingRef.current = null; setSessionLoading(false); } }
   }, [projectId]);
   useEffect(() => {
-    setSelectedId(null); setActiveSessionId(null); setSessionDetail(null); setGraph(emptyGraph); setBoardHistory(null); setSessions([]); setSessionsCursor(null); setView('handoff'); setHiddenKinds(new Set<NodeKind>()); setResultFilter('all');
+    setTabs([]); setActiveTabKey(null); setSelectedId(null); setActiveSessionId(null); setSessionDetail(null); setGraph(emptyGraph); setBoardHistory(null); setSessions([]); setSessionsCursor(null); setView('handoff'); setHiddenKinds(new Set<NodeKind>()); setResultFilter('all');
     if (projectId) { localStorage.setItem('proofstill:project', projectId); void refreshGraph().catch(error => setError(errorText(error))); void loadSessions(); }
   }, [projectId]);
   async function perform(action: () => Promise<void>) { setBusy(true); setError(null); try { await action(); } catch (error) { setError(errorText(error)); } finally { setBusy(false); } }
-  function openSession(session: Session, target: string | null = null) { setMessageTarget(target); setActiveSessionId(session.id); setSessionDetail(null); setView('session'); setSessionsOpen(true); }
+  function activateTab(tab: WorkspaceTab) {
+    setActiveTabKey(tab.key);
+    if (tab.kind === 'session') {
+      setActiveSessionId(tab.targetId); setSessionDetail(null); setView('session'); setSessionsOpen(true);
+    } else {
+      setSelectedId(tab.targetId); setView('graph');
+    }
+  }
+  function openTab(tab: WorkspaceTab) {
+    setTabs(current => current.some(item => item.key === tab.key)
+      ? current.map(item => item.key === tab.key ? { ...item, ...tab } : item) : [...current, tab]);
+    activateTab(tab);
+  }
+  function openSession(session: Session, target: string | null = null) {
+    openTab({ key: 'session:' + session.id, kind: 'session', targetId: session.id, title: session.title, projectId: session.projectId, messageTarget: target });
+  }
+  function openNode(id: string) {
+    const node = [...boardSource.nodes, ...graph.nodes].find(record => record.id === id);
+    if (node) openTab({ key: 'node:' + id, kind: 'node', targetId: id, title: node.title, projectId });
+  }
+  function closeTab(key: string) {
+    const index = tabs.findIndex(tab => tab.key === key);
+    const remaining = tabs.filter(tab => tab.key !== key);
+    setTabs(remaining);
+    const closing = tabs[index];
+    if (key !== activeTabKey || view !== (closing?.kind === 'session' ? 'session' : 'graph')) return;
+    const next = remaining[Math.min(index, remaining.length - 1)];
+    if (next) {
+      activateTab(next);
+      requestAnimationFrame(() => document.getElementById('tab-' + next.key)?.focus());
+    }
+    else { setActiveTabKey(null); setActiveSessionId(null); setView('graph'); }
+  }
   async function startProjectSession() {
     if (!project || busy) return;
     const target = project;
@@ -184,9 +247,9 @@ export default function App() {
       if (currentProject.current === target.id) openSession(session);
     });
   }
-  async function startSession() {
-    if (!projectId || !selected) return;
-    const targetProject = projectId, targetNode = selected;
+  async function startSession(targetNode: GraphNode) {
+    if (!projectId) return;
+    const targetProject = projectId;
     const existing = sessions.find(session => session.role === null && session.source === 'local' && session.contextNodeIds.length === 1 && session.contextNodeIds[0] === targetNode.id);
     if (existing) { openSession(existing); return; }
     await perform(async () => {
@@ -197,18 +260,8 @@ export default function App() {
     });
   }
   async function captureMessage(sessionId: string, messageId: string) {
-    const node = await api.captureMessage(projectId, sessionId, messageId); await refreshGraph(); setSelectedId(node.id); setView('graph');
+    const node = await api.captureMessage(projectId, sessionId, messageId); await refreshGraph(); openTab({ key: 'node:' + node.id, kind: 'node', targetId: node.id, title: node.title, projectId });
   }
-  const historical = selected != null && !currentNodeIds.has(selected.id);
-  const detailGraph = view === 'graph' ? boardSource : graph;
-  const relevantEdges = useMemo(() => selected ? detailGraph.edges.filter(edge => edge.sourceId === selected.id || edge.targetId === selected.id) : [], [detailGraph.edges, selected]);
-  const connectedIds = new Set(relevantEdges.map(edge => edge.sourceId === selected?.id ? edge.targetId : edge.sourceId));
-  const connectedNodes = detailGraph.nodes.filter(node => connectedIds.has(node.id) &&
-    (currentNodeIds.has(node.id) || boardGraph.nodes.some(visible => visible.id === node.id)));
-  const citedEvidence = useMemo(() => {
-    const ids = new Set(relevantEdges.map(edge => edge.sourceId === selectedId ? edge.targetId : edge.sourceId));
-    return graph.nodes.filter(node => node.evidence && ids.has(node.id));
-  }, [graph.nodes, relevantEdges, selectedId]);
   const results = useMemo(() => graph.nodes.filter(node => node.kind === 'result' && node.execution).sort((a, b) => (b.execution?.startedAt ?? 0) - (a.execution?.startedAt ?? 0)), [graph.nodes]);
   const resultCounts = useMemo(() => ({
     all: results.length,
@@ -224,15 +277,9 @@ export default function App() {
     if (original.session.projectId !== targetProject) throw new Error('원래 대화가 현재 프로젝트에 속하지 않아요.');
     openSession(original.session, messageId);
   }); }
-  function choose(id: string, sourceGraph = graph) {
-    setSelectedId(id);
-    if (sourceGraph.nodes.some(node => node.id === id && node.kind === 'result')) {
-      setResultFilter('all');
-      setView('results');
-    } else {
-      setView('graph');
-    }
-  }
+  function choose(id: string) { openNode(id); }
+  const openTabs = tabs.filter(tab => tab.projectId === projectId);
+  const tabVisible = (tab: WorkspaceTab) => tab.key === activeTabKey && view === (tab.kind === 'session' ? 'session' : 'graph');
   return <div className="app-shell">
     <header className="topbar"><div className="brand"><span className="brand-mark" aria-hidden="true"><i /><i /><i /><i /></span>proofstill</div><span className="small">{codexStatus}</span></header>
     <div className="app-body"><aside className="sidebar"><div className="project-picker"><label className="small" htmlFor="project-select">프로젝트</label><div className="row"><select id="project-select" value={projectId} onChange={event => setProjectId(event.target.value)}>{!projects.length && <option value="">프로젝트 없음</option>}{projects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="icon-button" aria-label="프로젝트 추가" onClick={() => { setError(null); setModal({ kind: 'project' }); }}><Icon name="plus" /></button></div></div>
@@ -246,16 +293,16 @@ export default function App() {
         {sessionsOpen && <button className="nav-subaction" onClick={() => { setError(null); setModal({ kind: 'remote' }); }}><Icon name="download-simple" size={16} />기존 세션 가져오기</button>}
         <button className={'nav-button ' + (view === 'results' ? 'active' : '')} disabled={!project} onClick={() => { setView('results'); void refreshGraph().catch(error => setError(errorText(error))); }}><Icon name="check-circle" />실행 결과</button>
       </nav><div className="sidebar-footer">localhost:7777</div></aside>
-      <main className="main-area"><header className="page-header"><div><p className="breadcrumb">{project?.name ?? '프로젝트'}{view === 'session' && sessionDetail ? ' / ' + sessionDetail.session.title : ''}</p><h1>{view === 'handoff' ? '구현·검증 현황' : view === 'graph' ? '관계 그래프' : view === 'session' ? sessionDetail?.session.title ?? 'Codex 세션' : '실행 결과'}</h1></div>
+      <main className="main-area"><header className="page-header"><div><p className="breadcrumb">{project?.name ?? '프로젝트'}{view === 'session' && sessionDetail?.session.id === activeSessionId ? ' / ' + sessionDetail.session.title : ''}</p><h1>{view === 'handoff' ? '구현·검증 현황' : view === 'graph' ? '관계 그래프' : view === 'session' ? sessionDetail?.session.id === activeSessionId ? sessionDetail.session.title : sessions.find(session => session.id === activeSessionId)?.title ?? 'Codex 세션' : '실행 결과'}</h1></div>
         {project && view === 'graph' && <div className="toolbar"><button className="button" disabled={busy} onClick={() => { setError(null); setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}><Icon name="file-text" size={16} />근거 가져오기</button></div>}
       </header>
       {error && !modal && <div className="global-error"><ErrorNotice message={error} /><button className="icon-button" aria-label="오류 닫기" onClick={() => setError(null)}><Icon name="x" size={16} /></button></div>}
       {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className="persistent-workspace" style={detailWidth === null ? undefined : { '--detail-width': `${detailWidth}%` } as React.CSSProperties}>
       <section className="center-panel graph-side-panel" aria-label="상시 관계 그래프">
-        <div className="row graph-side-heading"><strong>관계 그래프</strong>{selected && view !== 'graph' && <button className="text-button" onClick={() => setView('graph')}>선택 항목 상세 보기</button>}</div>
+        <div className="row graph-side-heading"><strong>관계 그래프</strong>{selected && view !== 'graph' && <button className="text-button" onClick={() => openNode(selected.id)}>선택 항목 상세 보기</button>}</div>
         <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능</label></div>
           <div className="node-filters" role="group" aria-label="노드 종류 표시">{boardKinds.map(kind => <button key={kind} className="node-filter" aria-pressed={!hiddenKinds.has(kind)} aria-label={`${nodeLabels[kind]} 노드 표시`} onClick={() => setHiddenKinds(current => { const next = new Set(current); if (next.has(kind)) next.delete(kind); else next.add(kind); return next; })}>{nodeLabels[kind]}<span>{boardGraph.nodes.filter(node => node.kind === kind).length}</span></button>)}{hiddenKinds.size > 0 && <button className="text-button" onClick={() => setHiddenKinds(new Set())}>전체 표시</button>}</div>
-          {boardGraph.nodes.length ? <GraphCanvas onRestoreSelection={setSelectedId} key={projectId} graph={boardGraph} currentNodeIds={currentNodeIds} selectedId={selectedId} onSelect={setSelectedId} onlyIncomplete={onlyIncomplete} hiddenKinds={hiddenKinds} onShowAll={() => { setHiddenKinds(new Set()); setOnlyIncomplete(false); }} onMove={(id, x, y) => void perform(async () => { await api.updateNode(projectId, id, { x, y }); await refreshGraph(); })} /> : <div className="empty-page"><Icon name="share-network" size={32} /><h2>아직 연결된 자료가 없어요.</h2><p>가져온 근거와 기록된 관계를 여기에서 확인해요.</p><button className="text-button" onClick={() => { setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}>문서 근거 가져오기<Icon name="arrow-right" /></button></div>}</>
+          {boardGraph.nodes.length ? <GraphCanvas onRestoreSelection={setSelectedId} key={projectId} graph={boardGraph} currentNodeIds={currentNodeIds} selectedId={selectedId} onSelect={openNode} onlyIncomplete={onlyIncomplete} hiddenKinds={hiddenKinds} onShowAll={() => { setHiddenKinds(new Set()); setOnlyIncomplete(false); }} onMove={(id, x, y) => void perform(async () => { await api.updateNode(projectId, id, { x, y }); await refreshGraph(); })} /> : <div className="empty-page"><Icon name="share-network" size={32} /><h2>아직 연결된 자료가 없어요.</h2><p>가져온 근거와 기록된 관계를 여기에서 확인해요.</p><button className="text-button" onClick={() => { setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}>문서 근거 가져오기<Icon name="arrow-right" /></button></div>}</>
       </section><section className="persistent-content">
         <div className="detail-resize" role="separator" aria-label="상세 패널 너비" aria-orientation="vertical"
           aria-valuemin={25} aria-valuemax={70} aria-valuenow={detailWidth ?? 55} tabIndex={0}
@@ -275,40 +322,54 @@ export default function App() {
             resizeDetail(width + (event.key === 'ArrowLeft' ? 5 : -5));
           }} />
 
-        <div className={'workspace content-workspace' + (view === 'graph' ? ' show-node-detail' : '')}><section className="center-panel">
-        {view === 'handoff' && <HandoffView key={projectId} projectId={projectId} graph={graph} initialNodeId={handoffNodeId} onGraphSelect={id => { const targetProject = projectId; void refreshGraph().then(data => { if (currentProject.current === targetProject) choose(id, data); }).catch(error => setError(errorText(error))); }} />}
+        {!!openTabs.length && <div className="workspace-tabs" role="tablist" aria-label="오른쪽 작업 탭">
+          {openTabs.map(tab => {
+            const title = tab.kind === 'session' ? sessions.find(session => session.id === tab.targetId)?.title ?? tab.title
+              : boardSource.nodes.find(node => node.id === tab.targetId)?.title ?? tab.title;
+            return <div className="workspace-tab" key={tab.key} data-active={tabVisible(tab)}>
+              <button type="button" role="tab" id={'tab-' + tab.key} aria-controls={'panel-' + tab.key} aria-selected={tabVisible(tab)}
+                tabIndex={tabVisible(tab) || !openTabs.some(tabVisible) ? 0 : -1} title={title}
+                onClick={() => activateTab(tab)} onKeyDown={event => {
+                  const index = openTabs.indexOf(tab);
+                  const target = event.key === 'ArrowRight' ? (index + 1) % openTabs.length : event.key === 'ArrowLeft'
+                    ? (index + openTabs.length - 1) % openTabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? openTabs.length - 1 : -1;
+                  if (target < 0) return;
+                  event.preventDefault(); activateTab(openTabs[target]);
+                  document.getElementById('tab-' + openTabs[target].key)?.focus();
+                }}><Icon name={tab.kind === 'session' ? 'chat-circle' : 'file-text'} size={14} /><span>{title}</span></button>
+              <button type="button" className="workspace-tab-close" aria-label={title + ' 탭 닫기'} onClick={() => closeTab(tab.key)}><Icon name="x" size={12} /></button>
+            </div>;
+          })}
+        </div>}
+        <div className="workspace content-workspace">
+        {openTabs.map(tab => {
+          const node = boardSource.nodes.find(node => node.id === tab.targetId) ?? graph.nodes.find(node => node.id === tab.targetId);
+          return <div className="workspace-tab-panel" key={tab.key} id={'panel-' + tab.key} role="tabpanel"
+            aria-labelledby={'tab-' + tab.key} hidden={!tabVisible(tab)}>
+            {tab.kind === 'session' ? <SessionChat visible={tabVisible(tab)} sessionId={tab.targetId} messageTarget={tab.messageTarget} onActivity={() => void loadSessions()} onGraphUpdated={() => void refreshGraph().catch(error => setError(errorText(error)))} onCapture={captureMessage} onDetail={detail => { if (currentProject.current === detail.session.projectId && currentSession.current === detail.session.id) setSessionDetail(detail); }} renderContext={session => session.projectId === project.id ? <SessionContext key={`${project.id}:${session.id}:${JSON.stringify(session.contextNodeIds)}`} project={project} session={session} onSelect={choose} onOpenOriginal={openOriginal} /> : null} />
+              : node ? <NodeDetails node={node} graph={graph} boardGraph={boardSource} currentNodeIds={currentNodeIds} projectId={projectId}
+                  busy={busy} sessions={sessions} onStart={node => void startSession(node)} onSelect={choose} onOpenOriginal={openOriginal}
+                  onHandoff={id => { setHandoffNodeId(id); setView('handoff'); }} />
+                : <p>이 노드를 찾을 수 없어요.</p>}
+          </div>;
+        })}
+        <section className="center-panel" hidden={openTabs.some(tabVisible)}>
+        {view === 'handoff' && <HandoffView key={projectId} projectId={projectId} graph={graph} initialNodeId={handoffNodeId} onGraphSelect={id => { const targetProject = projectId; void refreshGraph().then(data => { if (currentProject.current === targetProject) openTab({ key: 'node:' + id, kind: 'node', targetId: id, title: data?.nodes.find(node => node.id === id)?.title ?? id, projectId: targetProject }); }).catch(error => setError(errorText(error))); }} />}
 
-        {view === 'graph' && !selected && <div className="empty-page"><p>그래프에서 노드를 선택하면 상세 내용을 볼 수 있어요.</p></div>}
-        {view === 'session' && (activeSessionId ? <SessionChat key={`${projectId}:${activeSessionId}`} sessionId={activeSessionId} messageTarget={messageTarget} onActivity={() => void loadSessions()} onGraphUpdated={() => void refreshGraph().catch(error => setError(errorText(error)))} onCapture={captureMessage} onDetail={detail => { if (currentProject.current === detail.session.projectId && currentSession.current === detail.session.id) setSessionDetail(detail); }} renderContext={session => session.projectId === project.id ? <SessionContext key={`${project.id}:${session.id}:${JSON.stringify(session.contextNodeIds)}`} project={project} session={session} onSelect={choose} onOpenOriginal={openOriginal} /> : null} /> : <div className="empty-page"><p>Codex 세션 목록에서 대화를 선택해 주세요.</p></div>)}
+        {view === 'graph' && !openTabs.some(tab => tabVisible(tab)) && <div className="empty-page"><p>그래프에서 노드를 선택하면 상세 내용을 볼 수 있어요.</p></div>}
+        {view === 'session' && !openTabs.some(tab => tabVisible(tab)) && <div className="empty-page"><p>Codex 세션 목록에서 대화를 선택해 주세요.</p></div>}
         {view === 'results' && <div className="results-view"><div className="result-summary" aria-label="실행 결과 요약">
           <div><span>전체</span><strong>{resultCounts.all}</strong></div><div><span>통과</span><strong className="success-text">{resultCounts.passed}</strong></div><div><span>실패</span><strong className="danger-text">{resultCounts.failed}</strong></div><div><span>확인 필요</span><strong>{resultCounts.other}</strong></div>
         </div><div className="result-filters" role="group" aria-label="실행 결과 상태 필터">{([['all', '전체'], ['passed', '통과'], ['failed', '실패'], ['other', '확인 필요']] as const).map(([value, label]) => <button key={value} aria-pressed={resultFilter === value} onClick={() => setResultFilter(value)}>{label}<span>{resultCounts[value]}</span></button>)}</div>
-          <div className="result-list">{visibleResults.map(node => <button className={'result-row ' + (selectedId === node.id ? 'selected' : '')} key={node.id} onClick={() => setSelectedId(node.id)}><Icon name={node.execution?.status === 'failed' ? 'x-circle' : node.execution?.status === 'passed' ? 'check-circle' : 'warning-circle'} /><span><strong>{node.title}</strong><small>{node.execution?.kind === 'test' ? '테스트' : node.execution?.kind === 'api' ? 'API 요청' : '명령'} · {timeLabel(node.execution?.startedAt)}</small></span><span className={'badge ' + (node.execution?.status === 'failed' ? 'negative' : node.execution?.status === 'passed' ? 'positive' : '')}>{node.execution?.status === 'passed' ? '통과' : node.execution?.status === 'failed' ? '실패' : node.execution?.status === 'interrupted' ? '중단' : '미확인'}</span></button>)}
+          <div className="result-list">{visibleResults.map(node => <button className={'result-row ' + (selectedId === node.id ? 'selected' : '')} key={node.id} onClick={() => openNode(node.id)}><Icon name={node.execution?.status === 'failed' ? 'x-circle' : node.execution?.status === 'passed' ? 'check-circle' : 'warning-circle'} /><span><strong>{node.title}</strong><small>{node.execution?.kind === 'test' ? '테스트' : node.execution?.kind === 'api' ? 'API 요청' : '명령'} · {timeLabel(node.execution?.startedAt)}</small></span><span className={'badge ' + (node.execution?.status === 'failed' ? 'negative' : node.execution?.status === 'passed' ? 'positive' : '')}>{node.execution?.status === 'passed' ? '통과' : node.execution?.status === 'failed' ? '실패' : node.execution?.status === 'interrupted' ? '중단' : '미확인'}</span></button>)}
             {!results.length && <div className="empty-page"><Icon name="check-circle" size={32} /><h2>아직 기록된 실행 결과가 없어요.</h2><p>Codex가 실제 명령이나 API 요청을 실행하면 관찰한 결과가 여기에 시간순으로 쌓여요.</p></div>}
             {!!results.length && !visibleResults.length && <div className="empty-page compact"><p>이 상태에 해당하는 실행 결과가 없어요.</p><button className="text-button" onClick={() => setResultFilter('all')}>전체 결과 보기</button></div>}
           </div></div>}
-      </section>{view === 'graph' && selected && <aside className="detail-panel" aria-label="선택 항목 상세">
-        <button type="button" className="icon-button" style={{ alignSelf: 'flex-end' }} aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
-        {selected.evidence || selected.execution ? <SourcePanel node={selected} onOpenOriginal={openOriginal} /> : <><header className="node-toolbar" aria-label="노드 제목·상태·작업">
-          <h2 title={`${nodeLabels[selected.kind]} · ${selected.title}`} aria-label={`${nodeLabels[selected.kind]}: ${selected.title}`}>{selected.title}</h2>
-          <span className={'badge ' + (selected.status === 'failed' ? 'negative' : selected.status === 'completed' ? 'positive' : '')}>{statusLabels[selected.status]}</span>
-          {!historical && <button className="button primary" disabled={busy} onClick={() => void startSession()}>{sessions.some(session => session.role === null && session.source === 'local' && session.contextNodeIds.length === 1 && session.contextNodeIds[0] === selected.id) ? '세션 이어가기' : '세션 시작하기'}</button>}
-          <a className="icon-button" aria-label="컨텍스트 내보내기" title="컨텍스트 내보내기" href={api.contextUrl(projectId, [selected.id])} download><Icon name="download-simple" size={16} /></a>
-        </header>{historical && <p className="small">이전 기록 · 현재 항목에 통합된 결정 또는 작업이에요.</p>}{['feature', 'requirement'].includes(selected.kind) && <button className="text-button" onClick={() => { setHandoffNodeId(selected.id); setView('handoff'); }}>구현·검증 현황에서 보기</button>}{selected.kind === 'feature' && selected.acceptance && selected.acceptance.total > 0 && <section className="detail-section"><h3>정해진 검사</h3><p>{selected.acceptance.passed}/{selected.acceptance.total} 통과{selected.acceptance.fulfilled ? ' · 등록 검사 통과' : ' · 미충족'}</p></section>}<details key={`${selected.id}:body`} className="node-details"><summary>상세 내용</summary><DocumentContent content={selected.body || '아직 내용이 없어요.'} /></details>
-          <details key={`${selected.id}:evidence`} className="node-details"><summary>원문 근거 · {citedEvidence.length}개</summary><EvidenceReferences nodes={citedEvidence} onSelect={choose} onOpenOriginal={openOriginal} /></details>
-          {!!selected.mergedRecords?.length && <details key={`${selected.id}:merged`} className="node-details"><summary>통합 전 논의·작업 · {selected.mergedRecords.length}개</summary><p className="small">이전 기록을 보존한 내용이에요. 현재 결함이나 미완료 판정과는 별개예요.</p>{selected.mergedRecords.map(record => <details key={record.id}><summary>{record.title}</summary><p className="node-body">{record.body}</p></details>)}</details>}
-
-
-        </>}
-      {selected && <section className="detail-section"><h3>연결된 항목</h3>
-        {connectedNodes.map(node => <div className="relation-row" key={node.id}><button className="source-link" onClick={() => choose(node.id)}>{node.title}</button></div>)}
-        {!connectedNodes.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}
-      </section>}
-      </aside>}</div></section></div>}
+      </section></div></section></div>}
     </main></div>
     {modal && <Modal title={modal.kind === 'project' ? '어떤 프로젝트를 등록할까요?' : modal.kind === 'file' ? '어떤 문서를 근거로 보존할까요?' : '어떤 Codex 세션을 가져올까요?'} onClose={() => !busy && setModal(null)}><ErrorNotice message={error} />
       {modal.kind === 'project' && <form onSubmit={event => { const input = fields(event); void perform(async () => { const created = await api.createProject({ name: String(input.name), rootPath: String(input.rootPath) }); const list = await api.projects(); setProjects(list); setProjectId(created.id); setModal(null); }); }}><label>프로젝트 이름<input name="name" required placeholder="프로젝트 이름" /></label><label>로컬 폴더 경로<input name="rootPath" required placeholder="/Users/name/project" /></label><button className="button primary" disabled={busy}>{busy ? '등록 중' : '등록하기'}</button></form>}
-      {modal.kind === 'file' && <form onSubmit={event => { const input = fields(event); void perform(async () => { const node = await api.captureFile(projectId, { path: String(input.path), ...(input.startLine ? { startLine: Number(input.startLine) } : {}), ...(input.endLine ? { endLine: Number(input.endLine) } : {}) }); await refreshGraph(); setSelectedId(node.id); setView('graph'); setModal(null); }); }}><label>프로젝트 안의 파일 경로<input name="path" list="project-files" required placeholder="requirements.md" /><datalist id="project-files">{files.map(file => <option key={file} value={file} />)}</datalist></label><div className="form-columns"><label>시작 줄 · 선택<input name="startLine" type="number" min="1" placeholder="처음부터" /></label><label>마지막 줄 · 선택<input name="endLine" type="number" min="1" placeholder="끝까지" /></label></div><p className="small">선택한 원문과 출처를 읽기 전용 근거로 보존해요.</p><button className="button primary" disabled={busy}>{busy ? '가져오는 중' : '근거로 보존하기'}</button></form>}
+      {modal.kind === 'file' && <form onSubmit={event => { const input = fields(event); void perform(async () => { const node = await api.captureFile(projectId, { path: String(input.path), ...(input.startLine ? { startLine: Number(input.startLine) } : {}), ...(input.endLine ? { endLine: Number(input.endLine) } : {}) }); await refreshGraph(); openTab({ key: 'node:' + node.id, kind: 'node', targetId: node.id, title: node.title, projectId }); setModal(null); }); }}><label>프로젝트 안의 파일 경로<input name="path" list="project-files" required placeholder="requirements.md" /><datalist id="project-files">{files.map(file => <option key={file} value={file} />)}</datalist></label><div className="form-columns"><label>시작 줄 · 선택<input name="startLine" type="number" min="1" placeholder="처음부터" /></label><label>마지막 줄 · 선택<input name="endLine" type="number" min="1" placeholder="끝까지" /></label></div><p className="small">선택한 원문과 출처를 읽기 전용 근거로 보존해요.</p><button className="button primary" disabled={busy}>{busy ? '가져오는 중' : '근거로 보존하기'}</button></form>}
       {modal.kind === 'remote' && <ImportSessions projectId={projectId} onImport={async ids => { let imported: Session | null = null; for (const id of ids) imported = await api.importSession(projectId, id); await loadSessions(); await refreshGraph(); setModal(null); if (imported) openSession(imported); }} />}
     </Modal>}
   </div>;

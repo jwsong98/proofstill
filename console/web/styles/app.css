@@ -80,3 +80,16 @@
 .persistent-content .handoff-workspace{grid-template-columns:minmax(0,1fr)}
 .persistent-content .handoff-list{max-height:35%;border-bottom:1px solid var(--border)}
 .persistent-content .handoff-detail{border-left:0}
+
+.workspace-tabs{display:flex;gap:4px;flex-shrink:0;overflow-x:auto;min-height:42px;padding:6px 8px 0;background:var(--bg-subtle);border-bottom:1px solid var(--border)}
+.workspace-tab{display:flex;align-items:center;max-width:240px;min-width:100px;border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;color:var(--text-secondary);flex-shrink:0}
+.workspace-tab[data-active=true]{background:var(--surface);border-color:var(--border);color:var(--text-primary)}
+.workspace-tab>[role=tab]{display:flex;align-items:center;gap:6px;min-width:0;min-height:34px;padding:6px 8px;background:transparent;color:inherit;border:0;font:inherit;font-size:12px;text-align:left}
+.workspace-tab>[role=tab]>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.workspace-tab-close{display:grid;place-items:center;border:0;background:transparent;color:var(--text-secondary);width:24px;height:24px;flex-shrink:0;margin-right:4px;border-radius:4px}
+.workspace-tab-close:hover{background:var(--fill)}
+.workspace-tab-panel{display:flex;flex-direction:column;min-height:0;min-width:0;flex:1;overflow:hidden}
+.workspace-tab-panel[hidden]{display:none}
+.workspace-tab-panel>.detail-panel{flex:1;border-left:0}
+
+.content-workspace>.center-panel[hidden]{display:none}

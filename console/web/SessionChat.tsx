@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { api, subscribeSession, type PendingRequest, type SessionDetail } from './api.ts';
 import { ErrorNotice, Icon, Loading, timeLabel } from './components.tsx';
 import { contextUsageLabel, cumulativeUsageLabel } from './contextUsage.ts';
@@ -41,11 +41,16 @@ function ActivityGroup({ activities }: { activities: Activity[] }) {
     {open && <div className="activity-group-content">{activities.map(activity => <ActivityCard key={activity.key} activity={activity} />)}</div>}
   </details>;
 }
-export function SessionChat({ sessionId, messageTarget, onActivity, onGraphUpdated, onCapture, onDetail, renderContext }: {
-  sessionId: string; messageTarget?: string | null; onActivity: () => void; onGraphUpdated: () => void;
+export function SessionChat({ visible = true, sessionId, messageTarget, onActivity, onGraphUpdated, onCapture, onDetail, renderContext }: {
+  visible?: boolean; sessionId: string; messageTarget?: string | null; onActivity: () => void; onGraphUpdated: () => void;
   onCapture: (sessionId: string, messageId: string) => Promise<void>; onDetail: (detail: SessionDetail) => void;
   renderContext?: (session: Session) => ReactNode;
 }) {
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const readingPosition = useRef(0);
+  useLayoutEffect(() => {
+    if (visible && messagesRef.current) messagesRef.current.scrollTop = readingPosition.current;
+  }, [visible]);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -100,8 +105,8 @@ export function SessionChat({ sessionId, messageTarget, onActivity, onGraphUpdat
     return () => { disposed = true; controller.abort(); close(); clearTimeout(timer); };
   }, [sessionId, reloadKey]);
   useEffect(() => { sessionStorage.setItem('proofstill:draft:' + sessionId, draft); }, [draft, sessionId]);
-  useEffect(() => { bottom.current?.scrollIntoView({ block: 'nearest' }); }, [detail?.messages.length, detail?.events?.length, Object.values(streaming).join('').length]);
-  useEffect(() => { if (messageTarget) messageElements.current.get(messageTarget)?.scrollIntoView({ block: 'center' }); }, [messageTarget, detail?.messages.length]);
+  useEffect(() => { visible && bottom.current?.scrollIntoView({ block: 'nearest' }); }, [detail?.messages.length, detail?.events?.length, Object.values(streaming).join('').length]);
+  useEffect(() => { if (visible && messageTarget) messageElements.current.get(messageTarget)?.scrollIntoView({ block: 'center' }); }, [messageTarget, detail?.messages.length]);
   async function send() {
     const content = draft.trim(); if (!content || sending || active) return;
     setSending(true); setError(null);
@@ -132,7 +137,8 @@ export function SessionChat({ sessionId, messageTarget, onActivity, onGraphUpdat
     <div className="row between session-controls"><span className="small">{detail.session.role === 'graph' ? '읽기 전용 분석' : '전체 접근 · 승인 요청 없음'}</span><button className="text-button" disabled={syncing} onClick={() => setReloadKey(key => key + 1)}>{syncing ? '기록 갱신 중' : '다시 불러오기'}</button></div>
     <ErrorNotice message={error} />
     <ErrorNotice message={syncError} />
-    <div className="messages" aria-live="polite">
+    <div className="messages" aria-live={visible ? 'polite' : 'off'} ref={messagesRef}
+      onScroll={event => { if (visible) readingPosition.current = event.currentTarget.scrollTop; }}>
       {renderContext?.(detail.session)}
       {!timeline.length && <div className="empty-chat"><Icon name="chat-circle" size={24} /><p>{detail.session.contextNodeIds.length ? '선택한 컨텍스트로 대화를 시작해요.' : '프로젝트 루트에서 대화를 시작해요.'}</p><span className="small">질문과 판단에 필요한 원문 근거를 함께 확인할 수 있어요.</span></div>}
       {timeline.map(entry => entry.kind === 'activities' ? <ActivityGroup activities={entry.activities} key={entry.key} /> : (() => { const message = entry.message; return <article className={'message ' + (message.role === 'user' ? 'user-message' : '')} key={message.id} ref={element => { if (element) { messageElements.current.set(message.id, element); if (message.externalId) messageElements.current.set(message.externalId, element); } else { messageElements.current.delete(message.id); if (message.externalId) messageElements.current.delete(message.externalId); } }} data-message-id={message.id} data-original-message-id={message.externalId ?? message.id}>
@@ -149,8 +155,8 @@ export function SessionChat({ sessionId, messageTarget, onActivity, onGraphUpdat
       <div ref={bottom} />
     </div>
     {detail.session.role === 'graph' ? <div className="composer small">그래프 분석 기록이에요. 기능 노드에서 일반 Codex 세션을 열어 대화할 수 있어요.</div> : <form className="composer" onSubmit={event => { event.preventDefault(); void send(); }}>
-      <label htmlFor="chat-input" className="sr-only">Codex에게 메시지 보내기</label>
-      <textarea id="chat-input" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Codex에게 메시지 보내기" onKeyDown={event => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); void send(); } }} />
+      <label htmlFor={`chat-input-${sessionId}`} className="sr-only">Codex에게 메시지 보내기</label>
+      <textarea id={`chat-input-${sessionId}`} value={draft} onChange={event => setDraft(event.target.value)} placeholder="Codex에게 메시지 보내기" onKeyDown={event => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); void send(); } }} />
       <div className="row between"><span className="small context-usage">{contextUsage}<br />{cumulativeUsageLabel(detail.usage.at(-1))}</span>{active ? <button className="button" type="button" onClick={() => void api.interrupt(sessionId).catch(error => setError(String(error)))}>응답 중단하기</button> : <button className="button primary" disabled={sending || !draft.trim()} type="submit">{sending ? '보내는 중' : '보내기'}<Icon name="paper-plane-tilt" /></button>}</div>
     </form>}
   </div>;
