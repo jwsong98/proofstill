@@ -51,7 +51,7 @@ test('보드 배치는 발언 시각과 나중에 기록된 발언도 결정과 
   assert.ok(positions.get('opinion')!.x < positions.get('decision')!.x);
   assert.equal(positions.get('opinion')!.y, positions.get('decision')!.y);
   assert.equal(positions.get('decision')!.y, positions.get('task')!.y);
-  assert.ok(positions.get('later')!.y > positions.get('task')!.y);
+  assert.ok(positions.get('later')!.y < positions.get('task')!.y);
   assert.ok(positions.get('decision')!.x < positions.get('task')!.x);
 });
 
@@ -82,4 +82,15 @@ test('종류가 여러 단계 차이 나거나 같아도 직접 연결된 노드
   assert.equal(positions.get('task-a')!.x - positions.get('source')!.x,
                positions.get('task-b')!.x - positions.get('task-a')!.x);
   assert.equal(positions.get('source')!.y, positions.get('task-b')!.y);
+});
+
+test('대표 연결이 없는 사용자 발언도 작업 가지 밑으로 보내지 않는다', () => {
+  const task = node('task', 'task');
+  const requirement = node('requirement', 'requirement');
+  const opinion = node('opinion', 'evidence', source('message', 'user'));
+  const { positions } = layoutReviewBoard([requirement, task, opinion], [
+    edge('requirement', 'task', 'precedes'), edge('opinion', 'task', 'related'),
+  ]);
+  assert.ok(positions.get('opinion')!.y < positions.get('requirement')!.y);
+  assert.equal(positions.get('requirement')!.y, positions.get('task')!.y);
 });

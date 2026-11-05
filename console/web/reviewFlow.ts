@@ -29,7 +29,7 @@ const stageOf: Record<GraphNode['kind'], number> = {
 };
 
 export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
-  const ordered = nodes.map(node => ({ id: node.id, stage: stageOf[node.kind], at: reviewTime(node).at }))
+  const ordered = nodes.map(node => ({ id: node.id, stage: stageOf[node.kind], at: reviewTime(node).at, user: evidenceLabel(node) === '사용자 발언' }))
     .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.id.localeCompare(b.id));
   const byId = new Map(ordered.map(entry => [entry.id, entry]));
   const timeOrder = new Map(ordered.map((entry, index) => [entry.id, index]));
@@ -68,19 +68,23 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
     return row;
   }
 
-  for (const entry of ordered) {
-    if (!parents.has(entry.id) && children.has(entry.id)) {
-      place(entry.id, 0);
-      nextRow += .25;
-    }
+  const roots = ordered.filter(entry => !parents.has(entry.id));
+  const isolated = roots.filter(entry => !children.has(entry.id));
+  function placeLoose(entries: typeof ordered) {
+    entries.forEach((entry, index) => positions.set(entry.id, {
+      x: (index % 4) * columnStep, y: (nextRow + Math.floor(index / 4)) * rowStep,
+    }));
+    nextRow += Math.ceil(entries.length / 4);
   }
 
-  // Keep disconnected records together without stretching the connected branches.
-  const isolated = ordered.filter(entry => !parents.has(entry.id) && !children.has(entry.id))
-    .sort((a, b) => a.stage - b.stage);
-  isolated.forEach((entry, index) => positions.set(entry.id, {
-    x: (index % 4) * columnStep, y: (nextRow + Math.floor(index / 4)) * rowStep,
-  }));
+  placeLoose(isolated.filter(entry => entry.user));
+  const connectedRoots = roots.filter(entry => children.has(entry.id))
+    .sort((a, b) => Number(b.user) - Number(a.user) || a.stage - b.stage);
+  for (const entry of connectedRoots) {
+    place(entry.id, 0);
+    nextRow += .25;
+  }
+  placeLoose(isolated.filter(entry => !entry.user).sort((a, b) => a.stage - b.stage));
   return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
