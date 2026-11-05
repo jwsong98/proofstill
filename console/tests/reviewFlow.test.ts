@@ -97,10 +97,10 @@ test('대표 연결이 없는 사용자 발언도 작업 가지 밑으로 보내
 
 test('클라우드는 주변 항목만 접고 다른 기능과 연결된 항목을 유지한다', () => {
   const nodes = [node('rep', 'decision'), node('task', 'task'), node('shared', 'task'),
-    node('external', 'feature'), node('requirement', 'requirement')];
-  const graph = { nodes, edges: [edge('rep', 'task', 'related'), edge('shared', 'external', 'related')],
-    clouds: [{ representativeId: 'rep', memberIds: ['task', 'shared', 'requirement'] }] };
-  assert.deepEqual([...collapsibleClouds(graph, nodes)], [['rep', ['task']]]);
+    node('external', 'feature'), node('requirement', 'requirement'), node('statement', 'evidence', source('message', 'user'))];
+  const graph = { nodes, edges: [edge('rep', 'task', 'related'), edge('shared', 'external', 'related'), edge('statement', 'external', 'related')],
+    clouds: [{ representativeId: 'rep', memberIds: ['task', 'shared', 'requirement', 'statement'] }] };
+  assert.deepEqual([...collapsibleClouds(graph, nodes)], [['rep', ['task', 'statement']]]);
   assert.equal(collapsibleClouds(graph, nodes.filter(item => item.id !== 'rep')).size, 0);
-  assert.deepEqual(graph.clouds[0].memberIds, ['task', 'shared', 'requirement']);
+  assert.deepEqual(graph.clouds[0].memberIds, ['task', 'shared', 'requirement', 'statement']);
 });

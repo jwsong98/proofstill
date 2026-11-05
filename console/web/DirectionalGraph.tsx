@@ -37,7 +37,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
   graph: Graph; currentNodeIds: Set<string>; selectedId: string | null; onSelect: (id: string) => void; onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 }) {
   const [focused, setFocused] = useState(false);
-  const [cloudMode, setCloudMode] = useState(false);
+  const [cloudPreference, setCloudPreference] = useState<boolean | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleCloud = (id: string, open: boolean) => setExpanded(current => {
     const next = new Set(current);
@@ -51,6 +51,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     return { nodes, edges: graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
   }, [graph, hiddenKinds, onlyIncomplete]);
   const clouds = useMemo(() => collapsibleClouds(graph, visible.nodes), [graph, visible.nodes]);
+  const cloudMode = cloudPreference ?? clouds.size > 0;
   const collapsed = useMemo(() => {
     if (!cloudMode) return visible;
     const hidden = new Set<string>();
@@ -111,7 +112,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     <button className="button graph-rearrange" disabled={!focused && !center} onClick={() => setFocused(!focused)} aria-pressed={focused}>{focused ? '전체 흐름 보기' : '선택 항목의 연결 보기'}</button>
     {!nodes.length && <div className="graph-empty-filter" role="status"><p>표시할 노드가 없어요.</p><button className="text-button" onClick={onShowAll}>전체 노드 표시하기</button></div>}
     <div className="graph-legend"><button type="button" className="text-button" aria-pressed={cloudMode}
-      onClick={() => { setCloudMode(!cloudMode); setFocused(false); }}>노드 클라우드 (실험)</button>
+      onClick={() => { setCloudPreference(!cloudMode); setFocused(false); }}>노드 클라우드 (실험)</button>
       {cloudMode && !clouds.size && <span>Codex 채팅에서 노드 클라우드를 만들 수 있어요.</span>}<span>{nodes.length}/{graph.nodes.length}개 표시</span><span>연결된 항목을 가지별로 배치</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
   </div>;
 }
