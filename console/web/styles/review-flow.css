@@ -44,3 +44,4 @@
 .graph-cloud-toggle { background: var(--bg-subtle); color: var(--accent-text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px 6px; font-size: 11px; position: absolute; right: 8px; bottom: 7px; }
 .review-node:has(.graph-cloud-toggle) .review-node-time { visibility: hidden; }
 .graph-legend .text-button[aria-pressed=true] { color: var(--accent-text); font-weight: 650; }
+.directional-graph .graph-legend .text-button { pointer-events: auto; }
