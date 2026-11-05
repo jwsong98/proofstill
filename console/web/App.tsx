@@ -114,7 +114,8 @@ function ImportSessions({ projectId, onImport }: { projectId: string; onImport: 
 }
 
 export default function App() {
-  const [detailOnLeft, setDetailOnLeft] = useState(false);
+  const [detailWidth, setDetailWidth] = useState<number | null>(null);
+  const resizeDetail = (percent: number) => setDetailWidth(Math.round(Math.max(25, Math.min(70, percent))));
   const [projects, setProjects] = useState<Project[]>([]), [projectId, setProjectId] = useState<string>('');
   const [graph, setGraph] = useState<Graph>(emptyGraph), [selectedId, setSelectedId] = useState<string | null>(null);
   const [handoffNodeId, setHandoffNodeId] = useState<string | null>(null);
@@ -246,7 +247,7 @@ export default function App() {
         {project && view === 'graph' && <div className="toolbar"><button className="button" disabled={busy} onClick={() => { setError(null); setModal({ kind: 'file' }); void api.files(projectId).then(result => setFiles(result.items)).catch(error => setError(errorText(error))); }}><Icon name="file-text" size={16} />근거 가져오기</button></div>}
       </header>
       {error && !modal && <div className="global-error"><ErrorNotice message={error} /><button className="icon-button" aria-label="오류 닫기" onClick={() => setError(null)}><Icon name="x" size={16} /></button></div>}
-      {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className={'workspace' + (view === 'session' || view === 'handoff' || !selected ? ' session-workspace' : selected?.evidence || selected?.execution || citedEvidence.length > 0 ? ' source-reading' : '')}><section className="center-panel">
+      {loading ? <Loading /> : !project ? <div className="empty-page"><Icon name="folder-open" size={32} /><h2>어떤 프로젝트를 살펴볼까요?</h2><p>로컬 프로젝트를 등록하면 문서 근거와 Codex 대화를 연결할 수 있어요.</p><button className="button primary" onClick={() => setModal({ kind: 'project' })}>프로젝트 등록하기</button></div> : <div className={'workspace' + (view === 'session' || view === 'handoff' || !selected ? ' session-workspace' : selected?.evidence || selected?.execution || citedEvidence.length > 0 ? ' source-reading' : '')} style={detailWidth === null ? undefined : { '--detail-width': `${detailWidth}%` } as React.CSSProperties}><section className="center-panel">
         {view === 'handoff' && <HandoffView key={projectId} projectId={projectId} graph={graph} initialNodeId={handoffNodeId} onGraphSelect={id => { const targetProject = projectId; void refreshGraph().then(data => { if (currentProject.current === targetProject) choose(id, data); }).catch(error => setError(errorText(error))); }} />}
         {view === 'graph' && <><div className="graph-toolbar"><span className="small">전체 노드 {boardGraph.nodes.length}개 · 연결 {boardGraph.edges.length}개</span><label className="check-label"><input type="checkbox" checked={onlyIncomplete} onChange={event => setOnlyIncomplete(event.target.checked)} />미완료 기능</label></div>
           <div className="node-filters" role="group" aria-label="노드 종류 표시">{boardKinds.map(kind => <button key={kind} className="node-filter" aria-pressed={!hiddenKinds.has(kind)} aria-label={`${nodeLabels[kind]} 노드 표시`} onClick={() => setHiddenKinds(current => { const next = new Set(current); if (next.has(kind)) next.delete(kind); else next.add(kind); return next; })}>{nodeLabels[kind]}<span>{boardGraph.nodes.filter(node => node.kind === kind).length}</span></button>)}{hiddenKinds.size > 0 && <button className="text-button" onClick={() => setHiddenKinds(new Set())}>전체 표시</button>}</div>
@@ -260,10 +261,24 @@ export default function App() {
             {!!results.length && !visibleResults.length && <div className="empty-page compact"><p>이 상태에 해당하는 실행 결과가 없어요.</p><button className="text-button" onClick={() => setResultFilter('all')}>전체 결과 보기</button></div>}
           </div></div>}
       </section>{view !== 'session' && view !== 'handoff' && selected && <aside className="detail-panel" aria-label="선택 항목 상세">
-        <div className="row detail-panel-actions">
-          <button type="button" className="text-button" onClick={() => setDetailOnLeft(!detailOnLeft)}>{detailOnLeft ? '오른쪽으로 옮기기' : '왼쪽으로 옮기기'}</button>
-          <button type="button" className="icon-button" aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
-        </div>
+        <div className="detail-resize" role="separator" aria-label="상세 패널 너비" aria-orientation="vertical"
+          aria-valuemin={25} aria-valuemax={70} aria-valuenow={detailWidth ?? (selected.evidence || selected.execution ? 58 : 40)} tabIndex={0}
+          onPointerDown={event => {
+            if (event.button === 0) event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={event => {
+            const handle = event.currentTarget;
+            if (!handle.hasPointerCapture(event.pointerId)) return;
+            const bounds = handle.closest('.workspace')!.getBoundingClientRect();
+            if (bounds.width) resizeDetail((bounds.right - event.clientX) / bounds.width * 100);
+          }}
+          onKeyDown={event => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const width = detailWidth ?? (selected.evidence || selected.execution ? 58 : 40);
+            resizeDetail(width + (event.key === 'ArrowLeft' ? 5 : -5));
+          }} />
+        <button type="button" className="icon-button" style={{ alignSelf: 'flex-end' }} aria-label="상세 닫기" title="상세 닫기" onClick={() => setSelectedId(null)}><Icon name="x" size={16} /></button>
         {selected.evidence || selected.execution ? <SourcePanel node={selected} onOpenOriginal={openOriginal} /> : <><header className="node-toolbar" aria-label="노드 제목·상태·작업">
           <h2 title={`${nodeLabels[selected.kind]} · ${selected.title}`} aria-label={`${nodeLabels[selected.kind]}: ${selected.title}`}>{selected.title}</h2>
           <span className={'badge ' + (selected.status === 'failed' ? 'negative' : selected.status === 'completed' ? 'positive' : '')}>{statusLabels[selected.status]}</span>
