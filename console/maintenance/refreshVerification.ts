@@ -17,10 +17,11 @@ export function activateVerifiedRequirements(store:Store,projectId:string,root:s
  });
  const actual=plan.requirements.map((r:{previous:{taskId:string;requirementId:string}})=>`${r.previous.taskId}:${r.previous.requirementId}`);
  if(JSON.stringify([...expected].sort())!==JSON.stringify([...actual].sort()))throw new Error('Current requirement coverage changed');
+ const liveTask=store.db.prepare('SELECT * FROM project_catalog_tasks WHERE project_id=? AND task_id=?').get(projectId,'live-product-validation-v1');
  return store.transaction(()=>{
   store.db.prepare('DELETE FROM project_catalog_tasks WHERE project_id=?').run(projectId);
   store.db.prepare('INSERT INTO project_catalog_tasks(project_id,task_id,title,titles_json) VALUES(?,?,?,?)').run(projectId,plan.id,'','{}');
-  store.db.prepare('INSERT INTO project_catalog_tasks(project_id,task_id,title,titles_json) VALUES(?,?,?,?)').run(projectId,'verification-explanations-v3','검증 결과·웹 표시','{}');
+  store.db.prepare('INSERT INTO project_catalog_tasks(project_id,task_id,title,titles_json) VALUES(?,?,?,?)').run(projectId,liveTask?'live-product-validation-v1':'verification-explanations-v3',liveTask?'실제 모델·제품 사용 시나리오':'검증 결과·웹 표시','{}');
   store.activateCurrentCatalog(projectId);
   return plan;
  });

@@ -82,3 +82,11 @@ test('refreshed current criteria retain all 44 requirement mappings and display 
  const other=s.createProject({name:'other',rootPath:'/other'});
  assert.throws(()=>activateVerifiedRequirements(s,other.id,root),/root mismatch/);
 });
+
+test('refresh keeps the published live scenario task current instead of restoring superseded explanation rows',t=>{
+ const s=new Store();t.after(()=>s.close());const p=s.createProject({name:'proofstill',rootPath:root});
+ activateVerifiedRequirements(s,p.id,root);
+ s.db.prepare('INSERT INTO project_catalog_tasks(project_id,task_id,title,titles_json) VALUES(?,?,?,?)').run(p.id,'live-product-validation-v1','실제 사용','{}');
+ activateVerifiedRequirements(s,p.id,root);
+ assert.deepEqual(s.currentCatalogTasks(p.id).map(t=>t.taskId).sort(),['live-product-validation-v1','runtime-verification-v2']);
+});
