@@ -87,11 +87,17 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${reviewTitle(record)}`,
     };
   });
+  const isDownstream = (edge: Graph['edges'][number]) => {
+    if (edge.sourceId !== selectedId && edge.targetId !== selectedId) return false;
+    if (edge.kind === 'precedes') return edge.sourceId === selectedId;
+    const otherId = edge.sourceId === selectedId ? edge.targetId : edge.sourceId;
+    return positions.get(otherId)!.x > positions.get(selectedId)!.x;
+  };
   const edges = displayed.edges.filter(edge =>
-    focused || showAllLinks || branchEdges.has(edge.id) || edge.sourceId === selectedId || edge.targetId === selectedId
+    focused || showAllLinks || branchEdges.has(edge.id) || isDownstream(edge)
   ).map(edge => {
     const directed = edge.kind === 'precedes';
-    const active = edge.sourceId === selectedId || edge.targetId === selectedId;
+    const active = isDownstream(edge);
     const color = active ? 'var(--graph-edge-highlight)' : directed ? 'var(--text-secondary)' : 'var(--border-control)';
     const [sourceHandle, targetHandle] = edgeSides(positions.get(edge.sourceId)!, positions.get(edge.targetId)!);
     return { id: edge.id, source: edge.sourceId, target: edge.targetId, sourceHandle, targetHandle, type: 'smoothstep',
