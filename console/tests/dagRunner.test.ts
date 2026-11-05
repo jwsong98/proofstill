@@ -100,7 +100,7 @@ test('reverse node order propagates failure through every queued successor', asy
     f.store.createEdge(f.project.id, {sourceId:'c',targetId:'b',kind:'precedes'});
     f.store.createEdge(f.project.id, {sourceId:'b',targetId:'a',kind:'precedes'});
     await f.runner.start(f.project.id); await f.runner.wait(f.project.id);
-    assert.deepEqual(f.runner.snapshot(f.project.id).run?.tasks.map(task => task.status), ['blocked', 'blocked', 'failed']);
+    assert.deepEqual(Object.fromEntries(f.runner.snapshot(f.project.id).run!.tasks.map(task => [task.nodeId, task.status])), { a: 'blocked', b: 'blocked', c: 'failed' });
   } finally { await f.close(); }
 });
 test('restarting overlapping owners does not skip the final owner using an obsolete completion', async () => {
