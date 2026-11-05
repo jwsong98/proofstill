@@ -211,6 +211,28 @@ test('Codex can inspect candidates and save separate cloud metadata', async t =>
   assert.deepEqual(graph.edges, []);
 });
 
+test('feature links require a dependency or data flow backed by original evidence', async t => {
+  const { req, project, store, codex } = await setup(t);
+  const a = store.createNode(project.id, { kind: 'feature', title: '保存' });
+  const b = store.createNode(project.id, { kind: 'feature', title: '조회' });
+  const source = store.captureEvidence(project.id, { title: 'Contract', sourceKind: 'file',
+    source: { path: 'contract', startLine: 1, endLine: 1 }, content: '저장 응답 ID를 조회 요청에 전달한다.' });
+  const session = (await req(`/projects/${project.id}/sessions`, 'POST', {})).data;
+  const edge = { sourceId: a.id, targetId: b.id, kind: 'related', reason: '저장 ID를 조회 입력으로 전달' };
+  const call = (id: number, data: object) => codex.emit('request', { id, method: 'item/tool/call', params: {
+    threadId: session.externalThreadId, tool: 'proofstill_graph', arguments: { nodes: [], edges: [data] },
+  } });
+  for (const [index, data] of [edge, { ...edge, basis: { kind: 'shared_requirement', evidenceId: source.id, quote: source.evidence!.content } },
+      { ...edge, basis: { kind: 'data_flow', evidenceId: source.id, quote: '만들어낸 근거' } }].entries()) {
+    call(index, data);
+    assert.equal(codex.replies.at(-1)!.result.success, false);
+    assert.equal(store.listGraph(project.id).edges.length, 0);
+  }
+  call(4, { ...edge, basis: { kind: 'data_flow', evidenceId: source.id, quote: source.evidence!.content } });
+  assert.equal(codex.replies.at(-1)!.result.success, true);
+  assert.match(store.listGraph(project.id).edges[0].reason, /data_flow/);
+});
+
 test('SSE replay resumes after delivered event ID', async t => {
   const { req, base, project, store } = await setup(t);
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', {})).data;
