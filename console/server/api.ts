@@ -55,7 +55,7 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         if (sub === 'handoff') {
           if (!subId && method === 'GET') { json(response, 200, await handoff.snapshot(id)); return; }
           if (subId === 'link' && method === 'POST') { const input = await body(request); json(response, 200, await handoff.link(id, input.taskId, input.requirementId)); return; }
-          if (subId === 'implementation' && method === 'PUT') { json(response, 200, await handoff.save(id, await body(request))); return; }
+          if (subId === 'implementation' && method === 'PUT') { throw new StoreError('Edit requirements and checks in the project files', 405); }
           if (subId === 'code' && method === 'GET') { json(response, 200, await handoff.code(id, url.searchParams.get('path') || '')); return; }
           if (subId === 'export' && method === 'GET') {
             const snapshot = await handoff.snapshot(id), code: Record<string, string> = {};
@@ -72,11 +72,11 @@ export function createApi(options: { store: Store; codex: CodexTransport; distDi
         if (sub === 'graph' && subId === 'analyze' && method === 'POST') { json(response, 201, await service.analyzeGraph(id, await body(request))); return; }
         if (sub === 'features' && subId && path[5] === 'checks') {
           if (method === 'GET') { json(response, 200, store.featureAcceptance(id, subId)); return; }
-          if (method === 'POST') { json(response, 200, service.defineChecks(id, subId, await body(request))); return; }
+          if (method === 'POST') { throw new StoreError('Edit requirements and checks in the project files', 405); }
         }
         if (sub === 'nodes' && subId && path[5] === 'checks') {
           if (method === 'GET') { json(response, 200, store.featureAcceptance(id, subId)); return; }
-          if (method === 'POST') { json(response, 200, service.defineChecks(id, subId, await body(request))); return; }
+          if (method === 'POST') { throw new StoreError('Edit requirements and checks in the project files', 405); }
         }
         if (sub === 'nodes') {
           if (!subId && method === 'POST') { const input = await body(request); forbidCompletion(input); json(response, 201, store.createNode(id, input)); return; }

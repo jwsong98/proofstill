@@ -25,7 +25,7 @@ npm run console
 
 기본 데이터는 `~/.local/share/proofstill/console/console.sqlite`에 남습니다. `PROOFSTILL_CONSOLE_DATA_DIR`로 보관 폴더, `PROOFSTILL_CONSOLE_PORT`로 포트를 바꿀 수 있습니다. `PROOFSTILL_CONSOLE_PROJECT_ROOT`를 지정하면 해당 프로젝트를 엽니다. Codex 인증은 로컬 app-server가 사용하며 브라우저에 인증 파일이나 API 키를 전달하지 않습니다.
 
-프로젝트를 열면 **구현·검증 현황**에서 요구별 구현 상태, 자동 검사, 독립 리뷰, 남은 일을 따로 봅니다. 요구를 선택해 원문·구현 파일·실행 명령과 출력을 확인하고 구현 기록을 수정할 수 있습니다. 기존 항목은 구현 상태를 추정하지 않고 미기록으로 표시합니다. 앱의 기록·검사 연결은 SQLite에, 하네스 작업의 기록은 프로젝트 `.proofstill/evidence`에 보존합니다.
+프로젝트를 열면 **구현·검증 현황**에서 요구별 구현 상태, 자동 검사, 독립 리뷰, 남은 일을 따로 봅니다. 요구를 선택해 원문·구현 파일·실행 명령과 출력을 확인할 수 있습니다. 새 요구와 검사 기준은 프로젝트 파일에서 관리하고 구현 기록은 하네스 CLI로 갱신합니다. 콘솔의 기존 SQLite 요구·검사 기록은 이전 작업에서 조회할 수 있습니다.
 
 하네스 작업은 CLI와 앱이 같은 원본을 읽습니다. 예를 들어 `python3 -m proofstill --root /path/to/project implement task-id R1 --status partial --path src/upload.py --remaining "잘못된 파일 처리"`로 기록하고 `python3 -m proofstill --root /path/to/project handoff task-id`로 조회합니다. 구현 선언과 검사/리뷰 통과는 별개입니다. 기존 하네스 소스·기준 버전 검사를 유지하며, 앱 자체 요구의 검사는 요구/구현 기록과 지정 코드·검사 파일의 수정 시각으로 현재성을 확인합니다. 시각이 보존된 외부 변경은 감지하지 못합니다. 앱의 ‘근거 포함 인계 파일 받기’는 현재 상태·원문·구현 파일·재현 명령·출력을 담은 로컬 HTML을 생성합니다. 큰 파일·폴더·출력의 생략과 조회 오류는 인계 파일에서 확인해야 합니다. 다운로드한 시점 이후의 변경은 반영하지 않습니다. 구현 속도 개선 효과는 아직 측정하지 않았습니다.
 

@@ -34,14 +34,6 @@ const httpTool = {
     headers: { type: 'object', additionalProperties: { type: 'string' } }, body: { type: 'string' },
   } },
 };
-const featureChecksTool = {
-  type: 'function', name: 'proofstill_feature_checks', description: 'Define agreed scenario/test checks with a human-readable title, purpose, rationale, and expected outcome for a selected feature or requirement without running them or accepting results. Commands must exactly match the original commandExecution.command, including shell wrappers. Only actual observed command results can fulfill these checks. Redefining checks resets prior associations.',
-  inputSchema: { type: 'object', additionalProperties: false, required: ['featureId', 'checks'], properties: {
-    featureId: { type: 'string' }, checks: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['id', 'label', 'kind', 'command'], properties: {
-      id: { type: 'string' }, label: { type: 'string' }, purpose: { type: 'string', description: 'What behavior this check verifies' }, rationale: { type: 'string', description: 'Why this check is necessary' }, expected: { type: 'string', description: 'What outcome counts as success' }, kind: { type: 'string', enum: ['scenario', 'test'] }, command: { type: 'string' }, files: { type: 'array', items: { type: 'string' } },
-    } } },
-  } },
-};
 const object = (value: any) => value && typeof value === 'object' && !Array.isArray(value);
 function requiredText(value: any, label: string): string { if (typeof value !== 'string' || !value.trim()) throw new StoreError(`${label} is required`); return value; }
 function timestamp(value: any): number | null { return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value < 1e12 ? value * 1000 : value) : null; }
@@ -137,7 +129,7 @@ export class ConsoleService extends EventEmitter {
     const project = this.store.getProject(projectId);
     return { model: selected.model ?? selected.id, cwd: project.rootPath, approvalPolicy: 'never', sandbox: analysis ? 'read-only' : 'danger-full-access',
       developerInstructions: instructions + (analysis ? '\nThis turn only analyzes captured evidence and writes graph metadata using proofstill_graph. Do not run shell commands, edit files, or perform implementation.' : '\nFor implementation work, read and follow the project proofstill-commit skill. Complete one small concern, run its relevant checks and build, then commit it locally before starting the next concern. Stage explicit paths; do not accumulate changes for hunk splitting at the end. Pass the skill path, concern, owned files, checks, and commit timing to every implementation worker. Serialize staging and commits in a shared repository. Read-only reviewers must not commit. Do not push or rewrite history without an explicit request.'),
-      dynamicTools: analysis ? [graphTool] : [graphTool, httpTool, featureChecksTool], ephemeral: false };
+      dynamicTools: analysis ? [graphTool] : [graphTool, httpTool], ephemeral: false };
   }
   async createSession(projectId: string, input: any = {}): Promise<Session> {
     const requestedNodeIds = input.nodeIds ?? [];
@@ -336,11 +328,6 @@ export class ConsoleService extends EventEmitter {
     for (const contextId of session.contextNodeIds) this.store.createEdge(session.projectId, { sourceId: node.id, targetId: contextId, kind: 'related', reason: '이 세션에서 관측한 API 요청 결과' });
     this.event(session.id, 'graph/updated', { projectId: session.projectId }); return node;
   }
-  defineChecks(projectId: string, featureId: string, input: any) {
-    if (!object(input) || Object.keys(input).some(key => key !== 'checks') || !Array.isArray(input.checks)) throw new StoreError('Only check definitions can be supplied');
-    for (const check of input.checks) if (!object(check) || Object.keys(check).some(key => !['id', 'label', 'kind', 'command', 'files'].includes(key))) throw new StoreError('Checks cannot include result IDs, status, or success claims');
-    return this.store.defineFeatureChecks(projectId, featureId, input.checks);
-  }
   respond(sessionId: string, requestId: string, decision: string) {
     this.store.getSession(sessionId); const item = this.pending.get(requestId);
     if (!item || item.sessionId !== sessionId) throw new StoreError('Pending Codex request not found', 404);
@@ -353,15 +340,6 @@ export class ConsoleService extends EventEmitter {
     if (!session) { this.codex.respond(request.id, refuse()); return; }
     if (request.method === 'item/tool/call') {
       try {
-        if (request.params.tool === 'proofstill_feature_checks' && !this.analysisThreads.has(session.externalThreadId!) && session.role !== 'graph') {
-          const args = request.params.arguments;
-          if (!object(args) || Object.keys(args).some(key => !['featureId', 'checks'].includes(key))) throw new StoreError('Invalid check definition');
-          const features = this.selectedContext(session).nodes.filter(node => ['feature', 'requirement'].includes(node.kind));
-          if (!features.some(feature => feature.id === args.featureId)) throw new StoreError('Feature is outside this session context');
-          const acceptance = this.defineChecks(session.projectId, args.featureId, { checks: args.checks });
-          this.codex.respond(request.id, { success: true, contentItems: [{ type: 'inputText', text: JSON.stringify(acceptance) }] });
-          this.event(session.id, 'graph/updated', { projectId: session.projectId }); return;
-        }
         if (request.params.tool === 'proofstill_http_request' && !this.analysisThreads.has(session.externalThreadId!) && session.role !== 'graph') {
           const node = await this.performHttp(session, request.params.arguments);
           this.codex.respond(request.id, { success: node.execution?.status === 'passed', contentItems: [{ type: 'inputText', text: JSON.stringify(node.execution) }] }); return;
@@ -412,7 +390,6 @@ export class ConsoleService extends EventEmitter {
             status: item.status === 'completed' && item.exitCode === 0 ? 'passed' : item.status === 'declined' ? 'interrupted' : item.exitCode != null && item.exitCode !== 0 ? 'failed' : 'unverified',
             command: item.command ?? null, output: item.aggregatedOutput ?? '', exitCode: item.exitCode ?? null, startedAt, finishedAt: now, response: item });
           for (const contextId of session.contextNodeIds) this.store.createEdge(session.projectId, { sourceId: node.id, targetId: contextId, kind: 'related', reason: '이 세션에서 관측한 실행 결과' });
-          for (const feature of this.selectedContext(session).nodes.filter(node => ['feature', 'requirement'].includes(node.kind))) this.store.observeFeatureCheckResult(session.projectId, feature.id, node.executionId!);
           this.event(session.id, 'graph/updated', { projectId: session.projectId });
         }
       }

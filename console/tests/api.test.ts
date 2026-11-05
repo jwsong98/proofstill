@@ -239,7 +239,7 @@ test('connection-refused HTTP request is retained as actual failed evidence with
   assert(store.listGraph(project.id).edges.some(edge => [edge.sourceId, edge.targetId].includes(node.id) && [edge.sourceId, edge.targetId].includes(feature.id)));
 });
 
-test('feature acceptance uses every defined check and actual exact command output, not client-supplied results', async t => {
+test('legacy acceptance is readable and new commands do not change it', async t => {
   const { req, project, codex, store } = await setup(t);
   const feature = store.createNode(project.id, { title: '완료 기준', kind: 'feature' });
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', { nodeIds: [feature.id] })).data;
@@ -247,30 +247,21 @@ test('feature acceptance uses every defined check and actual exact command outpu
   assert.equal((await req(path)).data.fulfilled, false);
   const checks = [{ id: 'scenario', label: '등록 재시도', kind: 'scenario', command: '/bin/zsh -lc "node scenario.js"' },
     { id: 'red-test', label: 'Red 단계 테스트', kind: 'test', command: '/bin/zsh -lc "node --test"' }];
-  assert.equal((await req(path, 'POST', { checks })).status, 200);
-  assert.equal((await req(path, 'POST', { checks, resultId: 'forged', success: true })).status, 400);
-  const emit = (id: string, command: string, exitCode: number | null, status = 'completed') => codex.emit('notification', { method: 'item/completed', params: { threadId: session.externalThreadId, turnId: 'acceptance', item: { id, type: 'commandExecution', command, exitCode, status, aggregatedOutput: 'original output\r\n' } } });
-  emit('scenario-result', checks[0].command, 0);
-  let acceptance = (await req(path)).data; assert.equal(acceptance.passed, 1); assert.equal(acceptance.fulfilled, false);
-  emit('test-result', checks[1].command, 0);
-  acceptance = (await req(path)).data; assert.equal(acceptance.passed, 2); assert.equal(acceptance.fulfilled, true);
-  assert.equal(store.getNode(project.id, feature.id).status, 'completed');
-  emit('failed-rerun', checks[1].command, 1, 'failed');
-  acceptance = (await req(path)).data; assert.equal(acceptance.passed, 1); assert.equal(acceptance.fulfilled, false);
-  assert.notEqual(store.getNode(project.id, feature.id).status, 'completed');
-  emit('unknown-result', checks[1].command, null);
-  assert.equal((await req(path)).data.fulfilled, false);
-  assert.equal((await req(path)).data.checks.find((check: any) => check.id === 'red-test').execution.status, 'unverified');
+  assert.equal((await req(path, 'POST', { checks })).status, 405);
+  store.defineFeatureChecks(project.id, feature.id, checks as Parameters<Store['defineFeatureChecks']>[2]);
+  assert.equal((await req(path, 'POST', { checks, resultId: 'forged', success: true })).status, 405);
+  codex.emit('notification', { method: 'item/completed', params: { threadId: session.externalThreadId, turnId: 'acceptance', item: { id: 'scenario-result', type: 'commandExecution', command: checks[0].command, exitCode: 0, status: 'completed' } } });
+  assert.equal((await req(path)).data.passed, 0);
 });
 
-test('ordinary context chat can define feature checks, graph analysis cannot define or execute them', async t => {
+test('console chat cannot define legacy checks', async t => {
   const { req, project, codex, store } = await setup(t);
   const feature = store.createNode(project.id, { title: '검사 정의', kind: 'feature' });
   const session = (await req(`/projects/${project.id}/sessions`, 'POST', { nodeIds: [feature.id] })).data;
   const checks = [{ id: 'check', label: 'scenario', kind: 'scenario', command: 'node scenario.js' }];
   codex.emit('request', { id: 1400, method: 'item/tool/call', params: { threadId: session.externalThreadId, tool: 'proofstill_feature_checks', arguments: { featureId: feature.id, checks } } });
-  assert.equal(codex.replies.find(reply => reply.id === 1400)?.result.success, true);
-  assert.equal(store.featureAcceptance(project.id, feature.id).total, 1); assert.equal(store.featureAcceptance(project.id, feature.id).fulfilled, false);
+  assert.equal(codex.replies.find(reply => reply.id === 1400)?.result.success, false);
+  assert.equal(store.featureAcceptance(project.id, feature.id).total, 0);
   assert.equal(codex.calls.filter(call => call.method === 'turn/start').length, 0);
   const graphSession = store.createSession(project.id, { title: '분석', role: 'graph', externalThreadId: 'graph-thread', contextNodeIds: [feature.id] });
   codex.emit('request', { id: 1401, method: 'item/tool/call', params: { threadId: 'graph-thread', tool: 'proofstill_feature_checks', arguments: { featureId: feature.id, checks: [] } } });
@@ -369,17 +360,21 @@ test('unified permission requests grant requested access only for ordinary sessi
   assert.deepEqual(codex.replies.at(-1), { id: 912, result: { permissions: {}, scope: 'turn' } });
 });
 
-test('handoff API persists independent implementation, records scoped checks, exports self contained evidence', async t => {
+test('handoff API keeps legacy records readable and rejects edits', async t => {
   const { req, root, project, store, base } = await setup(t), prefix = `/projects/${project.id}`;
   await writeFile(resolve(root, 'implementation.ts'), 'export const upload = true;');
   const node = (await req(`${prefix}/nodes`, 'POST', { kind: 'requirement', title: '업로드', body: '입력 파일 보존' })).data;
   let overview = (await req(`${prefix}/handoff`)).data;
   assert.equal(overview.rows[0].implementation.status, 'unknown');
   const declaration = { source: 'console', taskId: node.id, requirementId: node.id, implementation: { status: 'implemented', paths: ['implementation.ts'], remaining: '', note: '입력 저장' } };
-  assert.equal((await req(`${prefix}/handoff/implementation`, 'PUT', declaration)).status, 200);
+  assert.equal((await req(`${prefix}/handoff/implementation`, 'PUT', declaration)).status, 405);
+  store.saveImplementationProgress(project.id, node.id, declaration.implementation as Parameters<Store['saveImplementationProgress']>[2]);
   overview = (await req(`${prefix}/handoff`)).data;
   assert.equal(overview.rows[0].implementation.status, 'implemented'); assert.equal(overview.rows[0].verification.status, 'not_run');
-  assert.equal((await req(`${prefix}/nodes/${node.id}/checks`, 'POST', { checks: [{ id: 'upload', label: '저장 확인', kind: 'test', command: 'npm run upload', files: ['implementation.ts'] }] })).status, 200);
+  const checks = [{ id: 'upload', label: '저장 확인', kind: 'test' as const, command: 'npm run upload', files: ['implementation.ts'] }];
+  assert.equal((await req(`${prefix}/nodes/${node.id}/checks`, 'POST', { checks })).status, 405);
+  store.defineFeatureChecks(project.id, node.id, checks);
+  assert.equal(overview.rows[0].historical, true);
   const e = store.recordExecution(project.id, { title: '관찰한 명령', kind: 'test', status: 'passed', command: 'npm run upload', output: 'UPLOAD_OK', exitCode: 0, startedAt: Date.now() + 1000 });
   store.observeFeatureCheckResult(project.id, node.id, e.executionId!);
   overview = (await req(`${prefix}/handoff`)).data; assert.equal(overview.rows[0].verification.status, 'passed');
@@ -391,5 +386,5 @@ test('handoff API persists independent implementation, records scoped checks, ex
   const otherWrite = await req(`/projects/${second.id}/handoff/implementation`, 'PUT', { ...declaration, implementation: { ...declaration.implementation, status: 'unknown', paths: [] } });
   assert.equal(otherWrite.status, 404);
   assert.equal((await req(`${prefix}/handoff/code?path=../outside`)).status, 404);
-  assert.equal((await req(`${prefix}/handoff/implementation`, 'PUT', { ...declaration, implementation: { ...declaration.implementation, verification: 'passed' } })).status, 400);
+  assert.equal((await req(`${prefix}/handoff/implementation`, 'PUT', { ...declaration, implementation: { ...declaration.implementation, verification: 'passed' } })).status, 405);
 });

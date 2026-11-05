@@ -90,7 +90,7 @@ export class HandoffService {
       }));
       const relatedNodeIds = graph.edges.filter(e => e.sourceId === node.id || e.targetId === node.id).map(e => e.sourceId === node.id ? e.targetId : e.sourceId);
       const origins = graph.nodes.filter(n => relatedNodeIds.includes(n.id) && n.evidence).map(n => `${n.title}\n${n.evidence!.content}`);
-      result.rows.push({ id: `console:${node.id}`, source: 'console', taskId: node.id, requirementId: node.id, nodeId: node.id, relatedNodeIds,
+      result.rows.push({ id: `console:${node.id}`, source: 'console', historical: true, taskId: node.id, requirementId: node.id, nodeId: node.id, relatedNodeIds,
         title: node.title, description: node.body, mergedRecords: node.mergedRecords, group: node.kind === 'feature' ? '앱 기능' : '앱 요구사항', origin: origins.join('\n\n') || node.body,
         implementation, verification: { status: verificationStatus(checks.map(c => c.status)), checks, review: { status: 'not_run', evidence: '앱 실행 결과는 독립 리뷰가 아니에요.' } }, limitations });
     }
