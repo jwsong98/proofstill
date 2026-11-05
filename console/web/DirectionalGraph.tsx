@@ -37,6 +37,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
   graph: Graph; currentNodeIds: Set<string>; selectedId: string | null; onSelect: (id: string) => void; onlyIncomplete: boolean; hiddenKinds: Set<NodeKind>; onShowAll: () => void;
 }) {
   const [focused, setFocused] = useState(false);
+  const [showAllLinks, setShowAllLinks] = useState(false);
   const [cloudPreference, setCloudPreference] = useState<boolean | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleCloud = (id: string, open: boolean) => setExpanded(current => {
@@ -86,7 +87,9 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       selected: record.id === selectedId, ariaLabel: `${evidenceLabel(record) ?? nodeLabels[record.kind]}: ${reviewTitle(record)}`,
     };
   });
-  const edges = displayed.edges.map(edge => {
+  const edges = displayed.edges.filter(edge =>
+    focused || showAllLinks || branchEdges.has(edge.id) || edge.sourceId === selectedId || edge.targetId === selectedId
+  ).map(edge => {
     const directed = edge.kind === 'precedes';
     const active = edge.sourceId === selectedId || edge.targetId === selectedId;
     const color = active ? 'var(--graph-edge-highlight)' : directed ? 'var(--text-secondary)' : 'var(--border-control)';
@@ -98,7 +101,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       style: { stroke: color, strokeWidth: active ? 2.8 : 1.25, opacity: active ? .95 : center ? .18 : branchEdges.has(edge.id) ? .85 : .28, strokeDasharray: directed ? undefined : '5 4' },
       ariaLabel: [directed ? '선행 → 후속' : '방향 없는 연관', edge.reason].filter(Boolean).join(' · ') };
   });
-  const layoutKey = JSON.stringify([nodes.map(node => node.id), edges.map(edge => edge.id)]);
+  const layoutKey = JSON.stringify([nodes.map(node => node.id), displayed.edges.map(edge => edge.id)]);
   return <div className="graph-canvas directional-graph">
     <ReactFlow<FlowNode> key={layoutKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes}
       onNodeClick={(_, node) => {
@@ -113,6 +116,8 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     {!nodes.length && <div className="graph-empty-filter" role="status"><p>표시할 노드가 없어요.</p><button className="text-button" onClick={onShowAll}>전체 노드 표시하기</button></div>}
     <div className="graph-legend"><button type="button" className="text-button" aria-pressed={cloudMode}
       onClick={() => { setCloudPreference(!cloudMode); setFocused(false); }}>노드 클라우드 (실험)</button>
-      {cloudMode && !clouds.size && <span>Codex 채팅에서 노드 클라우드를 만들 수 있어요.</span>}<span>{nodes.length}/{graph.nodes.length}개 표시</span><span>연결된 항목을 가지별로 배치</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
+      {cloudMode && !clouds.size && <span>Codex 채팅에서 노드 클라우드를 만들 수 있어요.</span>}<button type="button" className="text-button" aria-pressed={showAllLinks} disabled={focused}
+        onClick={() => setShowAllLinks(!showAllLinks)}>{showAllLinks ? '가지 연결만 보기' : '전체 연결 보기'}</button>
+      <span>{nodes.length}/{graph.nodes.length}개 표시 · 연결 {edges.length}/{displayed.edges.length}개</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
   </div>;
 }
