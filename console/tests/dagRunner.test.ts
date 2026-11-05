@@ -93,3 +93,28 @@ test('ownership outside the registered union cannot be committed', async () => {
     assert.match(f.runner.snapshot(f.project.id).run?.tasks[0].error ?? '', /소유권 밖/);
   } finally { await f.close(); }
 });
+test('reverse node order propagates failure through every queued successor', async () => {
+  const f = await fixture(async () => { throw new Error('implementation failed'); });
+  try {
+    f.task('c'); f.task('b'); f.task('a');
+    f.store.createEdge(f.project.id, {sourceId:'c',targetId:'b',kind:'precedes'});
+    f.store.createEdge(f.project.id, {sourceId:'b',targetId:'a',kind:'precedes'});
+    await f.runner.start(f.project.id); await f.runner.wait(f.project.id);
+    assert.deepEqual(f.runner.snapshot(f.project.id).run?.tasks.map(task => task.status), ['blocked', 'blocked', 'failed']);
+  } finally { await f.close(); }
+});
+test('restarting overlapping owners does not skip the final owner using an obsolete completion', async () => {
+  const calls: string[] = [];
+  const f = await fixture(async ({root,prompt}) => {
+    const data = JSON.parse(prompt.slice(prompt.indexOf('{'))); calls.push(data.task.id);
+    await writeFile(join(root, 'shared.txt'), data.task.id); return data.task.id;
+  });
+  try {
+    f.task('a','shared.txt',[['node','--version']]); f.task('b','shared.txt',[['node','--version']]);
+    await f.runner.start(f.project.id); await f.runner.wait(f.project.id);
+    await f.runner.start(f.project.id); await f.runner.wait(f.project.id);
+    assert.deepEqual(calls, ['a','b','a','b']);
+    assert.equal(await readFile(join(f.root,'shared.txt'),'utf8'), 'b');
+    assert.equal(f.runner.snapshot(f.project.id).run?.status, 'completed');
+  } finally { await f.close(); }
+});

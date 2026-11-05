@@ -29,7 +29,7 @@ export function DagPanel({ projectId, graph, onGraphUpdated, onSelect }: { proje
     void load(); return () => { disposed = true; clearTimeout(timer); };
   }, [endpoint]);
   const tasks = graph.nodes.filter(node => node.kind === 'task'), running = snapshot?.run?.status === 'running';
-  const completed = snapshot?.run?.tasks.filter(task => task.status === 'completed').length ?? 0;
+  const completed = tasks.filter(task => task.status === 'completed').length;
   const act = async (action: 'start' | 'stop') => {
     setBusy(true); setError(null);
     try {
@@ -56,7 +56,7 @@ export function DagPanel({ projectId, graph, onGraphUpdated, onSelect }: { proje
           setError(null);
           try {
             await request(endpoint + '/tasks/' + encodeURIComponent(node.id), { method: 'PUT', body: definition });
-            setSnapshot(await request<Snapshot>(endpoint));
+            setSnapshot(await request<Snapshot>(endpoint)); refresh.current();
           } catch (error) { setError(text(error)); throw error; }
         }} />)}</div>
       <p className="small">완료 근거는 실제 커밋과 등록 검사 결과예요. Codex 요약은 작업 설명이며, 사용자 수용과 독립 리뷰는 별도예요.</p>
@@ -81,7 +81,7 @@ function TaskSettings({ id, title, definition, disabled, result, onSelect, onSav
     catch (error) { setError(text(error)); } finally { setSaving(false); }
   };
   return <details className="dag-task" open={result?.status === 'failed' || undefined}>
-    <summary>{title} · {result ? taskStateLabels[result.status] : definition ? '실행 준비' : '설정 필요'}</summary>
+    <summary>{title} · {result ? '최근 실행 ' + taskStateLabels[result.status] : definition ? '실행 준비' : '설정 필요'}</summary>
     <button className="text-button" onClick={onSelect}>그래프 노드 보기</button>
     <label htmlFor={'owns-' + id}>소유 파일·폴더 · 프로젝트 상대 경로, 한 줄에 하나</label>
     <textarea id={'owns-' + id} value={owns} disabled={disabled || saving} onChange={event => setOwns(event.target.value)} placeholder={'src/orders\ntests/orders.test.ts'} rows={3} />
@@ -90,7 +90,7 @@ function TaskSettings({ id, title, definition, disabled, result, onSelect, onSav
     <button className="button" disabled={disabled || saving} onClick={() => void save()}>{saving ? '저장 중' : '작업 설정 저장'}</button>
     <ErrorNotice message={error} />
     {result && <section className="dag-evidence" aria-label={title + ' 완료 근거'}>
-      <p><strong>{taskStateLabels[result.status]}</strong>{result.commit && <> · 커밋 <code>{result.commit}</code></>}</p>
+      <p><strong>최근 실행 · {taskStateLabels[result.status]}</strong>{result.commit && <> · 커밋 <code>{result.commit}</code></>}</p>
       {result.error && <p role="alert">{result.error}</p>}
       {result.summary && <details><summary>Codex 작업 요약</summary><pre>{result.summary}</pre></details>}
       {result.checks.map((check, index) => <details key={index}><summary>{check.exitCode === 0 ? '통과' : '실패·미확인'} · {JSON.stringify(check.argv)}</summary><pre>{check.output || '(출력 없음)'}</pre><span className="small">종료 코드 {check.exitCode ?? '미확인'}</span></details>)}

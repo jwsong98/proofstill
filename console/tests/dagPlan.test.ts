@@ -43,5 +43,9 @@ test('SQLite stores definition and interrupted run without inventing completion'
     assert.equal(dag.latest(project.id)?.status, 'interrupted');
     assert.equal(dag.latest(project.id)?.tasks[0].commit, null);
     assert.equal(dag.latest(project.id)?.tasks[1].status, 'interrupted');
+    assert.equal(store.getNode(project.id, 'a').status, 'unverified');
+    store.updateNode(project.id, 'a', { status: 'completed' });
+    dag.define(project.id, 'a', def('new/path'));
+    assert.equal(store.getNode(project.id, 'a').status, 'pending');
   } finally { store.close(); }
 });
