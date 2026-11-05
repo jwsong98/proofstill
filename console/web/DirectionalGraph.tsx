@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type NodeProps, type ReactFlowInstance, type Viewport } from '@xyflow/react';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
-import { highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, layoutFocusedReview, reviewConnections, reviewTitle, reviewTime } from './reviewFlow.ts';
+import { highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, layoutFocusedReview, focusedReviewGraph, reviewTitle, reviewTime } from './reviewFlow.ts';
 import './styles/review-flow.css';
 
 const nodeTime = new Intl.DateTimeFormat('ko-KR', {
@@ -81,9 +81,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
   const center = visible.nodes.find(node => node.id === selectedId);
   const displayed = useMemo(() => {
     if (!focused || !center) return collapsed;
-    const links = Object.values(reviewConnections(visible, center.id)).flat();
-    const ids = new Set([center.id, ...links.map(link => link.node.id)]);
-    return { nodes: visible.nodes.filter(node => ids.has(node.id)), edges: links.map(link => link.edge) };
+    return focusedReviewGraph(visible, center.id);
   }, [visible, collapsed, focused, center]);
   const { positions, branchEdges } = useMemo(() => focused && center
     ? layoutFocusedReview(displayed, center.id) : layoutReviewBoard(displayed.nodes, displayed.edges), [displayed, focused, center]);

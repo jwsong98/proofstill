@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Graph, GraphNode } from '../server/types.ts';
-import { layoutFocusedReview, highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
+import { focusedReviewGraph, layoutFocusedReview, highlightedReviewLinks, collapsibleClouds, evidenceLabel, layoutReviewBoard, reviewConnections, reviewTime, reviewTitle } from '../web/reviewFlow.ts';
 
 function node(id: string, kind: GraphNode['kind'], evidence?: GraphNode['evidence']): GraphNode {
   return { id, kind, evidence, projectId: 'p', title: id, body: '', status: 'pending', x: null, y: null, evidenceId: null, executionId: null, createdAt: 0, updatedAt: 0 };
@@ -124,4 +124,20 @@ test('포커스는 선택 기능을 중심으로 근거와 작업을 두 가지�
   for (const id of ['e1', 'e2', 'r']) assert.ok(positions.get(id)!.x < positions.get('f')!.x);
   assert.ok(positions.get('t')!.x > positions.get('f')!.x);
   assert.equal(positions.get('t')!.y, positions.get('f')!.y);
+});
+
+test('포커스는 명시된 요구와 결정 순서를 보존하고 순서 없는 작업은 같은 열에 둔다', () => {
+  const graph = { nodes: [node('e', 'evidence'), node('r', 'requirement'), node('d1', 'decision'),
+    node('d2', 'decision'), node('f', 'feature'), node('f2', 'feature'), node('t1', 'task'), node('t2', 'task')],
+    edges: [edge('e', 'r', 'precedes'), edge('r', 'd1', 'precedes'), edge('d1', 'd2', 'precedes'),
+      edge('d2', 'f', 'related'), edge('f', 'f2', 'related'), edge('f', 't1', 'related'), edge('f', 't2', 'related')] };
+  const focused = focusedReviewGraph(graph, 'f');
+  assert.equal(focused.nodes.length, 8);
+  assert.equal(focused.edges.length, 7);
+  const { positions } = layoutFocusedReview(focused, 'f');
+  const x = (id: string) => positions.get(id)!.x;
+  assert.ok(x('e') < x('r') && x('r') < x('d1') && x('d1') < x('d2'));
+  assert.equal(x('f'), x('f2'));
+  assert.equal(x('t1'), x('t2'));
+  assert.equal(x('f'), x('t1'));
 });

@@ -88,19 +88,54 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
+export function focusedReviewGraph(graph: Graph, centerId: string): Graph {
+  const ids = new Set([centerId, ...Object.values(reviewConnections(graph, centerId)).flat().map(link => link.node.id)]);
+  // Include recorded prerequisites of the focused records without pulling in unrelated siblings.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of graph.edges) {
+      if (edge.kind === 'precedes' && ids.has(edge.targetId) && !ids.has(edge.sourceId)) {
+        ids.add(edge.sourceId);
+        changed = true;
+      }
+    }
+  }
+  return { nodes: graph.nodes.filter(node => ids.has(node.id)),
+    edges: graph.edges.filter(edge => ids.has(edge.sourceId) && ids.has(edge.targetId)) };
+}
+
 export function layoutFocusedReview(graph: Graph, centerId: string) {
-  const center = graph.nodes.find(node => node.id === centerId);
   const positions = new Map<string, { x: number; y: number }>();
-  if (!center) return { positions, branchEdges: new Set<string>() };
-  const left: GraphNode[] = [], right: GraphNode[] = [];
-  const others = graph.nodes.filter(node => node.id !== centerId)
-    .sort((a, b) => (reviewTime(a).at ?? Infinity) - (reviewTime(b).at ?? Infinity) || a.id.localeCompare(b.id));
-  for (const node of others) (stageOf[node.kind] <= stageOf[center.kind] ? left : right).push(node);
-  const height = Math.max(left.length, right.length, 1);
-  positions.set(centerId, { x: columnStep, y: (height - 1) * rowStep / 2 });
-  for (const [column, entries] of [[0, left], [2, right]] as const) {
-    entries.forEach((node, index) => positions.set(node.id, {
-      x: column * columnStep, y: ((height - entries.length) / 2 + index) * rowStep,
+  if (!graph.nodes.some(node => node.id === centerId)) return { positions, branchEdges: new Set<string>() };
+  const rankOf = (node: GraphNode) => ({ evidence: 0, requirement: 1, issue: 1,
+    decision: 2, feature: 3, task: 3, result: 4 })[node.kind];
+  const rank = new Map(graph.nodes.map(node => [node.id, rankOf(node)]));
+  const incoming = new Map(graph.nodes.map(node => [node.id, 0]));
+  const successors = new Map<string, string[]>();
+  for (const edge of graph.edges) {
+    if (edge.kind !== 'precedes' || !rank.has(edge.sourceId) || !rank.has(edge.targetId)) continue;
+    incoming.set(edge.targetId, incoming.get(edge.targetId)! + 1);
+    const list = successors.get(edge.sourceId) ?? [];
+    list.push(edge.targetId);
+    successors.set(edge.sourceId, list);
+  }
+  const queue = graph.nodes.filter(node => incoming.get(node.id) === 0).map(node => node.id);
+  for (let index = 0; index < queue.length; index++) {
+    const id = queue[index];
+    for (const target of successors.get(id) ?? []) {
+      rank.set(target, Math.max(rank.get(target)!, rank.get(id)! + 1));
+      incoming.set(target, incoming.get(target)! - 1);
+      if (!incoming.get(target)) queue.push(target);
+    }
+  }
+  const columns = [...new Set(rank.values())].sort((a, b) => a - b);
+  const maxRows = Math.max(...columns.map(column => graph.nodes.filter(node => rank.get(node.id) === column).length));
+  for (const [index, column] of columns.entries()) {
+    const entries = graph.nodes.filter(node => rank.get(node.id) === column)
+      .sort((a, b) => (reviewTime(a).at ?? Infinity) - (reviewTime(b).at ?? Infinity) || a.id.localeCompare(b.id));
+    entries.forEach((node, row) => positions.set(node.id, {
+      x: index * columnStep, y: ((maxRows - entries.length) / 2 + row) * rowStep,
     }));
   }
   return { positions, branchEdges: new Set(graph.edges.map(edge => edge.id)) };
