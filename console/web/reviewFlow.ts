@@ -24,7 +24,6 @@ export const boardNodeWidth = 192;
 const columnStep = 232;
 const rowStep = 116;
 
-const stages = ['발언·근거', '요구사항·이슈', '결정·기능', '작업·결과'] as const;
 const stageOf: Record<GraphNode['kind'], number> = {
   evidence: 0, requirement: 1, issue: 1, decision: 2, feature: 2, task: 3, result: 3,
 };
@@ -33,19 +32,22 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
   const ordered = nodes.map(node => ({ id: node.id, stage: stageOf[node.kind], at: reviewTime(node).at }))
     .sort((a, b) => (a.at ?? Infinity) - (b.at ?? Infinity) || a.id.localeCompare(b.id));
   const byId = new Map(ordered.map(entry => [entry.id, entry]));
-  const parents = new Map<string, { id: string; stage: number; directed: boolean }>();
+  const timeOrder = new Map(ordered.map((entry, index) => [entry.id, index]));
+  const parents = new Map<string, { id: string; edgeId: string; stage: number; directed: boolean }>();
+  const comesBefore = (a: typeof ordered[number], b: typeof ordered[number]) =>
+    a.stage < b.stage || (a.stage === b.stage && timeOrder.get(a.id)! < timeOrder.get(b.id)!);
   for (const edge of edges) {
     let parent = byId.get(edge.sourceId), child = byId.get(edge.targetId);
     if (!parent || !child) continue;
     const directed = edge.kind === 'precedes';
-    if (!directed && parent.stage > child.stage) [parent, child] = [child, parent];
-    if (parent.stage >= child.stage) continue;
+    if (!directed && comesBefore(child, parent)) [parent, child] = [child, parent];
+    if (!comesBefore(parent, child)) continue;
     const previous = parents.get(child.id);
     // An explicit predecessor wins. Otherwise prefer the nearest role and break ties stably.
     if (!previous || Number(directed) > Number(previous.directed) ||
         (directed === previous.directed && (parent.stage > previous.stage ||
           (parent.stage === previous.stage && parent.id.localeCompare(previous.id) < 0)))) {
-      parents.set(child.id, { id: parent.id, stage: parent.stage, directed });
+      parents.set(child.id, { id: parent.id, edgeId: edge.id, stage: parent.stage, directed });
     }
   }
 
@@ -58,39 +60,28 @@ export function layoutReviewBoard(nodes: GraphNode[], edges: GraphEdge[] = []) {
     children.set(parent.id, siblings);
   }
   const positions = new Map<string, { x: number; y: number }>();
-  let width = 0;
-  const bands = stages.flatMap((label, stage) => {
-    const entries = ordered.filter(entry => entry.stage === stage);
-    if (!entries.length) return [];
-    const count = Math.min(3, entries.length);
-    const x = width;
-    entries.forEach((entry, index) => {
-      positions.set(entry.id, { x: x + Math.floor(index * count / entries.length) * columnStep, y: 0 });
-    });
-    width += count * columnStep + 24;
-    return [{ x, label, width: (count - 1) * columnStep + boardNodeWidth }];
-  });
-
   let nextRow = 0;
-  function place(id: string): number {
-    const branches = children.get(id);
-    const rows = branches?.map(place);
+  function place(id: string, depth: number): number {
+    const rows = children.get(id)?.map(child => place(child, depth + 1));
     const row = rows?.length ? (rows[0] + rows[rows.length - 1]) / 2 : nextRow++;
-    positions.get(id)!.y = 48 + row * rowStep;
+    positions.set(id, { x: depth * columnStep, y: row * rowStep });
     return row;
   }
+
   for (const entry of ordered) {
-    if (!parents.has(entry.id) && children.has(entry.id)) place(entry.id);
+    if (!parents.has(entry.id) && children.has(entry.id)) {
+      place(entry.id, 0);
+      nextRow += .25;
+    }
   }
-  const columnRows = new Map<number, number>();
-  for (const entry of ordered) {
-    if (parents.has(entry.id) || children.has(entry.id)) continue;
-    const position = positions.get(entry.id)!;
-    const row = columnRows.get(position.x) ?? nextRow;
-    position.y = 48 + row * rowStep;
-    columnRows.set(position.x, row + 1);
-  }
-  return { positions, bands };
+
+  // Keep disconnected records together without stretching the connected branches.
+  const isolated = ordered.filter(entry => !parents.has(entry.id) && !children.has(entry.id))
+    .sort((a, b) => a.stage - b.stage);
+  isolated.forEach((entry, index) => positions.set(entry.id, {
+    x: (index % 4) * columnStep, y: (nextRow + Math.floor(index / 4)) * rowStep,
+  }));
+  return { positions, branchEdges: new Set([...parents.values()].map(parent => parent.edgeId)) };
 }
 
 export function reviewTitle(node: GraphNode, limit = 120): string {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ReactFlow, Controls, ViewportPortal, Handle, Position, MarkerType, type Node, type NodeProps } from '@xyflow/react';
+import { ReactFlow, Controls, Handle, Position, MarkerType, type Node, type NodeProps } from '@xyflow/react';
 import type { Graph, GraphNode, NodeKind } from '../server/types.ts';
 import { nodeLabels, statusLabels } from './components.tsx';
 import { evidenceLabel, layoutReviewBoard, reviewConnections, reviewTitle, reviewTime } from './reviewFlow.ts';
@@ -47,7 +47,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
     const ids = new Set([center.id, ...links.map(link => link.node.id)]);
     return { nodes: visible.nodes.filter(node => ids.has(node.id)), edges: links.map(link => link.edge) };
   }, [visible, focused, center]);
-  const { positions, bands } = useMemo(() => layoutReviewBoard(displayed.nodes, displayed.edges), [displayed]);
+  const { positions, branchEdges } = useMemo(() => layoutReviewBoard(displayed.nodes, displayed.edges), [displayed]);
   const connected = new Set<string>();
   for (const edge of displayed.edges) {
     if (edge.sourceId === selectedId) connected.add(edge.targetId);
@@ -67,7 +67,7 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       className: active ? 'review-edge-highlight' : undefined,
       zIndex: active ? 2 : 0,
       markerEnd: directed ? { type: MarkerType.ArrowClosed, color, width: 16, height: 16 } : undefined,
-      style: { stroke: color, strokeWidth: active ? 2.8 : 1.25, opacity: center && !active ? .18 : .85, strokeDasharray: directed ? undefined : '5 4' },
+      style: { stroke: color, strokeWidth: active ? 2.8 : 1.25, opacity: active ? .95 : center ? .18 : branchEdges.has(edge.id) ? .85 : .28, strokeDasharray: directed ? undefined : '5 4' },
       ariaLabel: [directed ? '선행 → 후속' : '방향 없는 연관', edge.reason].filter(Boolean).join(' · ') };
   });
   const layoutKey = JSON.stringify([nodes.map(node => node.id), edges.map(edge => edge.id)]);
@@ -76,13 +76,10 @@ export function DirectionalGraph({ graph, currentNodeIds, selectedId, onSelect, 
       onNodeClick={(_, node) => onSelect(node.id)} fitView fitViewOptions={fitViewOptions}
       minZoom={.2} maxZoom={2} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null}
       colorMode="dark" aria-label="근거와 후속 작업의 흐름">
-      <ViewportPortal>
-        {bands.map(band => <span key={band.label} className="graph-stage-heading" style={{ left: band.x, width: band.width }}>{band.label}</span>)}
-      </ViewportPortal>
       <Controls showInteractive={false} position="top-left" />
     </ReactFlow>
     <button className="button graph-rearrange" disabled={!focused && !center} onClick={() => setFocused(!focused)} aria-pressed={focused}>{focused ? '전체 흐름 보기' : '선택 항목의 연결 보기'}</button>
     {!nodes.length && <div className="graph-empty-filter" role="status"><p>표시할 노드가 없어요.</p><button className="text-button" onClick={onShowAll}>전체 노드 표시하기</button></div>}
-    <div className="graph-legend"><span>{nodes.length}/{graph.nodes.length}개 표시</span><span>발언·요구 → 결정·기능 → 작업 · 같은 역할은 오래된 순</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
+    <div className="graph-legend"><span>{nodes.length}/{graph.nodes.length}개 표시</span><span>연결된 항목을 가지별로 배치</span><span>화살표는 등록된 선후 관계</span><span>점선은 방향 없는 연관</span></div>
   </div>;
 }
