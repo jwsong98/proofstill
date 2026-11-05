@@ -125,3 +125,108 @@ test('check explanations survive API projection and HTML export without claiming
  const {checkTitle,statusReason}=await import('../shared/verification.ts');
  assert.equal(checkTitle({id:'database',label:'database'}),'설명이 등록되지 않은 검사');assert.ok(statusReason('stale').includes('다시 확인'));assert.ok(statusReason('not_run').includes('실행 기록이 없어'));
 });
+
+test('console projects current requirement reviews without relaxing the original task gate', async t => {
+  const { root, project, service } = await fixture(t);
+  const runtime = resolve(import.meta.dirname, '../..');
+  const setupReview = async (answer: unknown) => execute('python3', ['-c', `
+import json, sys
+from pathlib import Path
+from proofstill.workflow import Harness, HarnessError
+from tests.support import make_plan
+root = Path(sys.argv[1])
+fake = root / 'reviewer.py'
+fake.write_text('''#!/usr/bin/env python3
+import json,sys,uuid
+from pathlib import Path
+sys.stdin.read()
+root=Path(__file__).resolve().parent
+output=Path(sys.argv[sys.argv.index('--output-last-message')+1])
+output.write_text((root/'review_answer.json').read_text())
+print(json.dumps({'type':'thread.started','thread_id':str(uuid.uuid4())}))
+''')
+fake.chmod(0o755)
+h = Harness(root, codex=str(fake))
+if not (h.folder('counter') / 'state.json').exists():
+    path = make_plan(root)
+    plan = json.loads(path.read_text())
+    plan['requirements'] = [dict(plan['requirements'][0], id='R'+str(i)) for i in range(1,4)]
+    plan['collaboration']['human_checks'] = [dict(plan['collaboration']['human_checks'][0], requirement='R'+str(i)) for i in range(1,4)]
+    path.write_text(json.dumps(plan))
+    (root / 'src/counter.py').write_text('VALUE = 1' + chr(10))
+    h.init(path)
+    h.run('counter')
+(root / 'review_answer.json').write_text(sys.argv[2])
+try:
+    h.review('counter')
+except HarnessError:
+    pass
+`, root, JSON.stringify(answer)], { cwd: runtime });
+  const answer = { verdict: 'fail', checks: [
+    { id: 'R1', status: 'pass', evidence: '첫 요구 관찰 완료' },
+    { id: 'R2', status: 'unverified', evidence: '둘째 요구 실제 관찰 부족' },
+    { id: 'R3', status: 'fail', evidence: '셋째 요구 결함 발견' },
+  ], findings: ['셋째 요구 결함'], limitations: ['둘째 요구 미관측'] };
+  await setupReview(answer);
+  const snapshot = await service.snapshot(project.id);
+  const rows = snapshot.rows.filter(row => row.source === 'harness');
+  assert.deepEqual(rows.map(row => row.verification.review.status), ['passed', 'unverified', 'failed']);
+  assert.deepEqual(rows.map(row => row.verification.review.gateStatus), ['failed', 'failed', 'failed']);
+  const original = JSON.parse((await execute('python3', ['-m', 'proofstill', '--root', root, 'handoff'], { cwd: runtime })).stdout);
+  assert.deepEqual(original.rows.map((row: any) => row.verification.review.status), ['passed', 'unverified', 'failed']);
+  assert.ok(original.rows.every((row: any) => row.verification.review.gateStatus === 'failed'));
+  for (const race of ['missing-record', 'changed-record']) {
+    const projected = JSON.parse((await execute('python3', ['-c', `
+import importlib.util, json, sys
+from proofstill.workflow import Harness
+spec = importlib.util.spec_from_file_location('handoff_projection', sys.argv[2])
+adapter = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(adapter)
+h = Harness(sys.argv[1])
+load = h.load
+loads = 0
+def changed_load(feature):
+    global loads
+    plan, state = load(feature)
+    loads += 1
+    if loads > 1:
+        if sys.argv[3] == 'missing-record':
+            state['reviews'].pop('implementation')
+        else:
+            state['reviews']['implementation']['source_digest'] = 'changed-after-first-read'
+    return plan, state
+h.load = changed_load
+print(json.dumps(adapter.snapshot(h, 'counter')))
+`, root, resolve(runtime, 'console/server/handoff_review.py'), race], { cwd: runtime })).stdout);
+    assert.equal(projected.length, 3);
+    assert.ok(projected.every((row: any) => row.verification.review.status === 'stale' && row.verification.review.gateStatus === 'stale'));
+  }
+  const html = exportHandoff('요구별 검토', snapshot, {});
+  for (const text of ['요구별 리뷰', '확인', '추가 확인', '결함 발견', '작업 전체 게이트 · 미통과']) assert.ok(html.includes(text));
+  const { filterHandoffRows } = await import('../shared/progress.ts');
+  assert.deepEqual(filterHandoffRows(rows, 'current', 'failed', '').map(row => row.requirementId), ['R3']);
+  for (const invalid of [
+    { ...answer, checks: [...answer.checks, answer.checks[0]] },
+    { ...answer, checks: answer.checks.slice(0, 2) },
+    { ...answer, checks: [{ ...answer.checks[0], id: 'unknown' }, ...answer.checks.slice(1)] },
+    { ...answer, checks: [{ ...answer.checks[0], status: 'unchecked' }, ...answer.checks.slice(1)] },
+    { ...answer, checks: [{ ...answer.checks[0], evidence: '' }, ...answer.checks.slice(1)] },
+    { ...answer, extra: 'not allowed' },
+  ]) {
+    await setupReview(invalid);
+    const badRows = (await service.snapshot(project.id)).rows.filter(row => row.source === 'harness');
+    assert.equal(badRows.length, 3);
+    assert.ok(badRows.every(row => row.verification.review.status !== 'passed'));
+  }
+  await setupReview(answer);
+  const { readFile } = await import('node:fs/promises');
+  const state = JSON.parse(await readFile(resolve(root, '.proofstill/evidence/counter/state.json'), 'utf8'));
+  const receipt = resolve(state.reviews.implementation.folder, 'receipt.json');
+  await writeFile(receipt, '{"tampered":true}');
+  const tampered = (await service.snapshot(project.id)).rows.filter(row => row.source === 'harness');
+  assert.ok(tampered.every(row => row.verification.review.status === 'stale'));
+  await setupReview(answer);
+  await writeFile(resolve(root, 'src/counter.py'), 'VALUE = 2\n');
+  const stale = (await service.snapshot(project.id)).rows.filter(row => row.source === 'harness');
+  assert.ok(stale.every(row => row.verification.review.status === 'stale'));
+});

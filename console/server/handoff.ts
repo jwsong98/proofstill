@@ -10,7 +10,8 @@ const execute = promisify(execFile);
 const runtimeRoot = fileURLToPath(new URL('../../', import.meta.url));
 import { implementationLabels, verificationStatus } from '../shared/progress.ts';
 async function harness(root: string, args: string[]) {
-  const { stdout } = await execute(process.env.PROOFSTILL_PYTHON || 'python3', ['-m', 'proofstill', '--root', root, ...args], {
+  const entry = args[0] === 'handoff' ? [fileURLToPath(new URL('./handoff_review.py', import.meta.url))] : ['-m', 'proofstill'];
+  const { stdout } = await execute(process.env.PROOFSTILL_PYTHON || 'python3', [...entry, '--root', root, ...args], {
     cwd: runtimeRoot, timeout: 60000, maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
   });
