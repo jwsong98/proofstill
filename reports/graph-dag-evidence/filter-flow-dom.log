@@ -1,0 +1,113 @@
+### Page
+- Page URL: http://127.0.0.1:64640/
+- Page Title: Proofstill
+### Snapshot
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]: proofstill
+    - generic [ref=e11]: Codex 연결됨
+  - generic [ref=e12]:
+    - complementary [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]: 프로젝트
+        - generic [ref=e16]:
+          - combobox "프로젝트" [ref=e17]:
+            - option "DAG 화면 검증" [selected]
+          - button "프로젝트 추가" [ref=e18] [cursor=pointer]
+      - navigation "프로젝트 탐색" [ref=e21]:
+        - button "구현·검증 현황" [ref=e22] [cursor=pointer]
+        - button "관계 그래프" [ref=e25] [cursor=pointer]
+        - button "Codex 세션" [ref=e28] [cursor=pointer]
+        - button "프로젝트 세션 열기" [ref=e33] [cursor=pointer]
+        - button "실행 결과" [ref=e36] [cursor=pointer]
+      - generic [ref=e39]: localhost:7777
+    - main [ref=e40]:
+      - generic [ref=e42]:
+        - paragraph [ref=e43]: DAG 화면 검증
+        - heading "구현·검증 현황" [level=1] [ref=e44]
+      - generic [ref=e45]:
+        - region "상시 관계 그래프" [ref=e46]:
+          - strong [ref=e48]: 관계 그래프
+          - generic [ref=e49]:
+            - generic [ref=e50]: 전체 노드 1개 · 연결 0개
+            - generic [ref=e51]:
+              - checkbox "미완료 기능·작업" [checked] [active] [ref=e52]
+              - text: 미완료 기능·작업
+          - group "노드 종류 표시" [ref=e53]:
+            - button "기능 노드 표시" [pressed] [ref=e54] [cursor=pointer]:
+              - text: 기능
+              - generic [ref=e55]: "0"
+            - button "요구사항 노드 표시" [pressed] [ref=e56] [cursor=pointer]:
+              - text: 요구사항
+              - generic [ref=e57]: "0"
+            - button "문제·이슈 노드 표시" [pressed] [ref=e58] [cursor=pointer]:
+              - text: 문제·이슈
+              - generic [ref=e59]: "0"
+            - button "결정 노드 표시" [pressed] [ref=e60] [cursor=pointer]:
+              - text: 결정
+              - generic [ref=e61]: "0"
+            - button "작업 노드 표시" [pressed] [ref=e62] [cursor=pointer]:
+              - text: 작업
+              - generic [ref=e63]: "1"
+            - button "근거 노드 표시" [pressed] [ref=e64] [cursor=pointer]:
+              - text: 근거
+              - generic [ref=e65]: "0"
+          - region "DAG 작업 실행" [ref=e66]:
+            - generic [ref=e67]:
+              - button "작업 실행 설정 · 1/1 완료" [ref=e68] [cursor=pointer]
+              - button "DAG 실행" [ref=e69] [cursor=pointer]
+          - group "그래프 배치" [ref=e70]:
+            - button "흐름 보기" [pressed] [ref=e71] [cursor=pointer]
+            - button "자유 배치" [ref=e72] [cursor=pointer]
+          - generic [ref=e73]:
+            - application "근거와 후속 작업의 흐름" [ref=e74]:
+              - generic "Control Panel" [ref=e77]:
+                - button "Zoom In" [ref=e78] [cursor=pointer]
+                - button "Zoom Out" [ref=e81] [cursor=pointer]
+                - button "Fit View" [ref=e84] [cursor=pointer]
+              - link "React Flow attribution" [ref=e88] [cursor=pointer]:
+                - /url: https://reactflow.dev?utm_source=attribution
+                - text: React Flow
+            - button "선택 항목 포커스" [disabled] [ref=e90]
+            - status [ref=e117]:
+              - paragraph [ref=e118]: 표시할 노드가 없어요.
+              - button "전체 노드 표시하기" [ref=e119] [cursor=pointer]
+            - generic:
+              - button "노드 클라우드 (실험)" [ref=e91] [cursor=pointer]
+              - button "전체 연결 보기" [ref=e92] [cursor=pointer]
+              - generic: 0/1개 표시 · 연결 0/0개
+              - generic: 화살표는 등록된 선후 관계
+              - generic: 점선은 방향 없는 연관
+        - generic [ref=e93]:
+          - separator "상세 패널 너비" [ref=e94]
+          - generic [ref=e97]:
+            - generic [ref=e98]:
+              - generic [ref=e99]: 0개 항목 · 목록에서 확인할 항목을 고르세요.
+              - generic [ref=e100]:
+                - button "새로고침" [ref=e101] [cursor=pointer]
+                - link "근거 포함 인계 파일 받기" [ref=e102] [cursor=pointer]:
+                  - /url: /api/projects/b516c588-2577-42de-a2d0-e70d3e825749/handoff/export
+            - generic [ref=e103]:
+              - region "구현·검증 현황" [ref=e104]:
+                - generic [ref=e105]:
+                  - combobox "목록 범위" [ref=e106]:
+                    - option "현재 기능" [selected]
+                    - option "이전 작업"
+                    - option "전체 기록"
+                  - textbox "요구 검색" [ref=e107]:
+                    - /placeholder: 이름으로 찾기 (선택)
+                  - combobox "현황 필터" [ref=e108]:
+                    - option "전체" [selected]
+                    - option "남은 구현"
+                    - option "검증 필요"
+                    - option "실패 발견"
+                - generic [ref=e109]:
+                  - heading "아직 요구·기능이 없어요." [level=2] [ref=e110]
+                  - paragraph [ref=e111]: 프로젝트 파일에서 하네스 작업을 등록하면 여기에 표시돼요.
+                  - paragraph [ref=e112]: 기존 항목의 구현 상태는 자동 추정하지 않고 ‘미기록’으로 표시해요.
+              - complementary "요구별 구현·검증 상세" [ref=e113]:
+                - generic [ref=e114]:
+                  - heading "확인할 항목을 골라 주세요" [level=2] [ref=e115]
+                  - paragraph [ref=e116]: 목록에서 항목 이름을 누르면 지금 판단할 수 있는 내용, 그 근거, 내가 할 일이 차례로 나와요.
+```

@@ -35,7 +35,9 @@
     "reports/graph-dag-evidence/stop-dom.log",
     "reports/graph-dag-evidence/page-2026-11-05T08-24-57-387Z.yml",
     "reports/graph-dag-evidence/stopped-run-response.json",
-    "reports/graph-dag-evidence/ui-run-response.json"
+    "reports/graph-dag-evidence/ui-run-response.json",
+    "reports/graph-dag-evidence/filter-flow-dom.log",
+    "reports/graph-dag-evidence/filter-free-dom.log"
   ],
   "requirements": [
     {

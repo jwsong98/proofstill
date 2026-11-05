@@ -11,8 +11,10 @@
     "reload_dom": "reports/graph-dag-evidence/reload-dom.log",
     "persisted_stop": "reports/graph-dag-evidence/stopped-run-response.json",
     "persisted_complete": "reports/graph-dag-evidence/ui-run-response.json",
-    "observed": "브라우저에서 소유 경로/argv 저장, DAG 실행, 완료 커밋 및 통과 출력 펼침, 미완료 필터에서 완료 작업 숨김. 최종 코드에서 재실행·중단 버튼 조작과 새로고침 후 최근 실행 중단, 0/1 완료 확인.",
-    "limitations": "완료 DOM 파일은 첫 화면 관측이며 이후 최근 실행 라벨과 완료 수 갱신 보강이 있다. 최종 완료 표시의 실제 화면은 completed-final.png, 최종 실행/중단은 성공한 Playwright 코드 및 reload-dom.log로 대조한다."
+    "observed": "브라우저에서 소유 경로/argv 저장, DAG 실행, 완료 커밋 및 통과 출력 펼침, 미완료 필터에서 완료 작업 숨김. 최종 코드에서 재실행·중단 버튼 조작과 새로고침 후 최근 실행 중단, 0/1 완료 확인. 최종 코드에서 완료 작업 1개를 가진 합성 프로젝트의 미완료 필터를 켜고 흐름/자유 배치 각각 0/1개 표시와 빈 결과 상태를 DOM으로 캡처했다.",
+    "limitations": "완료 DOM 파일은 첫 화면 관측이며 이후 최근 실행 라벨과 완료 수 갱신 보강이 있다. 최종 완료 표시의 실제 화면은 completed-final.png, 최종 실행/중단은 성공한 Playwright 코드 및 reload-dom.log로 대조한다.",
+    "filter_flow_dom": "reports/graph-dag-evidence/filter-flow-dom.log",
+    "filter_free_dom": "reports/graph-dag-evidence/filter-free-dom.log"
   },
   "baseline_failure": {
     "path": "reports/graph-dag-evidence/pre-dag-handoff-test.log",
