@@ -197,6 +197,9 @@ export default function App() {
   const historical = selected != null && !currentNodeIds.has(selected.id);
   const detailGraph = view === 'graph' ? boardSource : graph;
   const relevantEdges = useMemo(() => selected ? detailGraph.edges.filter(edge => edge.sourceId === selected.id || edge.targetId === selected.id) : [], [detailGraph.edges, selected]);
+  const connectedIds = new Set(relevantEdges.map(edge => edge.sourceId === selected?.id ? edge.targetId : edge.sourceId));
+  const connectedNodes = detailGraph.nodes.filter(node => connectedIds.has(node.id) &&
+    (currentNodeIds.has(node.id) || boardGraph.nodes.some(visible => visible.id === node.id)));
   const citedEvidence = useMemo(() => {
     const ids = new Set(relevantEdges.map(edge => edge.sourceId === selectedId ? edge.targetId : edge.sourceId));
     return graph.nodes.filter(node => node.evidence && ids.has(node.id));
@@ -268,7 +271,10 @@ export default function App() {
 
 
         </>}
-      {selected && <section className="detail-section"><h3>연결된 항목</h3>{relevantEdges.map(edge => { const otherId = edge.sourceId === selected.id ? edge.targetId : edge.sourceId; const other = detailGraph.nodes.find(node => node.id === otherId); if (other && !currentNodeIds.has(otherId) && !boardGraph.nodes.some(node => node.id === otherId)) return null; return <div className="relation-row" key={edge.id}><button className="source-link" onClick={() => choose(otherId)}><span className="small">{edge.kind === 'related' ? '연관' : edge.sourceId === selected.id ? '후속 →' : '← 선행'}</span>{other ? reviewTitle(other) : otherId}{edge.reason && <span className="small">{edge.reason}</span>}</button></div>; })}{!relevantEdges.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}</section>}
+      {selected && <section className="detail-section"><h3>연결된 항목</h3>
+        {connectedNodes.map(node => <div className="relation-row" key={node.id}><button className="source-link" onClick={() => choose(node.id)}>{node.title}</button></div>)}
+        {!connectedNodes.length && <p className="small">아직 연결된 근거나 항목이 없어요.</p>}
+      </section>}
       </aside>}</div>}
     </main></div>
     {modal && <Modal title={modal.kind === 'project' ? '어떤 프로젝트를 등록할까요?' : modal.kind === 'file' ? '어떤 문서를 근거로 보존할까요?' : '어떤 Codex 세션을 가져올까요?'} onClose={() => !busy && setModal(null)}><ErrorNotice message={error} />
