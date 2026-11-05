@@ -1,6 +1,6 @@
 # Project
 
-- 모든 구현 작업자는 [커밋 스킬](.agents/skills/proofstill-commit/SKILL.md)을 따른다. 작은 관심사 하나의 구현·관련 검사·빌드가 끝나면 즉시 로컬 커밋한 뒤 다음 관심사로 이동한다. 마지막에 변경을 모아 hunk로 나누지 않는다. 위임 시에도 스킬·담당 파일·검사·커밋 시점을 전달하고 공유 index의 stage·커밋은 직렬화한다. 읽기 전용 검증자는 커밋하지 않으며 push·이력 재작성은 별도 요청 범위다.
+- 모든 구현 작업자는 [커밋 스킬](.agents/skills/proofstill-commit/SKILL.md)을 따른다. 작은 관심사 하나를 구현하고 변경 위험에 맞는 필요한 확인을 마치면 즉시 로컬 커밋한 뒤 다음 관심사로 이동한다. 커밋마다 테스트·타입 검사·빌드를 무조건 반복하지 않는다. 이미 통과한 검사는 관련 변경·실패·구체적인 우려가 없으면 재실행하지 않는다. 검사용 코드의 임시 폴더 복사·내보내기와 별도 checkout·worktree·clone 생성은 금지한다. 검사는 현재 작업 디렉터리에서 수행하고 실제 확인 범위와 한계를 밝힌다. 마지막에 변경을 모아 hunk로 나누지 않는다. 위임 시에도 스킬·담당 파일·검사·커밋 시점을 전달하고 공유 index의 stage·커밋은 직렬화한다. 읽기 전용 검증자는 커밋하지 않으며 push·이력 재작성은 별도 요청 범위다.
 
 - 백엔드 의존성은 app → usecase → domain, infra → domain이다. domain은 업무 규칙·저장소 Protocol, usecase는 실행 순서, app은 HTTP 입력·응답, infra는 저장소 구현을 소유한다. domain/usecase는 표준 라이브러리만 사용한다. infra/app.py만 조립 진입점으로 app·usecase·infra를 연결한다. app은 domain/infra를 직접 import하지 않는다.
 - 기능 담당 범위는 domain/<기능>.py, usecase/<기능>.py, app/<기능>.py, infra/<기능>_repository.py와 대응 tests/domain·usecase·integration 파일로 나눈다. 계층별로 위임할 때는 domain의 계약을 먼저 고정하고 가짜 저장소로 독립 구현한다. 공유 계약·조립 진입점·migration·lockfile·생성 코드는 한 담당자가 순서대로 통합한다.
